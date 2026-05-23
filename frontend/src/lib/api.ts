@@ -95,6 +95,8 @@ function seedTest(
   state: string,
   color: string,
   sections: SectionRow[] = [],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  extra: Partial<TestRow> = {},
 ): TestRow {
   return {
     id,
@@ -112,56 +114,179 @@ function seedTest(
     sections,
     createdAt: now(),
     updatedAt: now(),
+    ...extra,
   };
 }
+
+// Builds a single-choice question with weighted answers.
+// weights: array of { text, vars } where vars assigns points to variables.
+let qSeq = 100;
+let aSeq = 5000;
+function seedQuestion(
+  sectionId: number,
+  text: Localized,
+  type: string,
+  answers: { text: Localized; vars?: { variableId: string; value: number }[] }[],
+): QuestionRow {
+  const qid = ++qSeq + 100;
+  return {
+    id: qid,
+    text,
+    sectionId,
+    order: 0,
+    type,
+    createdAt: now(),
+    updatedAt: now(),
+    answers: answers.map((a) => ({
+      id: ++aSeq,
+      questionId: qid,
+      text: a.text,
+      vars: a.vars ?? [],
+      createdAt: now(),
+      updatedAt: now(),
+    })),
+  };
+}
+
+const likertAnswers = (varId: string) => [
+  { text: L("Strongly disagree", "Совсем не согласен", "Мүлдем келіспеймін"), vars: [{ variableId: varId, value: 0 }] },
+  { text: L("Disagree", "Не согласен", "Келіспеймін"), vars: [{ variableId: varId, value: 1 }] },
+  { text: L("Neutral", "Нейтрально", "Бейтарап"), vars: [{ variableId: varId, value: 2 }] },
+  { text: L("Agree", "Согласен", "Келісемін"), vars: [{ variableId: varId, value: 3 }] },
+  { text: L("Strongly agree", "Полностью согласен", "Толық келісемін"), vars: [{ variableId: varId, value: 5 }] },
+];
+
+function section(id: number, testId: number, title: Localized, questions: QuestionRow[]): SectionRow {
+  questions.forEach((q, i) => {
+    q.sectionId = id;
+    q.order = i;
+    q.answers.forEach((a) => (a.questionId = q.id));
+  });
+  return { id, title, testId, order: 0, questions, createdAt: now(), updatedAt: now() };
+}
+
+// ── Holland (RIASEC) — full weighted test ────────────────────────────────
+const hollandVars = [
+  { id: "realistic", name: "realistic", description: L("Realistic", "Реалистичный", "Реалистік") },
+  { id: "investigative", name: "investigative", description: L("Investigative", "Исследовательский", "Зерттеушілік") },
+  { id: "artistic", name: "artistic", description: L("Artistic", "Артистичный", "Көркемдік") },
+  { id: "social", name: "social", description: L("Social", "Социальный", "Әлеуметтік") },
+  { id: "enterprising", name: "enterprising", description: L("Enterprising", "Предприимчивый", "Кәсіпкерлік") },
+  { id: "conventional", name: "conventional", description: L("Conventional", "Традиционный", "Дәстүрлі") },
+];
 
 const tests: TestRow[] = [
   seedTest(
     1,
     L("Holland Career Test", "Тест Голланда", "Холланд тесті"),
-    L("RIASEC career interest assessment", "Профориентационный тест RIASEC"),
+    L("RIASEC career interest assessment", "Профориентационный тест RIASEC", "RIASEC мансаптық қызығушылық тесті"),
     "published",
     "#0d9488",
     [
-      {
-        id: 11,
-        title: L("Interests", "Интересы", "Қызығушылықтар"),
-        testId: 1,
-        order: 0,
-        createdAt: now(),
-        updatedAt: now(),
-        questions: [
-          {
-            id: 101,
-            text: L("Do you like fixing mechanical things?"),
-            sectionId: 11,
-            order: 0,
-            type: "single",
-            createdAt: now(),
-            updatedAt: now(),
-            answers: [
-              { id: 1001, questionId: 101, text: L("Strongly yes"), vars: [], createdAt: now(), updatedAt: now() },
-              { id: 1002, questionId: 101, text: L("Yes"), vars: [], createdAt: now(), updatedAt: now() },
-              { id: 1003, questionId: 101, text: L("No"), vars: [], createdAt: now(), updatedAt: now() },
-            ],
-          },
+      section(11, 1, L("Activities", "Активности", "Әрекеттер"), [
+        seedQuestion(11, L("I like to work on cars and machines", "Мне нравится работать с машинами"), "single",
+          likertAnswers("realistic")),
+        seedQuestion(11, L("I enjoy solving math or science problems", "Мне нравится решать задачи по науке"), "single",
+          likertAnswers("investigative")),
+        seedQuestion(11, L("I like to draw, paint, or write", "Мне нравится рисовать или писать"), "single",
+          likertAnswers("artistic")),
+      ]),
+      section(12, 1, L("Preferences", "Предпочтения", "Қалаулар"), [
+        seedQuestion(12, L("I enjoy helping and teaching others", "Мне нравится помогать другим"), "single",
+          likertAnswers("social")),
+        seedQuestion(12, L("I like to lead and persuade people", "Мне нравится вести за собой"), "single",
+          likertAnswers("enterprising")),
+        seedQuestion(12, L("I like to organize and follow procedures", "Мне нравится упорядочивать"), "single",
+          likertAnswers("conventional")),
+      ]),
+    ],
+    {
+      icon: "compass",
+      duration: 12,
+      category: "Career",
+      vars: { variables: hollandVars },
+      resultViewLogic: {
+        widgets: [
+          { id: "w1", componentType: "bar_chart", title: L("Your RIASEC profile", "Ваш профиль RIASEC"), bind: "characteristics" },
+          { id: "w2", componentType: "summary_text", title: L("Top interest", "Главный интерес"), bind: "topDimension" },
         ],
       },
-    ],
+    },
   ),
   seedTest(
     2,
     L("Big Five Personality", "Большая пятёрка", "Үлкен бестік"),
-    L("OCEAN trait inventory", "Опросник черт OCEAN"),
-    "draft",
+    L("OCEAN trait inventory", "Опросник черт личности OCEAN", "OCEAN тұлға қасиеттері"),
+    "published",
     "#7c3aed",
+    [
+      section(21, 2, L("Openness & Conscientiousness", "Открытость и сознательность"), [
+        seedQuestion(21, L("I have a vivid imagination", "У меня живое воображение"), "single", likertAnswers("openness")),
+        seedQuestion(21, L("I get chores done right away", "Я сразу выполняю задачи"), "single", likertAnswers("conscientiousness")),
+      ]),
+      section(22, 2, L("Extraversion & Agreeableness", "Экстраверсия и доброжелательность"), [
+        seedQuestion(22, L("I feel comfortable around people", "Мне комфортно среди людей"), "single", likertAnswers("extraversion")),
+        seedQuestion(22, L("I sympathize with others' feelings", "Я сочувствую другим"), "single", likertAnswers("agreeableness")),
+      ]),
+    ],
+    {
+      icon: "fingerprint",
+      duration: 10,
+      category: "Personality",
+      vars: {
+        variables: [
+          { id: "openness", name: "openness", description: L("Openness", "Открытость") },
+          { id: "conscientiousness", name: "conscientiousness", description: L("Conscientiousness", "Сознательность") },
+          { id: "extraversion", name: "extraversion", description: L("Extraversion", "Экстраверсия") },
+          { id: "agreeableness", name: "agreeableness", description: L("Agreeableness", "Доброжелательность") },
+        ],
+      },
+      resultViewLogic: {
+        widgets: [{ id: "w1", componentType: "radar_chart", title: L("Trait profile", "Профиль черт"), bind: "characteristics" }],
+      },
+    },
   ),
   seedTest(
     3,
     L("Emotional Intelligence", "Эмоциональный интеллект", "Эмоционалды интеллект"),
-    L("EQ self-assessment", "Самооценка EQ"),
-    "draft",
+    L("EQ self-assessment", "Самооценка EQ", "EQ өзін-өзі бағалау"),
+    "published",
     "#ea580c",
+    [
+      section(31, 3, L("Self-awareness", "Самосознание"), [
+        seedQuestion(31, L("I recognize my emotions as they happen", "Я осознаю свои эмоции"), "single", likertAnswers("awareness")),
+        seedQuestion(31, L("I stay calm under pressure", "Я сохраняю спокойствие под давлением"), "single", likertAnswers("regulation")),
+      ]),
+    ],
+    {
+      icon: "heart",
+      duration: 8,
+      category: "Soft skills",
+      vars: {
+        variables: [
+          { id: "awareness", name: "awareness", description: L("Self-awareness", "Самосознание") },
+          { id: "regulation", name: "regulation", description: L("Self-regulation", "Саморегуляция") },
+        ],
+      },
+    },
+  ),
+  seedTest(
+    4,
+    L("Learning Styles", "Стили обучения", "Оқу стильдері"),
+    L("Discover how you learn best", "Узнайте, как вы учитесь лучше всего", "Қалай жақсы оқитыныңызды біліңіз"),
+    "draft",
+    "#2563eb",
+    [],
+    { icon: "book-open", duration: 6, category: "Education" },
+  ),
+  seedTest(
+    5,
+    L("Conflict Style", "Стиль разрешения конфликтов", "Қақтығыс стилі"),
+    L("How you handle disagreements", "Как вы справляетесь с разногласиями", "Келіспеушіліктерді қалай шешесіз"),
+    "draft",
+    "#dc2626",
+    [],
+    { icon: "scale", duration: 9, category: "Soft skills" },
   ),
 ];
 
@@ -349,4 +474,98 @@ export function deleteAnswer(id: number): Promise<void> {
     }
   }
   return delay(undefined);
+}
+
+// ── Public side: taking tests + results ──────────────────────────────────
+
+export interface PublicTestSummary {
+  id: number;
+  name: Localized;
+  desc: Localized | null;
+  color: string | null;
+  icon: string | null;
+  category: string | null;
+  duration: number | null;
+  questionCount: number;
+}
+
+export interface ResultRecord {
+  id: string;
+  testId: number;
+  answers: Record<string, number | string | string[]>;
+  characteristics: Record<string, number>;
+  topDimension: string | null;
+  completedAt: string;
+}
+
+const results: ResultRecord[] = [];
+
+function questionCount(t: TestRow): number {
+  return (t.sections ?? []).reduce((n, s) => n + s.questions.length, 0);
+}
+
+export function fetchPublicTests(): Promise<PublicTestSummary[]> {
+  const published = tests
+    .filter((t) => t.state === "published")
+    .map((t) => ({
+      id: t.id,
+      name: t.name,
+      desc: t.desc,
+      color: t.color,
+      icon: t.icon,
+      category: t.category,
+      duration: t.duration,
+      questionCount: questionCount(t),
+    }));
+  return delay(clone(published));
+}
+
+// Compute characteristic scores from raw answers using each answer's weights.
+// answers: map of questionId -> chosen answerId(s).
+export function submitTestResult(
+  testId: number,
+  answers: Record<string, number | string | string[]>,
+): Promise<ResultRecord> {
+  const t = findTest(testId);
+  if (!t) return Promise.reject(new Error(`Test ${testId} not found`));
+
+  const characteristics: Record<string, number> = {};
+  for (const v of t.vars?.variables ?? []) characteristics[v.id] = 0;
+
+  for (const s of t.sections ?? []) {
+    for (const q of s.questions) {
+      const picked = answers[String(q.id)];
+      const pickedIds = Array.isArray(picked) ? picked : [picked];
+      for (const a of q.answers) {
+        if (pickedIds.map(String).includes(String(a.id))) {
+          for (const w of (a.vars ?? []) as { variableId: string; value: number }[]) {
+            characteristics[w.variableId] = (characteristics[w.variableId] ?? 0) + w.value;
+          }
+        }
+      }
+    }
+  }
+
+  let topDimension: string | null = null;
+  let max = -Infinity;
+  for (const [k, v] of Object.entries(characteristics)) {
+    if (v > max) { max = v; topDimension = k; }
+  }
+
+  const record: ResultRecord = {
+    id: `r${nextId()}`,
+    testId,
+    answers,
+    characteristics,
+    topDimension,
+    completedAt: now(),
+  };
+  results.push(record);
+  return delay(clone(record));
+}
+
+export function fetchResult(resultId: string): Promise<ResultRecord> {
+  const r = results.find((x) => x.id === resultId);
+  if (!r) return Promise.reject(new Error(`Result ${resultId} not found`));
+  return delay(clone(r));
 }
