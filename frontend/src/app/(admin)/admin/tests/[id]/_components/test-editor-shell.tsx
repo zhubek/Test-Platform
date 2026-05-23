@@ -10,6 +10,8 @@ import { QuestionsTab } from "./questions-tab";
 import { CalculationTab } from "./calculation-tab";
 import { WidgetConstructorTab } from "./widget-constructor-tab";
 import { StatusToggle } from "../../../_components/status-toggle";
+import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/button-link";
 import type {
   ContentTest,
   Section,
@@ -66,39 +68,34 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
   return (
     <>
       {/* Header row */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div
-            className="w-8 h-8 rounded-lg"
+            className="flex h-8 w-8 items-center justify-center rounded-lg"
             style={{ background: color + "20" }}
           >
-            <div
-              className="w-full h-full rounded-lg flex items-center justify-center"
-            >
-              <div
-                className="w-2.5 h-2.5 rounded-full"
-                style={{ background: color }}
-              />
-            </div>
+            <div className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
           </div>
-          <span className="text-[0.82rem] font-medium text-gray-500">
+          <span className="text-sm font-medium text-muted-foreground">
             {localize(name, locale) || t("cm.testEditor.untitled")}
           </span>
         </div>
         <div className="flex items-center gap-3">
           <StatusToggle status={status} onChange={setStatus} />
           {testId && (
-            <a
+            <ButtonLink
+              variant="outline"
+              size="sm"
               href={`/admin/tests/${testId}/preview`}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-2 text-[0.82rem] font-medium text-gray-700 hover:border-teal-300 hover:text-teal-700 transition-colors"
             >
-              <Eye className="w-3.5 h-3.5" />
+              <Eye className="mr-1 h-3.5 w-3.5" />
               Preview
-            </a>
+            </ButtonLink>
           )}
-          <button
+          <Button
+            size="sm"
             onClick={() => {
               if (!onSave) return;
               onSave({
@@ -115,11 +112,10 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
                 dashboardViewLogic: { widgets: dashboardWidgets },
               });
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2 text-[0.82rem] font-semibold text-white shadow-sm hover:bg-teal-700 transition-colors"
           >
-            <Save className="w-3.5 h-3.5" />
+            <Save className="mr-1 h-3.5 w-3.5" />
             {t("cm.testEditor.save")}
-          </button>
+          </Button>
         </div>
       </div>
 

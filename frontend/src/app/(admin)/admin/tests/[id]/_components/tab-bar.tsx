@@ -23,21 +23,21 @@ export function TabBar({ active, onChange }: Props) {
   const { t } = useLocale();
 
   return (
-    <div className="flex items-center gap-1 border-b border-gray-200 mb-6 overflow-x-auto">
+    <div className="mb-6 flex items-center gap-1 overflow-x-auto border-b">
       {tabIds.map((id) => (
         <button
           key={id}
           onClick={() => onChange(id)}
           className={
-            "relative shrink-0 px-4 py-2.5 text-[0.82rem] font-medium transition-colors " +
+            "relative shrink-0 px-4 py-2.5 text-sm font-medium transition-colors " +
             (active === id
-              ? "text-gray-900"
-              : "text-gray-400 hover:text-gray-600")
+              ? "text-foreground"
+              : "text-muted-foreground hover:text-foreground")
           }
         >
           {t(tabKeys[id])}
           {active === id && (
-            <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-teal-600" />
+            <span className="absolute right-2 bottom-0 left-2 h-0.5 rounded-full bg-primary" />
           )}
         </button>
       ))}
