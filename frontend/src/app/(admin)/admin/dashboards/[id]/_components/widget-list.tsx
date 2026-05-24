@@ -2,6 +2,7 @@
 
 import { Plus } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
+import { Button } from "@/components/ui/button";
 import { WidgetBlock } from "./widget-block";
 import type { DashboardWidget, VisualizationType } from "../../../_components/mock-data";
 
@@ -30,13 +31,14 @@ export function WidgetList({ widgets, onUpdate, onDelete, onAdd }: Props) {
         />
       ))}
 
-      <button
+      <Button
+        variant="outline"
         onClick={onAdd}
-        className="flex items-center gap-2 w-full justify-center rounded-xl border-2 border-dashed border-gray-200 py-4 text-[0.82rem] font-medium text-gray-400 hover:border-teal-300 hover:text-teal-600 transition-colors"
+        className="w-full h-auto rounded-xl border-2 border-dashed py-4 text-[0.82rem] text-muted-foreground hover:border-primary/30 hover:text-primary"
       >
         <Plus className="w-4 h-4" />
         {t("cm.widget.addWidget")}
-      </button>
+      </Button>
     </div>
   );
 }

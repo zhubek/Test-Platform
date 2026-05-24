@@ -94,12 +94,12 @@ export function CharacteristicsShell({ data }: Props) {
         </>
       ) : (
         <div className="animate-fade-in flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-[0.88rem] text-gray-400 mb-4">
+          <p className="text-[0.88rem] text-muted-foreground mb-4">
             {t("characteristics.noResults")}
           </p>
           <a
             href="/"
-            className="text-[0.82rem] font-medium text-gray-600 hover:text-gray-900 transition-colors underline underline-offset-2"
+            className="text-[0.82rem] font-medium text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
           >
             {t("characteristics.noResults.cta")}
           </a>

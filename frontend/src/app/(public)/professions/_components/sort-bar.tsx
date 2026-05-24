@@ -1,6 +1,13 @@
 "use client";
 
 import { useLocale } from "@/lib/locale-context";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type SortKey = "overall" | "interest" | "personality" | "skills" | "values";
 
@@ -25,20 +32,24 @@ export function SortBar({ value, onChange, hidden }: Props) {
 
   return (
     <div className="flex items-center gap-2.5 pb-4">
-      <label className="text-[0.8rem] text-gray-400 whitespace-nowrap">
+      <label className="text-[0.8rem] text-muted-foreground whitespace-nowrap">
         {t("professions.sort.label")}
       </label>
-      <select
+      <Select
         value={value}
-        onChange={(e) => onChange(e.target.value as SortKey)}
-        className="text-[0.82rem] py-1 px-2.5 border border-gray-200 rounded-md bg-white text-gray-700 cursor-pointer"
+        onValueChange={(v) => onChange((v ?? "overall") as SortKey)}
       >
-        {OPTION_KEYS.map((o) => (
-          <option key={o.value} value={o.value}>
-            {t(o.i18nKey)}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger size="sm">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {OPTION_KEYS.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {t(o.i18nKey)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

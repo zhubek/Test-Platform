@@ -2,6 +2,7 @@
 
 import { Plus } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
+import { Button } from "@/components/ui/button";
 import { SectionCard } from "../../../tests/[id]/_components/section-card";
 import type { Section } from "../../../_components/mock-data";
 
@@ -42,10 +43,10 @@ export function SurveyQuestionsTab({ sections, onSectionsChange }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-[0.88rem] font-semibold text-gray-900">
+          <h3 className="text-[0.88rem] font-semibold text-foreground">
             {t("cm.questions.heading")}
           </h3>
-          <p className="text-[0.75rem] text-gray-400 mt-0.5">
+          <p className="text-[0.75rem] text-muted-foreground mt-0.5">
             {sections.length} section{sections.length !== 1 && "s"},{" "}
             {totalQuestions} question{totalQuestions !== 1 && "s"}
           </p>
@@ -62,13 +63,14 @@ export function SurveyQuestionsTab({ sections, onSectionsChange }: Props) {
         />
       ))}
 
-      <button
+      <Button
+        variant="outline"
         onClick={handleSectionAdd}
-        className="flex items-center gap-2 w-full justify-center rounded-xl border-2 border-dashed border-gray-200 py-4 text-[0.82rem] font-medium text-gray-400 hover:border-teal-300 hover:text-teal-600 transition-colors"
+        className="w-full h-auto rounded-xl border-2 border-dashed py-4 text-[0.82rem] text-muted-foreground hover:border-primary/30 hover:text-primary"
       >
         <Plus className="w-4 h-4" />
         {t("cm.questions.addSection")}
-      </button>
+      </Button>
     </div>
   );
 }

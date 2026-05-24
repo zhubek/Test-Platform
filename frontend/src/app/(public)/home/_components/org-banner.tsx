@@ -12,9 +12,9 @@ export function OrgBanner() {
         <Building2 className="h-4.5 w-4.5 text-indigo-600" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[0.82rem] text-gray-600">
+        <p className="text-[0.82rem] text-muted-foreground">
           {t("orgBanner.memberOf")}{" "}
-          <span className="font-semibold text-gray-900">Acme Education Group</span>
+          <span className="font-semibold text-foreground">Acme Education Group</span>
         </p>
       </div>
       <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-100 px-3 py-1">

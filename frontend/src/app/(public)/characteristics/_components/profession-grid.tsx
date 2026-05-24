@@ -28,12 +28,12 @@ export function ProfessionGrid({ professions, fitKey, fitLabel }: Props) {
     <div className="mt-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[0.88rem] font-semibold text-gray-800">
+        <h3 className="text-[0.88rem] font-semibold text-foreground">
           {t("characteristics.profGrid.heading").replace("{fit}", fitLabel)}
         </h3>
         <a
           href="/professions"
-          className="flex items-center gap-1 text-[0.78rem] font-medium text-gray-400 hover:text-gray-600 transition-colors"
+          className="flex items-center gap-1 text-[0.78rem] font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
           {t("characteristics.profGrid.viewAll")}
           <ArrowRight className="h-3.5 w-3.5" />

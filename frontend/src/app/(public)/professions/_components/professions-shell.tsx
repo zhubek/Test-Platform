@@ -6,6 +6,7 @@ import type { ProfessionsPageData, ProfessionGroup, ProfessionData } from "./moc
 import { FilterSidebar } from "./filter-sidebar";
 import { SortBar, type SortKey } from "./sort-bar";
 import { ProfessionCard } from "./profession-card";
+import { Button } from "@/components/ui/button";
 
 const ALL_GROUPS: ProfessionGroup[] = [
   "Technology",
@@ -120,12 +121,12 @@ export function ProfessionsShell({ data, mode }: Props) {
             <>
               {!showAll ? (
                 <div className="col-span-full text-center py-4">
-                  <button
+                  <Button
                     onClick={() => setShowAll(true)}
-                    className="text-[0.84rem] px-6 py-2 rounded-md border border-gray-200 bg-white text-gray-700 font-medium transition-colors hover:bg-gray-50 hover:border-gray-300"
+                    variant="outline"
                   >
                     {t("professions.showAll")} ({others.length} more)
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <>
@@ -146,7 +147,7 @@ export function ProfessionsShell({ data, mode }: Props) {
 
           {sorted.length === 0 && (
             <div className="col-span-full animate-fade-in flex flex-col items-center justify-center py-16 text-center">
-              <p className="text-[0.88rem] text-gray-400">
+              <p className="text-[0.88rem] text-muted-foreground">
                 {t("professions.empty")}
               </p>
             </div>
@@ -159,7 +160,7 @@ export function ProfessionsShell({ data, mode }: Props) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="col-span-full text-[0.8rem] font-semibold text-gray-400 uppercase tracking-wider pt-3 pb-1 border-t border-gray-200 mt-1 first:border-t-0 first:mt-0 first:pt-0">
+    <div className="col-span-full text-[0.8rem] font-semibold text-muted-foreground uppercase tracking-wider pt-3 pb-1 border-t mt-1 first:border-t-0 first:mt-0 first:pt-0">
       {children}
     </div>
   );

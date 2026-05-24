@@ -7,7 +7,7 @@ import type { SurveyLogic } from "../../../_components/mock-data";
 
 const MonacoEditor = dynamic(
   () => import("@monaco-editor/react").then((m) => m.default),
-  { ssr: false, loading: () => <div className="text-[0.72rem] text-gray-400 px-3 py-4">Loading editor...</div> },
+  { ssr: false, loading: () => <div className="text-[0.72rem] text-muted-foreground px-3 py-4">Loading editor...</div> },
 );
 
 interface Props {
@@ -68,27 +68,27 @@ export function SurveyLogicPanel({ value, onChange }: Props) {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2 px-4 py-3 text-[0.82rem] font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+        className="w-full flex items-center gap-2 px-4 py-3 text-[0.82rem] font-semibold text-foreground hover:bg-muted transition-colors"
       >
         <ChevronDown
           className={"w-3.5 h-3.5 transition-transform " + (open ? "" : "-rotate-90")}
         />
         <span>Survey-level Logic (JSON)</span>
         {hasAny && (
-          <span className="text-[0.6rem] font-semibold uppercase bg-teal-50 text-teal-700 rounded px-1.5 py-0.5">
+          <span className="text-[0.6rem] font-semibold uppercase bg-primary/10 text-primary rounded px-1.5 py-0.5">
             active
           </span>
         )}
-        <span className="ml-auto text-[0.7rem] font-normal text-gray-400">
+        <span className="ml-auto text-[0.7rem] font-normal text-muted-foreground">
           triggers · calculatedValues · completedHtmlOnCondition
         </span>
       </button>
 
       {open && (
-        <div className="border-t border-gray-100">
+        <div className="border-t">
           <div className="px-4 py-2 flex items-start gap-2 bg-amber-50/60 border-b border-amber-100">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" />
             <p className="text-[0.72rem] text-amber-800">
@@ -117,13 +117,13 @@ export function SurveyLogicPanel({ value, onChange }: Props) {
               {error}
             </div>
           )}
-          <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 text-[0.7rem] text-gray-500">
+          <div className="px-4 py-2 bg-muted border-t text-[0.7rem] text-muted-foreground">
             Reference:{" "}
             <a
               href="https://surveyjs.io/form-library/documentation/design-survey/conditional-logic"
               target="_blank"
               rel="noreferrer"
-              className="text-teal-600 hover:text-teal-700 underline"
+              className="text-primary hover:text-teal-700 underline"
             >
               SurveyJS triggers &amp; calculated values
             </a>

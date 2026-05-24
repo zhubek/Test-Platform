@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Save } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
 import { SurveyTabBar, type SurveyTabId } from "./survey-tab-bar";
@@ -42,16 +43,16 @@ export function SurveyEditorShell({ initialData }: Props) {
           <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
             <div className="w-2.5 h-2.5 rounded-full bg-violet-500" />
           </div>
-          <span className="text-[0.82rem] font-medium text-gray-500">
+          <span className="text-[0.82rem] font-medium text-muted-foreground">
             {localize(name, locale) || t("cm.surveyEditor.untitled")}
           </span>
         </div>
         <div className="flex items-center gap-3">
           <StatusToggle status={status} onChange={setStatus} />
-          <button className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2 text-[0.82rem] font-semibold text-white shadow-sm hover:bg-teal-700 transition-colors">
+          <Button>
             <Save className="w-3.5 h-3.5" />
             {t("cm.testEditor.save")}
-          </button>
+          </Button>
         </div>
       </div>
 

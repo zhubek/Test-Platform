@@ -2,6 +2,8 @@
 
 import { KeyRound } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export function LicenseBanner() {
   const { t } = useLocale();
@@ -20,14 +22,14 @@ export function LicenseBanner() {
         </p>
       </div>
       <div className="flex items-center gap-2 w-full sm:w-auto">
-        <input
+        <Input
           type="text"
           placeholder="XXXX-XXXX-XXXX-XXXX"
-          className="h-9 flex-1 sm:w-[200px] rounded-lg border border-amber-300 bg-white px-3 text-[0.82rem] text-gray-700 placeholder:text-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+          className="h-9 flex-1 sm:w-[200px] border-amber-300 bg-white text-gray-700 placeholder:text-amber-400"
         />
-        <button className="h-9 shrink-0 rounded-lg bg-amber-500 px-4 text-[0.8rem] font-medium text-white transition-colors hover:bg-amber-600">
+        <Button className="h-9 shrink-0 bg-amber-500 text-white hover:bg-amber-600">
           {t("licenseBanner.activate")}
-        </button>
+        </Button>
       </div>
     </div>
   );

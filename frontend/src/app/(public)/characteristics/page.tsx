@@ -18,10 +18,10 @@ function CharacteristicsContent() {
     <>
       {/* Page header */}
       <div className="animate-fade-in mb-8">
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
           {t("characteristics.heading")}
         </h1>
-        <p className="mt-1 text-[0.85rem] text-gray-400">
+        <p className="mt-1 text-[0.85rem] text-muted-foreground">
           {t("characteristics.subheading")}
         </p>
       </div>

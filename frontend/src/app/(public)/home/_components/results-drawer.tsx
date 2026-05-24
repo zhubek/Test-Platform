@@ -5,6 +5,8 @@ import { X, BarChart3, ChevronDown, Download, Briefcase } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import type { Localized } from "@/lib/localized";
 import { localize } from "@/lib/localized";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export interface ScoreEntry {
   label: Localized;
@@ -86,32 +88,34 @@ export function ResultsDrawer({
       {/* Drawer */}
       <div
         className={
-          "fixed top-0 right-0 bottom-0 z-[101] w-[460px] max-w-[92vw] bg-white shadow-xl shadow-black/10 transition-transform duration-250 ease-out flex flex-col " +
+          "fixed top-0 right-0 bottom-0 z-[101] w-[460px] max-w-[92vw] bg-card shadow-xl shadow-black/10 transition-transform duration-250 ease-out flex flex-col " +
           (open ? "translate-x-0" : "translate-x-full")
         }
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+        <div className="flex items-center justify-between px-6 py-5 border-b">
           <div>
-            <h3 className="text-[0.95rem] font-semibold text-gray-900">
+            <h3 className="text-[0.95rem] font-semibold text-foreground">
               {testTitle}
             </h3>
-            <p className="text-[0.72rem] text-gray-400 mt-0.5">{t("resultsDrawer.results")}</p>
+            <p className="text-[0.72rem] text-muted-foreground mt-0.5">{t("resultsDrawer.results")}</p>
           </div>
-          <button
+          <Button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+            variant="ghost"
+            size="icon"
+            aria-label="Close"
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {results.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <BarChart3 className="h-8 w-8 text-gray-200 mb-3" />
-              <p className="text-[0.88rem] text-gray-400">
+              <BarChart3 className="h-8 w-8 text-muted-foreground/40 mb-3" />
+              <p className="text-[0.88rem] text-muted-foreground">
                 {t("resultsDrawer.empty")}
               </p>
             </div>
@@ -122,26 +126,26 @@ export function ResultsDrawer({
                 <div className="relative mb-6">
                   <button
                     onClick={() => setPickerOpen(!pickerOpen)}
-                    className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-gray-50/80 px-3.5 py-2.5 text-left transition-colors hover:bg-gray-100"
+                    className="flex w-full items-center justify-between rounded-lg border bg-muted/80 px-3.5 py-2.5 text-left transition-colors hover:bg-muted"
                   >
                     <div>
-                      <span className="text-[0.8rem] font-medium text-gray-900">
+                      <span className="text-[0.8rem] font-medium text-foreground">
                         {t("resultsDrawer.attempt")} {results.length - selectedIndex}
                       </span>
-                      <span className="text-[0.72rem] text-gray-400 ml-2">
+                      <span className="text-[0.72rem] text-muted-foreground ml-2">
                         {current.date}
                       </span>
                     </div>
                     <ChevronDown
-                      className={
-                        "h-3.5 w-3.5 text-gray-400 transition-transform duration-200 " +
-                        (pickerOpen ? "rotate-180" : "")
-                      }
+                      className={cn(
+                        "h-3.5 w-3.5 text-muted-foreground transition-transform duration-200",
+                        pickerOpen && "rotate-180",
+                      )}
                     />
                   </button>
 
                   {pickerOpen && (
-                    <div className="absolute left-0 right-0 top-full mt-1 z-10 rounded-lg border border-gray-200 bg-white py-1 shadow-lg shadow-black/[0.08]">
+                    <div className="absolute left-0 right-0 top-full mt-1 z-10 rounded-lg border bg-card py-1 shadow-lg shadow-black/[0.08]">
                       {results.map((r, i) => (
                         <button
                           key={i}
@@ -149,22 +153,22 @@ export function ResultsDrawer({
                             setSelectedIndex(i);
                             setPickerOpen(false);
                           }}
-                          className={
-                            "flex w-full items-center justify-between px-3.5 py-2.5 text-left transition-colors hover:bg-gray-50 " +
-                            (i === selectedIndex ? "bg-gray-50" : "")
-                          }
+                          className={cn(
+                            "flex w-full items-center justify-between px-3.5 py-2.5 text-left transition-colors hover:bg-muted",
+                            i === selectedIndex && "bg-muted",
+                          )}
                         >
                           <span
-                            className={
-                              "text-[0.8rem] font-medium " +
-                              (i === selectedIndex
-                                ? "text-gray-900"
-                                : "text-gray-600")
-                            }
+                            className={cn(
+                              "text-[0.8rem] font-medium",
+                              i === selectedIndex
+                                ? "text-foreground"
+                                : "text-muted-foreground",
+                            )}
                           >
                             {t("resultsDrawer.attempt")} {results.length - i}
                           </span>
-                          <span className="text-[0.72rem] text-gray-400">
+                          <span className="text-[0.72rem] text-muted-foreground">
                             {r.date}
                           </span>
                         </button>
@@ -177,20 +181,20 @@ export function ResultsDrawer({
               {/* Single attempt label (when only 1 result) */}
               {results.length === 1 && (
                 <div className="mb-5 flex items-center gap-2">
-                  <span className="text-[0.72rem] text-gray-400">
+                  <span className="text-[0.72rem] text-muted-foreground">
                     {current.date}
                   </span>
                 </div>
               )}
 
               {/* Summary */}
-              <p className="text-[0.82rem] text-gray-600 leading-relaxed mb-6">
+              <p className="text-[0.82rem] text-muted-foreground leading-relaxed mb-6">
                 {localize(current.summary, locale)}
               </p>
 
               {/* Score bars */}
               <div className="mb-6">
-                <h4 className="text-[0.72rem] font-semibold text-gray-900 uppercase tracking-wider mb-3">
+                <h4 className="text-[0.72rem] font-semibold text-foreground uppercase tracking-wider mb-3">
                   {t("resultsDrawer.scores")}
                 </h4>
                 <div className="flex flex-col gap-3">
@@ -200,7 +204,7 @@ export function ResultsDrawer({
                         <span
                           className={
                             "text-[0.78rem] font-medium " +
-                            (score.high ? "text-gray-900" : "text-gray-500")
+                            (score.high ? "text-foreground" : "text-muted-foreground")
                           }
                         >
                           {localize(score.label, locale)}
@@ -208,19 +212,19 @@ export function ResultsDrawer({
                         <span
                           className={
                             "text-[0.7rem] font-bold " +
-                            (score.high ? "text-blue-600" : "text-gray-400")
+                            (score.high ? "text-blue-600" : "text-muted-foreground")
                           }
                         >
                           {score.value}
                         </span>
                       </div>
-                      <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
+                      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
                         <div
                           className={
                             "h-full rounded-full transition-all duration-500 " +
                             (score.high
                               ? "bg-gradient-to-r from-blue-400 to-blue-500"
-                              : "bg-gray-300")
+                              : "bg-muted-foreground/40")
                           }
                           style={{
                             width: `${(score.value / maxScore) * 100}%`,
@@ -228,7 +232,7 @@ export function ResultsDrawer({
                         />
                       </div>
                       {score.description && (
-                        <p className="text-[0.68rem] text-gray-400 mt-0.5">
+                        <p className="text-[0.68rem] text-muted-foreground mt-0.5">
                           {localize(score.description, locale)}
                         </p>
                       )}
@@ -240,7 +244,7 @@ export function ResultsDrawer({
               {/* Recommended professions */}
               {current.professions && current.professions.length > 0 && (
                 <div className="mb-6">
-                  <h4 className="text-[0.72rem] font-semibold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <h4 className="text-[0.72rem] font-semibold text-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
                     <Briefcase className="h-3 w-3" />
                     {t("resultsDrawer.recommendedProfessions")}
                   </h4>
@@ -248,7 +252,7 @@ export function ResultsDrawer({
                     {current.professions.map((profession) => (
                       <span
                         key={localize(profession, locale)}
-                        className="rounded-lg border border-gray-150 bg-gray-50 px-2.5 py-1 text-[0.74rem] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                        className="rounded-lg border bg-muted px-2.5 py-1 text-[0.74rem] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                       >
                         {localize(profession, locale)}
                       </span>
@@ -262,11 +266,11 @@ export function ResultsDrawer({
 
         {/* Footer — Download PDF */}
         {results.length > 0 && (
-          <div className="border-t border-gray-100 px-6 py-4">
-            <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-[0.8rem] font-medium text-white transition-all duration-200 hover:bg-gray-800 hover:shadow-md hover:shadow-gray-900/10 active:scale-[0.98]">
+          <div className="border-t px-6 py-4">
+            <Button className="w-full">
               <Download className="h-4 w-4" />
               {t("resultsDrawer.downloadPdf")}
-            </button>
+            </Button>
           </div>
         )}
       </div>

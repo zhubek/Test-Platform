@@ -2,6 +2,7 @@
 
 import type { ProfessionGroup } from "./mock-data";
 import { useLocale } from "@/lib/locale-context";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const ALL_GROUPS: ProfessionGroup[] = [
   "Technology",
@@ -32,9 +33,9 @@ export function FilterSidebar({
   const { t } = useLocale();
 
   return (
-    <aside className="hidden md:block w-[210px] shrink-0 pr-6 border-r border-gray-200">
+    <aside className="hidden md:block w-[210px] shrink-0 pr-6 border-r">
       <FilterGroup title={t("professions.filter.liked")}>
-        <Checkbox
+        <FilterCheckbox
           label={t("professions.filter.likedOnly")}
           checked={likedOnly}
           onChange={onLikedOnlyChange}
@@ -43,7 +44,7 @@ export function FilterSidebar({
 
       <FilterGroup title={t("professions.filter.group")}>
         {ALL_GROUPS.map((g) => (
-          <Checkbox
+          <FilterCheckbox
             key={g}
             label={g}
             checked={activeGroups.has(g)}
@@ -53,7 +54,7 @@ export function FilterSidebar({
       </FilterGroup>
 
       <FilterGroup title={t("professions.filter.popular")}>
-        <Checkbox
+        <FilterCheckbox
           label={t("professions.filter.popularOnly")}
           checked={popularOnly}
           onChange={onPopularOnlyChange}
@@ -72,7 +73,7 @@ function FilterGroup({
 }) {
   return (
     <div className="mb-5">
-      <div className="text-[0.75rem] font-bold text-gray-400 uppercase tracking-wider mb-2">
+      <div className="text-[0.75rem] font-bold text-muted-foreground uppercase tracking-wider mb-2">
         {title}
       </div>
       <div className="space-y-1">{children}</div>
@@ -80,7 +81,7 @@ function FilterGroup({
   );
 }
 
-function Checkbox({
+function FilterCheckbox({
   label,
   checked,
   onChange,
@@ -90,13 +91,8 @@ function Checkbox({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex items-center gap-2 text-[0.84rem] text-gray-600 py-0.5 cursor-pointer">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="accent-gray-900 w-[15px] h-[15px] cursor-pointer"
-      />
+    <label className="flex items-center gap-2 text-[0.84rem] text-muted-foreground py-0.5 cursor-pointer">
+      <Checkbox checked={checked} onCheckedChange={(v) => onChange(v === true)} />
       {label}
     </label>
   );

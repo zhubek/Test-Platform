@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { Localized } from "@/lib/localized";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 interface Props {
   value: Localized;
@@ -16,33 +18,33 @@ export function LocalizedInput({ value, onChange, placeholder, className, autoFo
 
   return (
     <div className="relative">
-      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-0.5 z-10">
+      <div className="absolute right-2 top-1/2 z-10 flex -translate-y-1/2 gap-0.5">
         {(["kz", "ru", "en"] as const).map((lang) => (
           <button
             key={lang}
             type="button"
             onClick={() => setActiveLang(lang)}
-            className={`px-1.5 py-0.5 text-[0.62rem] font-bold uppercase rounded transition-colors ${
+            className={cn(
+              "rounded px-1.5 py-0.5 text-[0.62rem] font-bold uppercase transition-colors",
               activeLang === lang
-                ? "bg-teal-100 text-teal-700"
-                : "text-gray-300 hover:text-gray-500"
-            }${lang !== activeLang && !value[lang] ? "" : ""}`}
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground/40 hover:text-muted-foreground",
+            )}
           >
             {lang}
             {lang !== activeLang && !value[lang] && (
-              <span className="ml-0.5 inline-block w-1 h-1 rounded-full bg-amber-400 align-middle" />
+              <span className="ml-0.5 inline-block h-1 w-1 rounded-full bg-amber-400 align-middle" />
             )}
           </button>
         ))}
       </div>
-      <input
+      <Input
         type="text"
         value={value[activeLang]}
         onChange={(e) => onChange({ ...value, [activeLang]: e.target.value })}
         placeholder={placeholder}
-        className={className}
+        className={cn("pr-26", className)}
         autoFocus={autoFocus}
-        style={{ paddingRight: "6.5rem" }}
       />
     </div>
   );

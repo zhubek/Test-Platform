@@ -1,10 +1,19 @@
 "use client";
 
-import { Trash2, Plus, X, ChevronDown, HelpCircle } from "lucide-react";
+import { Trash2, X, ChevronDown, HelpCircle } from "lucide-react";
 import { useState } from "react";
 import { useLocale } from "@/lib/locale-context";
 import { LocalizedInput } from "@/components/localized-input";
-import type { Localized } from "@/lib/localized";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import type {
   Question,
   QuestionType,
@@ -116,32 +125,38 @@ export function QuestionBlock({
     variables.find((v) => v.id === id)?.name ?? id;
 
   return (
-    <div className="border border-gray-100 rounded-lg bg-gray-50/50">
+    <div className="border rounded-lg bg-muted/50">
       {/* Question header */}
-      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-100">
+      <div className="flex items-center gap-2 px-3 py-2.5 border-b">
         <LocalizedInput
           value={question.text}
           onChange={(v) => handleQUpdate({ text: v })}
           placeholder={t("cm.question.textPlaceholder")}
-          className="flex-1 text-[0.82rem] font-medium text-gray-900 placeholder:text-gray-400 bg-transparent outline-none"
+          className="flex-1 font-medium"
         />
-        <select
+        <Select
           value={question.type}
-          onChange={(e) => handleQUpdate({ type: e.target.value as QuestionType })}
-          className="text-[0.75rem] font-medium text-gray-600 bg-white border border-gray-200 rounded-md px-2 py-1 outline-none focus:border-teal-400"
+          onValueChange={(v) => handleQUpdate({ type: (v ?? "single") as QuestionType })}
         >
-          {questionTypes.map((qt) => (
-            <option key={qt.value} value={qt.value}>
-              {qt.label}
-            </option>
-          ))}
-        </select>
-        <button
+          <SelectTrigger size="sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {questionTypes.map((qt) => (
+              <SelectItem key={qt.value} value={qt.value}>
+                {qt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={handleQDelete}
-          className="p-1 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+          className="text-muted-foreground hover:text-red-500 hover:bg-red-50"
         >
           <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        </Button>
       </div>
 
       {/* Choices */}
@@ -152,7 +167,7 @@ export function QuestionBlock({
             className="flex items-start gap-2 group"
           >
             {/* Radio / checkbox indicator */}
-            <span className="mt-1.5 w-3.5 h-3.5 shrink-0 rounded-full border-2 border-gray-300" />
+            <span className="mt-1.5 w-3.5 h-3.5 shrink-0 rounded-full border-2 border-border" />
 
             <div className="flex-1 space-y-1">
               <div className="flex items-center gap-1.5">
@@ -162,14 +177,16 @@ export function QuestionBlock({
                     handleChoiceUpdateInternal(ci, { text: v })
                   }
                   placeholder={t("cm.question.answerPlaceholder")}
-                  className="flex-1 text-[0.78rem] text-gray-700 placeholder:text-gray-400 bg-transparent outline-none"
+                  className="flex-1"
                 />
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
                   onClick={() => handleChoiceDeleteInternal(ci)}
-                  className="p-0.5 rounded text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100"
                 >
                   <X className="w-3 h-3" />
-                </button>
+                </Button>
               </div>
 
               {/* Variable badges */}
@@ -177,7 +194,7 @@ export function QuestionBlock({
                 {choice.variables.map((va, vi) => (
                   <span
                     key={va.variableId}
-                    className="inline-flex items-center gap-1 text-[0.68rem] font-medium bg-teal-50 text-teal-700 rounded-md pl-1.5 pr-0.5 py-0.5"
+                    className="inline-flex items-center gap-1 text-[0.68rem] font-medium bg-primary/10 text-primary rounded-md pl-1.5 pr-0.5 py-0.5"
                   >
                     {getVarName(va.variableId)}
                     <input
@@ -186,7 +203,7 @@ export function QuestionBlock({
                       onChange={(e) =>
                         handleVarUpdate(ci, vi, Number(e.target.value))
                       }
-                      className="w-8 text-center text-[0.68rem] bg-white/60 rounded border border-teal-200 outline-none"
+                      className="w-8 text-center text-[0.68rem] bg-card/60 rounded border border-teal-200 outline-none"
                     />
                     <button
                       onClick={() => handleVarRemove(ci, vi)}
@@ -197,32 +214,40 @@ export function QuestionBlock({
                   </span>
                 ))}
                 {variables.length > 0 && (
-                  <select
+                  <Select
                     value=""
-                    onChange={(e) => {
-                      if (e.target.value) handleVarAdd(ci, e.target.value);
+                    onValueChange={(v) => {
+                      if (v) handleVarAdd(ci, v);
                     }}
-                    className="text-[0.68rem] text-gray-400 bg-transparent border border-dashed border-gray-200 rounded-md px-1.5 py-0.5 outline-none hover:border-teal-300 hover:text-teal-600"
                   >
-                    <option value="">{t("cm.question.addVar")}</option>
-                    {variables.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger
+                      size="sm"
+                      className="border-dashed text-muted-foreground"
+                    >
+                      <SelectValue placeholder={t("cm.question.addVar")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {variables.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>
+                          {v.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
               </div>
             </div>
           </div>
         ))}
 
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={handleChoiceAddInternal}
-          className="text-[0.75rem] font-medium text-gray-400 hover:text-teal-600 transition-colors pl-5.5"
+          className="text-muted-foreground hover:text-primary ml-5.5"
         >
           {t("cm.question.addChoice")}
-        </button>
+        </Button>
       </div>
 
       {/* Logic panel */}
@@ -258,17 +283,17 @@ function LogicPanel({
   };
 
   return (
-    <div className="border-t border-gray-100">
+    <div className="border-t">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-[0.72rem] font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2 text-[0.72rem] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
       >
         <ChevronDown
-          className={"w-3 h-3 transition-transform " + (open ? "" : "-rotate-90")}
+          className={cn("w-3 h-3 transition-transform", open ? "" : "-rotate-90")}
         />
         <span>Logic</span>
         {hasRule && (
-          <span className="text-[0.6rem] font-semibold uppercase bg-teal-50 text-teal-700 rounded px-1.5 py-0.5">
+          <span className="text-[0.6rem] font-semibold uppercase bg-primary/10 text-primary rounded px-1.5 py-0.5">
             active
           </span>
         )}
@@ -277,62 +302,64 @@ function LogicPanel({
       {open && (
         <div className="px-3 pb-3 pt-1 space-y-2">
           <div className="flex items-center gap-2">
-            <span className="text-[0.7rem] font-medium text-gray-600 shrink-0 w-20">
+            <span className="text-[0.7rem] font-medium text-foreground shrink-0 w-20">
               Visible if
             </span>
-            <input
+            <Input
               type="text"
               value={logic?.visibleIf ?? ""}
               onChange={(e) => handleField("visibleIf", e.target.value)}
               placeholder="{q1} = 'yes'"
-              className="flex-1 text-[0.72rem] font-mono text-gray-900 placeholder:text-gray-300 bg-white border border-gray-200 rounded-md px-2 py-1 outline-none focus:border-teal-400"
+              className="flex-1 font-mono"
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[0.7rem] font-medium text-gray-600 shrink-0 w-20">
+            <span className="text-[0.7rem] font-medium text-foreground shrink-0 w-20">
               Enable if
             </span>
-            <input
+            <Input
               type="text"
               value={logic?.enableIf ?? ""}
               onChange={(e) => handleField("enableIf", e.target.value)}
               placeholder="{q1} notempty"
-              className="flex-1 text-[0.72rem] font-mono text-gray-900 placeholder:text-gray-300 bg-white border border-gray-200 rounded-md px-2 py-1 outline-none focus:border-teal-400"
+              className="flex-1 font-mono"
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[0.7rem] font-medium text-gray-600 shrink-0 w-20">
+            <span className="text-[0.7rem] font-medium text-foreground shrink-0 w-20">
               Required if
             </span>
-            <input
+            <Input
               type="text"
               value={logic?.requiredIf ?? ""}
               onChange={(e) => handleField("requiredIf", e.target.value)}
               placeholder="{q1} = 'yes'"
-              className="flex-1 text-[0.72rem] font-mono text-gray-900 placeholder:text-gray-300 bg-white border border-gray-200 rounded-md px-2 py-1 outline-none focus:border-teal-400"
+              className="flex-1 font-mono"
             />
           </div>
 
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setHelpOpen(!helpOpen)}
-            className="inline-flex items-center gap-1 text-[0.7rem] text-gray-500 hover:text-teal-600 transition-colors"
+            className="text-muted-foreground hover:text-primary"
           >
             <HelpCircle className="w-3 h-3" />
             Syntax help
-          </button>
+          </Button>
           {helpOpen && (
-            <div className="bg-gray-50 border border-gray-200 rounded-md px-3 py-2 space-y-1 text-[0.7rem] text-gray-600">
-              <div className="font-semibold text-gray-700">Examples</div>
-              <div><code className="font-mono bg-white px-1 rounded">{"{q1} = 'yes'"}</code> — equals a choice value</div>
-              <div><code className="font-mono bg-white px-1 rounded">{"{age} >= 18"}</code> — numeric comparison</div>
-              <div><code className="font-mono bg-white px-1 rounded">{"{q1} = 'a' and {q2} > 5"}</code> — combine with and/or</div>
-              <div><code className="font-mono bg-white px-1 rounded">{"{colors} contains 'red'"}</code> — multi-choice includes value</div>
-              <div><code className="font-mono bg-white px-1 rounded">{"{q1} empty"}</code> / <code className="font-mono bg-white px-1 rounded">{"{q1} notempty"}</code> — answered or not</div>
+            <div className="bg-muted border rounded-md px-3 py-2 space-y-1 text-[0.7rem] text-muted-foreground">
+              <div className="font-semibold text-foreground">Examples</div>
+              <div><code className="font-mono bg-card px-1 rounded">{"{q1} = 'yes'"}</code> — equals a choice value</div>
+              <div><code className="font-mono bg-card px-1 rounded">{"{age} >= 18"}</code> — numeric comparison</div>
+              <div><code className="font-mono bg-card px-1 rounded">{"{q1} = 'a' and {q2} > 5"}</code> — combine with and/or</div>
+              <div><code className="font-mono bg-card px-1 rounded">{"{colors} contains 'red'"}</code> — multi-choice includes value</div>
+              <div><code className="font-mono bg-card px-1 rounded">{"{q1} empty"}</code> / <code className="font-mono bg-card px-1 rounded">{"{q1} notempty"}</code> — answered or not</div>
               <a
                 href="https://surveyjs.io/form-library/documentation/design-survey/conditional-logic"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-block mt-1 text-teal-600 hover:text-teal-700 underline"
+                className="inline-block mt-1 text-primary hover:text-teal-700 underline"
               >
                 Full reference →
               </a>

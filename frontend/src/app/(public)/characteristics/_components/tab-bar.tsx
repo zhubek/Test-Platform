@@ -14,7 +14,7 @@ interface Props {
 
 export function TabBar({ tabs, active, onSelect }: Props) {
   return (
-    <div className="flex gap-0 border-b border-gray-200 mb-6 overflow-x-auto">
+    <div className="flex gap-0 border-b mb-6 overflow-x-auto">
       {tabs.map((tab) => (
         <button
           key={tab.key}
@@ -23,10 +23,10 @@ export function TabBar({ tabs, active, onSelect }: Props) {
           className={
             "relative shrink-0 px-5 py-2.5 text-[0.84rem] font-medium transition-all duration-200 border-b-2 -mb-px " +
             (tab.disabled
-              ? "text-gray-300 cursor-default border-transparent"
+              ? "text-muted-foreground/50 cursor-default border-transparent"
               : active === tab.key
-                ? "text-gray-900 border-gray-900"
-                : "text-gray-400 border-transparent hover:text-gray-600")
+                ? "text-foreground border-foreground"
+                : "text-muted-foreground border-transparent hover:text-foreground")
           }
         >
           {tab.label}

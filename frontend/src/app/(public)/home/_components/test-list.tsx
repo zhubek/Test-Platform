@@ -36,7 +36,7 @@ export function TestList({ tests }: TestListProps) {
       {inProgress.length > 0 && (
         <section className="mb-8">
           <div className="flex items-center gap-2.5 mb-4">
-            <h2 className="text-[0.82rem] font-semibold text-gray-900 uppercase tracking-wider">
+            <h2 className="text-[0.82rem] font-semibold text-foreground uppercase tracking-wider">
               {t("testList.continue")}
             </h2>
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-bold text-amber-700">
@@ -65,7 +65,7 @@ export function TestList({ tests }: TestListProps) {
       {completed.length > 0 && (
         <section className="mb-8">
           <div className="flex items-center gap-2.5 mb-4">
-            <h2 className="text-[0.82rem] font-semibold text-gray-900 uppercase tracking-wider">
+            <h2 className="text-[0.82rem] font-semibold text-foreground uppercase tracking-wider">
               {t("testList.completed")}
             </h2>
             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[0.65rem] font-bold text-emerald-700">
@@ -94,10 +94,10 @@ export function TestList({ tests }: TestListProps) {
       {available.length > 0 && (
         <section className="mb-8">
           <div className="flex items-center gap-2.5 mb-4">
-            <h2 className="text-[0.82rem] font-semibold text-gray-900 uppercase tracking-wider">
+            <h2 className="text-[0.82rem] font-semibold text-foreground uppercase tracking-wider">
               {t("testList.available")}
             </h2>
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[0.65rem] font-bold text-gray-500">
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[0.65rem] font-bold text-muted-foreground">
               {available.length}
             </span>
           </div>

@@ -20,6 +20,8 @@ import {
 import { useLocale } from "@/lib/locale-context";
 import type { Localized } from "@/lib/localized";
 import { localize } from "@/lib/localized";
+import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/button-link";
 
 export type TestStatus = "available" | "in-progress" | "completed";
 export type TestFormat = "test-only" | "with-consulting";
@@ -114,7 +116,7 @@ export function TestCard({
   return (
     <div
       className={
-        "animate-fade-up group relative flex overflow-hidden rounded-2xl border border-black/[0.04] bg-white transition-all duration-300 hover:shadow-lg hover:shadow-black/[0.06] hover:-translate-y-0.5 " +
+        "animate-fade-up group relative flex overflow-hidden rounded-2xl border border-black/[0.04] bg-card transition-all duration-300 hover:shadow-lg hover:shadow-black/[0.06] hover:-translate-y-0.5 " +
         (dimmed ? "pointer-events-none opacity-40" : "")
       }
       style={{ animationDelay: `${index * 60}ms` }}
@@ -133,7 +135,7 @@ export function TestCard({
         {/* Top row: title + status + assigned */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2 min-w-0">
-            <h3 className="text-[0.9rem] font-semibold text-gray-900 tracking-tight leading-tight">
+            <h3 className="text-[0.9rem] font-semibold text-foreground tracking-tight leading-tight">
               {localize(title, locale)}
             </h3>
             <div className="flex items-center gap-1.5">
@@ -151,13 +153,13 @@ export function TestCard({
         </div>
 
         {/* Description */}
-        <p className="text-[0.78rem] leading-relaxed text-gray-500 line-clamp-2">
+        <p className="text-[0.78rem] leading-relaxed text-muted-foreground line-clamp-2">
           {localize(description, locale)}
         </p>
 
         {/* Tags + Meta row */}
         <div className="flex flex-wrap items-center gap-2 text-[0.68rem]">
-          <span className="rounded-md bg-gray-100 px-2 py-0.5 font-medium text-gray-500">
+          <span className="rounded-md bg-muted px-2 py-0.5 font-medium text-muted-foreground">
             {localize(category, locale)}
           </span>
           {format === "with-consulting" && (
@@ -166,16 +168,16 @@ export function TestCard({
               {t("testCard.badge.consulting")}
             </span>
           )}
-          <span className="flex items-center gap-1 text-gray-400">
+          <span className="flex items-center gap-1 text-muted-foreground">
             <Clock className="h-3 w-3" />
             {localize(duration, locale)}
           </span>
-          <span className="flex items-center gap-1 text-gray-400">
+          <span className="flex items-center gap-1 text-muted-foreground">
             <HelpCircle className="h-3 w-3" />
             {localize(questions, locale)}
           </span>
           {extraMeta && (
-            <span className="text-gray-400 font-medium">{localize(extraMeta, locale)}</span>
+            <span className="text-muted-foreground font-medium">{localize(extraMeta, locale)}</span>
           )}
         </div>
 
@@ -183,14 +185,14 @@ export function TestCard({
         {status === "in-progress" && (
           <div className="w-full max-w-[200px]">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[0.62rem] font-medium text-gray-400">
+              <span className="text-[0.62rem] font-medium text-muted-foreground">
                 {t("testCard.progress")}
               </span>
-              <span className="text-[0.62rem] font-bold text-gray-600">
+              <span className="text-[0.62rem] font-bold text-foreground">
                 53%
               </span>
             </div>
-            <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
               <div className="animate-progress h-full w-[53%] rounded-full bg-gradient-to-r from-amber-400 to-amber-500" />
             </div>
           </div>
@@ -199,33 +201,29 @@ export function TestCard({
         {/* Actions */}
         <div className="flex items-center gap-2 mt-auto pt-1">
           {status === "in-progress" && (
-            <a href={`/test/${id}?mode=partial`} className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-[0.75rem] font-medium text-white transition-all duration-200 hover:bg-gray-800 hover:shadow-md hover:shadow-gray-900/10 active:scale-[0.98]">
+            <ButtonLink href={`/test/${id}?mode=partial`} size="sm">
               {t("testCard.action.continue")}
               <ArrowRight className="h-3.5 w-3.5" />
-            </a>
+            </ButtonLink>
           )}
           {(status === "in-progress" || status === "completed") && (
-            <a href={`/test/${id}`} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[0.75rem] font-medium text-gray-600 transition-all duration-200 hover:bg-gray-50 hover:border-gray-300 active:scale-[0.98]">
+            <ButtonLink href={`/test/${id}`} variant="outline" size="sm">
               <RotateCcw className="h-3 w-3" />
               {t("testCard.action.startNew")}
-            </a>
+            </ButtonLink>
           )}
           {status === "available" && (
-            <a href={`/test/${id}`} className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-[0.75rem] font-medium text-white transition-all duration-200 hover:bg-gray-800 hover:shadow-md hover:shadow-gray-900/10 active:scale-[0.98]">
+            <ButtonLink href={`/test/${id}`} size="sm">
               {t("testCard.action.startNew")}
               <ArrowRight className="h-3.5 w-3.5" />
-            </a>
+            </ButtonLink>
           )}
-          <button
+          <Button
             onClick={resultCount > 0 ? onViewResults : undefined}
             disabled={resultCount === 0}
-            className={
-              "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[0.75rem] font-medium transition-all duration-200 active:scale-[0.98] " +
-              (resultCount > 0 && status === "completed"
-                ? "bg-gray-900 text-white hover:bg-gray-800 hover:shadow-md hover:shadow-gray-900/10"
-                : resultCount > 0
-                  ? "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:border-gray-300"
-                  : "border border-gray-200 bg-white text-gray-300 cursor-default")
+            size="sm"
+            variant={
+              resultCount > 0 && status === "completed" ? "default" : "outline"
             }
           >
             <BarChart3 className="h-3 w-3" />
@@ -235,7 +233,7 @@ export function TestCard({
                 {resultCount}
               </span>
             )}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

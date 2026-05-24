@@ -5,6 +5,8 @@ import { Plus, Trash2, GripVertical, RefreshCw, HelpCircle } from "lucide-react"
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
 import { LocalizedInput } from "@/components/localized-input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import type { Widget, WidgetComponentType } from "../../../_components/mock-data";
 import { widgetComponents } from "../../../_components/mock-data";
 import type { Localized } from "@/lib/localized";
@@ -36,7 +38,7 @@ function generateMockRows(sql: string): Record<string, string | number>[] {
 function SqlExampleTable({ rows }: { rows: Record<string, string | number>[] }) {
   if (rows.length === 0) {
     return (
-      <span className="text-[0.7rem] text-gray-300 italic">
+      <span className="text-[0.7rem] text-muted-foreground italic">
         Write a SELECT query to see example output
       </span>
     );
@@ -47,9 +49,9 @@ function SqlExampleTable({ rows }: { rows: Record<string, string | number>[] }) 
     <div className="overflow-x-auto">
       <table className="w-full text-[0.7rem]">
         <thead>
-          <tr className="border-b border-gray-200">
+          <tr className="border-b">
             {cols.map((col) => (
-              <th key={col} className="text-left py-1.5 px-2 text-gray-400 font-medium font-mono">
+              <th key={col} className="text-left py-1.5 px-2 text-muted-foreground font-medium font-mono">
                 {col}
               </th>
             ))}
@@ -57,9 +59,9 @@ function SqlExampleTable({ rows }: { rows: Record<string, string | number>[] }) 
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i} className="border-b border-gray-50">
+            <tr key={i} className="border-b border-border">
               {cols.map((col) => (
-                <td key={col} className="py-1 px-2 text-gray-700 font-mono">
+                <td key={col} className="py-1 px-2 text-foreground font-mono">
                   {row[col]}
                 </td>
               ))}
@@ -101,60 +103,64 @@ function WidgetCard({
   );
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50/50">
-        <GripVertical className="w-4 h-4 text-gray-300 shrink-0 cursor-grab" />
-        <span className="shrink-0 text-[0.65rem] font-semibold uppercase tracking-wider text-teal-600 bg-teal-50 px-2 py-0.5 rounded">
+      <div className="flex items-center gap-2 px-4 py-3 border-b bg-muted/50">
+        <GripVertical className="w-4 h-4 text-muted-foreground shrink-0 cursor-grab" />
+        <span className="shrink-0 text-[0.65rem] font-semibold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded">
           {def ? localize(def.name, locale) : widget.componentType}
         </span>
         <LocalizedInput
           value={widget.title}
           onChange={(v) => onTitleChange(index, v)}
           placeholder={t("cm.widgets.titlePlaceholder")}
-          className="flex-1 text-[0.82rem] font-medium text-gray-900 placeholder:text-gray-300 bg-transparent outline-none"
+          className="flex-1 font-medium"
         />
-        <button
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={() => onDelete(index)}
-          className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+          className="text-muted-foreground hover:text-red-500 hover:bg-red-50"
         >
           <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        </Button>
       </div>
 
       {/* Body: Left (SQL + example + HTML editor) | Right (preview) */}
-      <div className="grid grid-cols-[1fr_380px] divide-x divide-gray-100">
+      <div className="grid grid-cols-[1fr_380px] divide-x">
         {/* Left column */}
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y">
           {/* SQL editor */}
           <div className="px-4 py-3">
-            <label className="block text-[0.72rem] font-medium text-gray-500 mb-1">
+            <label className="block text-[0.72rem] font-medium text-muted-foreground mb-1">
               {t("cm.widgets.sql")}
             </label>
-            <textarea
+            <Textarea
               value={widget.sql}
               onChange={(e) => onSqlChange(index, e.target.value)}
               rows={3}
               spellCheck={false}
-              className="w-full text-[0.75rem] font-mono text-gray-100 placeholder:text-gray-500 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-100 transition-colors resize-y leading-relaxed"
+              className="text-[0.75rem] font-mono text-gray-100 placeholder:text-gray-500 bg-gray-950 border-gray-700 focus-visible:border-teal-400 resize-y leading-relaxed"
             />
           </div>
 
           {/* Example output */}
           <div className="px-4 py-3">
             <div className="flex items-center justify-between mb-1">
-              <label className="text-[0.72rem] font-medium text-gray-500">
+              <label className="text-[0.72rem] font-medium text-muted-foreground">
                 {t("cm.widgets.exampleOutput")}
               </label>
-              <button
+              <Button
+                variant="ghost"
+                size="icon-xs"
                 onClick={onRefresh}
-                className="p-1 rounded text-gray-300 hover:text-teal-500 transition-colors"
+                className="text-muted-foreground hover:text-teal-500"
                 title={t("cm.widgets.refreshPreview")}
               >
                 <RefreshCw className="w-3 h-3" />
-              </button>
+              </Button>
             </div>
-            <div className="bg-gray-50 rounded-lg border border-gray-200 p-2 max-h-[140px] overflow-auto">
+            <div className="bg-muted rounded-lg border p-2 max-h-[140px] overflow-auto">
               <SqlExampleTable rows={mockRows} />
             </div>
           </div>
@@ -163,19 +169,19 @@ function WidgetCard({
           {isCustomHtml && (
             <div className="px-4 py-3">
               <div className="flex items-center justify-between mb-1">
-                <label className="text-[0.72rem] font-medium text-gray-500">
+                <label className="text-[0.72rem] font-medium text-muted-foreground">
                   {t("cm.customHtml.htmlLabel")}
                 </label>
-                <span className="text-[0.65rem] text-gray-400 font-mono">
+                <span className="text-[0.65rem] text-muted-foreground font-mono">
                   {t("cm.customHtml.rowsHint")}
                 </span>
               </div>
-              <textarea
+              <Textarea
                 value={widget.params.find((p) => p.key === "html")?.value ?? ""}
                 onChange={(e) => onParamChange(index, "html", e.target.value)}
                 placeholder={'<div id="chart"></div>\n<style>.bar { height: 20px; background: teal; }</style>\n<script>\n  const rows = window.__rows__;\n  // render with rows data...\n</script>'}
                 rows={10}
-                className="w-full text-[0.75rem] font-mono text-gray-100 placeholder:text-gray-500 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-100 transition-colors resize-y leading-relaxed"
+                className="text-[0.75rem] font-mono text-gray-100 placeholder:text-gray-500 bg-gray-950 border-gray-700 focus-visible:border-teal-400 resize-y leading-relaxed"
                 spellCheck={false}
               />
             </div>
@@ -183,8 +189,8 @@ function WidgetCard({
         </div>
 
         {/* Right column: Preview */}
-        <div className="px-3 py-3 bg-gray-50/30">
-          <span className="block text-[0.68rem] font-medium text-gray-400 uppercase tracking-wider mb-2">
+        <div className="px-3 py-3 bg-muted/30">
+          <span className="block text-[0.68rem] font-medium text-muted-foreground uppercase tracking-wider mb-2">
             {t("cm.widgets.preview")}
           </span>
           {isCustomHtml ? (
@@ -233,23 +239,25 @@ function SqlVarsTooltip() {
 
   return (
     <div ref={ref} className="relative inline-flex">
-      <button
+      <Button
+        variant="ghost"
+        size="icon-sm"
         onClick={() => setOpen(!open)}
-        className="p-1 rounded-full text-gray-300 hover:text-teal-500 hover:bg-teal-50 transition-colors"
+        className="rounded-full text-muted-foreground hover:text-teal-500 hover:bg-primary/10"
         title={t("cm.widgets.sqlVars")}
       >
         <HelpCircle className="w-4 h-4" />
-      </button>
+      </Button>
       {open && (
-        <div className="absolute z-20 top-full right-0 mt-1 w-72 bg-white border border-gray-200 rounded-xl shadow-lg p-3">
-          <p className="text-[0.72rem] font-medium text-gray-700 mb-2">{t("cm.widgets.sqlVars")}</p>
+        <div className="absolute z-20 top-full right-0 mt-1 w-72 bg-popover border rounded-xl shadow-lg p-3">
+          <p className="text-[0.72rem] font-medium text-foreground mb-2">{t("cm.widgets.sqlVars")}</p>
           <div className="space-y-1.5">
             {vars.map((v) => (
               <div key={v.name} className="flex items-baseline gap-2">
-                <code className="text-[0.68rem] font-mono text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded shrink-0">
+                <code className="text-[0.68rem] font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded shrink-0">
                   {v.name}
                 </code>
-                <span className="text-[0.68rem] text-gray-500">{v.desc}</span>
+                <span className="text-[0.68rem] text-muted-foreground">{v.desc}</span>
               </div>
             ))}
           </div>
@@ -312,31 +320,33 @@ export function WidgetConstructorTab({ heading, subheading, widgets, onChange, d
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <div>
-            <h3 className="text-[0.88rem] font-semibold text-gray-900">{heading}</h3>
-            <p className="text-[0.75rem] text-gray-400 mt-0.5">{subheading}</p>
+            <h3 className="text-[0.88rem] font-semibold text-foreground">{heading}</h3>
+            <p className="text-[0.75rem] text-muted-foreground mt-0.5">{subheading}</p>
           </div>
           <SqlVarsTooltip />
         </div>
         <div className="relative">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setAddOpen(!addOpen)}
-            className="inline-flex items-center gap-1 text-[0.78rem] font-medium text-teal-600 hover:text-teal-700 transition-colors"
+            className="text-primary hover:text-teal-700"
           >
             <Plus className="w-3.5 h-3.5" />
             {t("cm.widgets.addWidget")}
-          </button>
+          </Button>
           {addOpen && (
-            <div className="absolute z-10 top-full right-0 mt-1 w-72 bg-white border border-gray-200 rounded-xl shadow-lg py-1 max-h-80 overflow-y-auto">
+            <div className="absolute z-10 top-full right-0 mt-1 w-72 bg-popover border rounded-xl shadow-lg py-1 max-h-80 overflow-y-auto">
               {widgetComponents.map((comp) => (
                 <button
                   key={comp.type}
                   onClick={() => handleAdd(comp.type)}
-                  className="w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors"
+                  className="w-full text-left px-4 py-2.5 hover:bg-muted transition-colors"
                 >
-                  <div className="text-[0.78rem] font-medium text-gray-900">
+                  <div className="text-[0.78rem] font-medium text-foreground">
                     {localize(comp.name, locale)}
                   </div>
-                  <div className="text-[0.68rem] text-gray-400 mt-0.5">
+                  <div className="text-[0.68rem] text-muted-foreground mt-0.5">
                     {localize(comp.description, locale)}
                   </div>
                 </button>
@@ -363,7 +373,7 @@ export function WidgetConstructorTab({ heading, subheading, widgets, onChange, d
           ))}
         </div>
       ) : (
-        <div className="text-center py-8 text-[0.78rem] text-gray-400 border border-dashed border-gray-200 rounded-xl">
+        <div className="text-center py-8 text-[0.78rem] text-muted-foreground border border-dashed rounded-xl">
           {t("cm.widgets.noWidgets")}
         </div>
       )}

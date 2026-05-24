@@ -5,6 +5,9 @@ import { groupBadgeColors, groupBgColors } from "./mock-data";
 import { Heart } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
+import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/button-link";
+import { cn } from "@/lib/utils";
 
 const FIT_KEYS = ["interest", "personality", "skills", "values"] as const;
 
@@ -40,32 +43,35 @@ export function ProfessionCard({ profession: p, onToggleLike, mode, index }: Pro
 
   return (
     <div
-      className="animate-fade-up bg-white border border-gray-200 rounded-xl p-5 flex flex-row gap-4 transition-all duration-200 hover:shadow-lg hover:border-gray-300 hover:-translate-y-0.5"
+      className="animate-fade-up bg-card border rounded-xl p-5 flex flex-row gap-4 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
       style={{ animationDelay: `${index * 60}ms` }}
     >
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <div className="flex items-start gap-2 mb-2.5 flex-wrap">
-          <h3 className="text-[1.02rem] font-bold text-gray-900 leading-tight">
+          <h3 className="text-[1.02rem] font-bold text-foreground leading-tight">
             {localize(p.title, locale)}
-            <span className="text-[0.72rem] text-gray-400 font-normal ml-1.5">
+            <span className="text-[0.72rem] text-muted-foreground font-normal ml-1.5">
               {p.code}
             </span>
           </h3>
-          <button
+          <Button
             onClick={() => onToggleLike(p.id)}
-            className={
-              "ml-auto shrink-0 p-1 rounded-md transition-colors duration-150 " +
-              (p.liked
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Toggle like"
+            className={cn(
+              "ml-auto",
+              p.liked
                 ? "text-red-500 hover:text-red-600"
-                : "text-gray-300 hover:text-red-400")
-            }
+                : "text-muted-foreground hover:text-red-400",
+            )}
           >
             <Heart
               className="h-5 w-5"
               fill={p.liked ? "currentColor" : "none"}
             />
-          </button>
+          </Button>
         </div>
 
         {/* Badges */}
@@ -86,7 +92,7 @@ export function ProfessionCard({ profession: p, onToggleLike, mode, index }: Pro
         </div>
 
         {/* Description */}
-        <p className="text-[0.84rem] text-gray-500 leading-relaxed mb-3">
+        <p className="text-[0.84rem] text-muted-foreground leading-relaxed mb-3">
           {localize(p.desc, locale)}
         </p>
 
@@ -109,12 +115,9 @@ export function ProfessionCard({ profession: p, onToggleLike, mode, index }: Pro
 
         {/* Actions */}
         <div className="mt-auto pt-1.5">
-          <a
-            href={detailHref}
-            className="inline-block text-[0.82rem] px-4 py-1.5 rounded-lg border border-gray-200 text-gray-700 font-medium transition-all duration-150 hover:bg-gray-50 hover:border-gray-300"
-          >
+          <ButtonLink href={detailHref} variant="outline" size="sm">
             {t("professions.card.details")}
-          </a>
+          </ButtonLink>
         </div>
       </div>
 

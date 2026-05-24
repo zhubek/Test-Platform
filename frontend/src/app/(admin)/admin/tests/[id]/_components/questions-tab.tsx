@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { Plus } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
+import { Button } from "@/components/ui/button";
 import { SectionCard } from "./section-card";
 import { VariableCard } from "./variable-card";
 import { SurveyLogicPanel } from "./survey-logic-panel";
@@ -323,20 +324,22 @@ export function QuestionsTab({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-[0.88rem] font-semibold text-gray-900">
+            <h3 className="text-[0.88rem] font-semibold text-foreground">
               {t("cm.calculation.variables")}
             </h3>
-            <p className="text-[0.75rem] text-gray-400 mt-0.5">
+            <p className="text-[0.75rem] text-muted-foreground mt-0.5">
               {t("cm.calculation.variablesSub")}
             </p>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleVarAdd}
-            className="inline-flex items-center gap-1 text-[0.78rem] font-medium text-teal-600 hover:text-teal-700 transition-colors"
+            className="text-primary hover:text-teal-700"
           >
             <Plus className="w-3.5 h-3.5" />
             {t("cm.calculation.addVariable")}
-          </button>
+          </Button>
         </div>
 
         {variables.length > 0 ? (
@@ -351,7 +354,7 @@ export function QuestionsTab({
             ))}
           </div>
         ) : (
-          <div className="text-center py-6 text-[0.78rem] text-gray-400 border border-dashed border-gray-200 rounded-xl">
+          <div className="text-center py-6 text-[0.78rem] text-muted-foreground border border-dashed rounded-xl">
             {t("cm.calculation.noVariables")}
           </div>
         )}
@@ -361,10 +364,10 @@ export function QuestionsTab({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-[0.88rem] font-semibold text-gray-900">
+            <h3 className="text-[0.88rem] font-semibold text-foreground">
               {t("cm.questions.heading")}
             </h3>
-            <p className="text-[0.75rem] text-gray-400 mt-0.5">
+            <p className="text-[0.75rem] text-muted-foreground mt-0.5">
               {sections.length} section{sections.length !== 1 && "s"},{" "}
               {totalQuestions} question{totalQuestions !== 1 && "s"}
             </p>
@@ -388,13 +391,14 @@ export function QuestionsTab({
           />
         ))}
 
-        <button
+        <Button
+          variant="outline"
           onClick={handleSectionAdd}
-          className="flex items-center gap-2 w-full justify-center rounded-xl border-2 border-dashed border-gray-200 py-4 text-[0.82rem] font-medium text-gray-400 hover:border-teal-300 hover:text-teal-600 transition-colors"
+          className="w-full rounded-xl border-2 border-dashed py-4 h-auto text-muted-foreground hover:border-teal-300 hover:text-primary"
         >
           <Plus className="w-4 h-4" />
           {t("cm.questions.addSection")}
-        </button>
+        </Button>
       </div>
     </div>
   );

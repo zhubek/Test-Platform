@@ -14,6 +14,8 @@ import type { LucideIcon } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { LocalizedInput } from "@/components/localized-input";
 import { LocalizedTextarea } from "@/components/localized-textarea";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import type { Localized } from "@/lib/localized";
 import type { TestIconKey, TestFormat } from "../../../_components/mock-data";
 
@@ -69,23 +71,23 @@ export function GeneralTab({
   const { t } = useLocale();
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 space-y-5">
+    <div className="bg-card rounded-xl border shadow-sm p-6 space-y-5">
       {/* Name */}
       <div>
-        <label className="block text-[0.75rem] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+        <label className="block text-[0.75rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
           {t("cm.general.nameLabel")}
         </label>
         <LocalizedInput
           value={name}
           onChange={onNameChange}
           placeholder={t("cm.general.namePlaceholder")}
-          className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all"
+          className="w-full"
         />
       </div>
 
       {/* Description */}
       <div>
-        <label className="block text-[0.75rem] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+        <label className="block text-[0.75rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
           {t("cm.general.descriptionLabel")}
         </label>
         <LocalizedTextarea
@@ -93,27 +95,27 @@ export function GeneralTab({
           onChange={onDescriptionChange}
           placeholder={t("cm.general.descriptionPlaceholder")}
           rows={3}
-          className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all resize-none"
+          className="w-full resize-none"
         />
       </div>
 
       {/* Category */}
       <div>
-        <label className="block text-[0.75rem] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+        <label className="block text-[0.75rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
           {t("cm.general.categoryLabel")}
         </label>
         <LocalizedInput
           value={category}
           onChange={onCategoryChange}
           placeholder={t("cm.general.categoryPlaceholder")}
-          className="w-full max-w-xs rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all"
+          className="w-full max-w-xs"
         />
       </div>
 
       {/* Color + Icon row */}
       <div className="flex flex-col sm:flex-row gap-5">
         <div>
-          <label className="block text-[0.75rem] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+          <label className="block text-[0.75rem] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             {t("cm.general.colorLabel")}
           </label>
           <div className="flex gap-2">
@@ -121,12 +123,12 @@ export function GeneralTab({
               <button
                 key={c}
                 onClick={() => onColorChange(c)}
-                className={
-                  "w-7 h-7 rounded-full transition-all " +
-                  (c === color
+                className={cn(
+                  "w-7 h-7 rounded-full transition-all",
+                  c === color
                     ? "ring-2 ring-offset-2 ring-gray-400 scale-110"
-                    : "hover:scale-110")
-                }
+                    : "hover:scale-110",
+                )}
                 style={{ background: c }}
               />
             ))}
@@ -134,7 +136,7 @@ export function GeneralTab({
         </div>
 
         <div>
-          <label className="block text-[0.75rem] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+          <label className="block text-[0.75rem] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             {t("cm.general.iconLabel")}
           </label>
           <div className="flex gap-1.5">
@@ -145,12 +147,12 @@ export function GeneralTab({
                   key={opt.key}
                   onClick={() => onIconChange(opt.key)}
                   title={opt.label}
-                  className={
-                    "w-8 h-8 rounded-lg flex items-center justify-center transition-all " +
-                    (icon === opt.key
-                      ? "bg-teal-50 text-teal-600 ring-2 ring-teal-400 ring-offset-1"
-                      : "text-gray-400 hover:text-gray-600 hover:bg-gray-50")
-                  }
+                  className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
+                    icon === opt.key
+                      ? "bg-primary/10 text-primary ring-2 ring-teal-400 ring-offset-1"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                  )}
                 >
                   <Icon className="w-4 h-4" />
                 </button>
@@ -163,46 +165,46 @@ export function GeneralTab({
       {/* Duration + Format row */}
       <div className="flex flex-col sm:flex-row gap-5">
         <div>
-          <label className="block text-[0.75rem] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+          <label className="block text-[0.75rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
             {t("cm.general.durationLabel")}
           </label>
           <div className="flex items-center gap-2">
-            <input
+            <Input
               type="number"
               min={1}
               max={180}
               value={duration}
               onChange={(e) => onDurationChange(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-20 rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all"
+              className="w-20"
             />
-            <span className="text-[0.78rem] text-gray-400">{t("cm.general.durationUnit")}</span>
+            <span className="text-[0.78rem] text-muted-foreground">{t("cm.general.durationUnit")}</span>
           </div>
         </div>
 
         <div>
-          <label className="block text-[0.75rem] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+          <label className="block text-[0.75rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
             {t("cm.general.formatLabel")}
           </label>
-          <div className="flex items-center gap-0.5 rounded-full bg-gray-100 p-0.5">
+          <div className="flex items-center gap-0.5 rounded-full bg-muted p-0.5">
             <button
               onClick={() => onFormatChange("test-only")}
-              className={
-                "rounded-full px-3 py-1.5 text-[0.72rem] font-semibold transition-all duration-200 " +
-                (format === "test-only"
-                  ? "bg-white text-gray-700 shadow-sm"
-                  : "text-gray-400 hover:text-gray-600")
-              }
+              className={cn(
+                "rounded-full px-3 py-1.5 text-[0.72rem] font-semibold transition-all duration-200",
+                format === "test-only"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
             >
               {t("cm.general.formatTestOnly")}
             </button>
             <button
               onClick={() => onFormatChange("with-consulting")}
-              className={
-                "rounded-full px-3 py-1.5 text-[0.72rem] font-semibold transition-all duration-200 " +
-                (format === "with-consulting"
-                  ? "bg-white text-violet-700 shadow-sm"
-                  : "text-gray-400 hover:text-gray-600")
-              }
+              className={cn(
+                "rounded-full px-3 py-1.5 text-[0.72rem] font-semibold transition-all duration-200",
+                format === "with-consulting"
+                  ? "bg-card text-violet-700 shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
             >
               {t("cm.general.formatConsulting")}
             </button>
