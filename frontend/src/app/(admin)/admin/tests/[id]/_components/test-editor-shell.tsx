@@ -19,7 +19,6 @@ import type {
   CharacteristicSection,
   Widget,
   TestIconKey,
-  TestFormat,
   SurveyLogic,
 } from "../../../_components/mock-data";
 
@@ -37,7 +36,9 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
   const [color, setColor] = useState(initialData.color);
   const [icon, setIcon] = useState<TestIconKey>(initialData.icon);
   const [category, setCategory] = useState(initialData.category);
-  const [format, setFormat] = useState<TestFormat>(initialData.format);
+  const [visibilityTags, setVisibilityTags] = useState<string[]>(
+    initialData.visibilityTags ?? [],
+  );
   const [duration, setDuration] = useState(initialData.duration);
   const [status, setStatus] = useState(initialData.status);
   const [characteristicSections, setCharacteristicSections] = useState<CharacteristicSection[]>(
@@ -104,6 +105,7 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
                 color,
                 icon,
                 category: typeof category === "object" ? (category as any).en || "" : category,
+                visibilityTags,
                 duration,
                 state: status,
                 vars: { variables },
@@ -128,14 +130,14 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
           color={color}
           icon={icon}
           category={category}
-          format={format}
+          visibilityTags={visibilityTags}
           duration={duration}
           onNameChange={setName}
           onDescriptionChange={setDescription}
           onColorChange={setColor}
           onIconChange={setIcon}
           onCategoryChange={setCategory}
-          onFormatChange={setFormat}
+          onVisibilityTagsChange={setVisibilityTags}
           onDurationChange={setDuration}
         />
       )}

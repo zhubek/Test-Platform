@@ -15,6 +15,7 @@ const emptyTest: ContentTest = {
   icon: "compass",
   category: { en: "", ru: "", kz: "" },
   format: "test-only",
+  visibilityTags: [],
   duration: 15,
   status: "draft",
   createdAt: new Date().toISOString().split("T")[0],

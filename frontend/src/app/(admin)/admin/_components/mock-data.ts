@@ -116,6 +116,18 @@ export type TestIconKey =
 
 export type TestFormat = "test-only" | "with-consulting";
 
+// Existing visibility tags an admin can pick from (controlled vocabulary).
+// A test is shown to organizations that share one of these tags.
+export const availableVisibilityTags: string[] = [
+  "grade-9",
+  "grade-10",
+  "grade-11",
+  "career-track",
+  "stem-program",
+  "pilot",
+  "public",
+];
+
 export interface ContentTest {
   id: string;
   name: Localized;
@@ -124,6 +136,7 @@ export interface ContentTest {
   icon: TestIconKey;
   category: Localized;
   format: TestFormat;
+  visibilityTags: string[];
   duration: number; // minutes
   status: "draft" | "published";
   createdAt: string;

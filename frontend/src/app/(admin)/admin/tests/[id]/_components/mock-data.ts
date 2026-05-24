@@ -12,6 +12,7 @@ export const hollandTest: ContentTest = {
   icon: "compass",
   category: l("Interest", "Интерес"),
   format: "test-only",
+  visibilityTags: [],
   duration: 15,
   status: "published",
   createdAt: "2025-09-15",

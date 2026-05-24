@@ -17,7 +17,8 @@ import { LocalizedTextarea } from "@/components/localized-textarea";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { Localized } from "@/lib/localized";
-import type { TestIconKey, TestFormat } from "../../../_components/mock-data";
+import type { TestIconKey } from "../../../_components/mock-data";
+import { VisibilityTagsField } from "./visibility-tags-field";
 
 const COLOR_SWATCHES = [
   "#4f46e5", "#059669", "#7c3aed", "#ea580c",
@@ -41,14 +42,14 @@ interface Props {
   color: string;
   icon: TestIconKey;
   category: Localized;
-  format: TestFormat;
+  visibilityTags: string[];
   duration: number;
   onNameChange: (v: Localized) => void;
   onDescriptionChange: (v: Localized) => void;
   onColorChange: (v: string) => void;
   onIconChange: (v: TestIconKey) => void;
   onCategoryChange: (v: Localized) => void;
-  onFormatChange: (v: TestFormat) => void;
+  onVisibilityTagsChange: (v: string[]) => void;
   onDurationChange: (v: number) => void;
 }
 
@@ -58,14 +59,14 @@ export function GeneralTab({
   color,
   icon,
   category,
-  format,
+  visibilityTags,
   duration,
   onNameChange,
   onDescriptionChange,
   onColorChange,
   onIconChange,
   onCategoryChange,
-  onFormatChange,
+  onVisibilityTagsChange,
   onDurationChange,
 }: Props) {
   const { t } = useLocale();
@@ -162,54 +163,33 @@ export function GeneralTab({
         </div>
       </div>
 
-      {/* Duration + Format row */}
-      <div className="flex flex-col sm:flex-row gap-5">
-        <div>
-          <label className="block text-[0.75rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-            {t("cm.general.durationLabel")}
-          </label>
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              min={1}
-              max={180}
-              value={duration}
-              onChange={(e) => onDurationChange(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-20"
-            />
-            <span className="text-[0.78rem] text-muted-foreground">{t("cm.general.durationUnit")}</span>
-          </div>
+      {/* Duration */}
+      <div>
+        <label className="block text-[0.75rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+          {t("cm.general.durationLabel")}
+        </label>
+        <div className="flex items-center gap-2">
+          <Input
+            type="number"
+            min={1}
+            max={180}
+            value={duration}
+            onChange={(e) => onDurationChange(Math.max(1, parseInt(e.target.value) || 1))}
+            className="w-20"
+          />
+          <span className="text-[0.78rem] text-muted-foreground">{t("cm.general.durationUnit")}</span>
         </div>
+      </div>
 
-        <div>
-          <label className="block text-[0.75rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-            {t("cm.general.formatLabel")}
-          </label>
-          <div className="flex items-center gap-0.5 rounded-full bg-muted p-0.5">
-            <button
-              onClick={() => onFormatChange("test-only")}
-              className={cn(
-                "rounded-full px-3 py-1.5 text-[0.72rem] font-semibold transition-all duration-200",
-                format === "test-only"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t("cm.general.formatTestOnly")}
-            </button>
-            <button
-              onClick={() => onFormatChange("with-consulting")}
-              className={cn(
-                "rounded-full px-3 py-1.5 text-[0.72rem] font-semibold transition-all duration-200",
-                format === "with-consulting"
-                  ? "bg-card text-violet-700 shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t("cm.general.formatConsulting")}
-            </button>
-          </div>
-        </div>
+      {/* Visibility tags */}
+      <div>
+        <label className="block text-[0.75rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+          {t("cm.general.visibilityTagsLabel")}
+        </label>
+        <VisibilityTagsField value={visibilityTags} onChange={onVisibilityTagsChange} />
+        <p className="mt-1.5 text-[0.72rem] text-muted-foreground">
+          {t("cm.general.visibilityTagsHint")}
+        </p>
       </div>
     </div>
   );

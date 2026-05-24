@@ -23,6 +23,9 @@ function apiTestToContentTest(t: TestRow): ContentTest {
       ? { en: t.category, ru: t.category, kz: t.category }
       : (t.category ?? { en: "", ru: "", kz: "" }),
     format: "test-only",
+    visibilityTags: Array.isArray((t as { visibilityTags?: string[] }).visibilityTags)
+      ? (t as { visibilityTags?: string[] }).visibilityTags!
+      : [],
     duration: t.duration ?? 0,
     status: t.state === "published" ? "published" : "draft",
     createdAt: t.createdAt?.slice(0, 10) ?? "",
