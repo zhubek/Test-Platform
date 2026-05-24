@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Code2, X } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -297,28 +297,26 @@ export function QuestionsTab({
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      {/* ── Left: authoring (Blocks | JSON) ── */}
+      {/* ── Left: authoring (Constructor, with a JSON peek icon) ── */}
       <div className="rounded-xl border bg-card">
-        {/* sub-tabs */}
-        <div className="flex items-center gap-1 border-b px-3 py-2">
-          {(["blocks", "json"] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => setLeftMode(m)}
-              className={cn(
-                "rounded-md px-3 py-1 text-sm font-medium transition-colors",
-                leftMode === m
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {m === "blocks" ? "Blocks" : "JSON"}
-            </button>
-          ))}
-          <span className="ml-auto text-[0.7rem] text-muted-foreground">
+        {/* header */}
+        <div className="flex items-center gap-2 border-b px-3 py-2">
+          <span className="text-sm font-semibold">
+            {leftMode === "json" ? "JSON schema" : "Constructor"}
+          </span>
+          <span className="text-[0.7rem] text-muted-foreground">
             {sections.length} section{sections.length !== 1 && "s"} ·{" "}
             {totalQuestions} question{totalQuestions !== 1 && "s"}
           </span>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setLeftMode(leftMode === "json" ? "blocks" : "json")}
+            title={leftMode === "json" ? "Back to constructor" : "View generated JSON (advanced)"}
+            className={cn("ml-auto", leftMode === "json" && "bg-muted text-foreground")}
+          >
+            {leftMode === "json" ? <X className="h-4 w-4" /> : <Code2 className="h-4 w-4" />}
+          </Button>
         </div>
 
         {leftMode === "blocks" ? (
