@@ -22,6 +22,7 @@ const nav = [
   { label: "Organizations", href: "/admin/organizations" },
   { label: "Licenses", href: "/admin/licenses" },
   { label: "Dashboards", href: "/admin/dashboards" },
+  { label: "Parameters", href: "/admin/parameters" },
 ];
 
 export function AdminTopbar() {
