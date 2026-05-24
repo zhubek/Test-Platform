@@ -16,7 +16,9 @@ export interface VariableAssignment {
 export interface Variable {
   id: string;
   name: string;
-  description: Localized;
+  description: string;
+  // If imported from a catalog characteristic group, records its source.
+  source?: { catalogId: string; groupId: string };
 }
 
 // ── Questions ────────────────────────────────────────────────────

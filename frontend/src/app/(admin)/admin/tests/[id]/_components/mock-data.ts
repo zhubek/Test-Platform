@@ -19,12 +19,12 @@ export const hollandTest: ContentTest = {
   createdAt: "2025-09-15",
   updatedAt: "2026-01-20",
   variables: [
-    { id: "v_realistic", name: "realistic", description: l("Realistic — hands-on, physical activities", "Реалистичный — практическая деятельность") },
-    { id: "v_investigative", name: "investigative", description: l("Investigative — analytical, intellectual tasks", "Исследовательский — аналитические задачи") },
-    { id: "v_artistic", name: "artistic", description: l("Artistic — creative, expressive activities", "Артистичный — творческая деятельность") },
-    { id: "v_social", name: "social", description: l("Social — helping, teaching, counseling", "Социальный — помощь, обучение, консультирование") },
-    { id: "v_enterprising", name: "enterprising", description: l("Enterprising — leading, persuading, managing", "Предприимчивый — лидерство, убеждение, управление") },
-    { id: "v_conventional", name: "conventional", description: l("Conventional — organizing, data management", "Конвенциональный — организация, управление данными") },
+    { id: "v_realistic", name: "realistic", description: "Realistic — hands-on, physical activities" },
+    { id: "v_investigative", name: "investigative", description: "Investigative — analytical, intellectual tasks" },
+    { id: "v_artistic", name: "artistic", description: "Artistic — creative, expressive activities" },
+    { id: "v_social", name: "social", description: "Social — helping, teaching, counseling" },
+    { id: "v_enterprising", name: "enterprising", description: "Enterprising — leading, persuading, managing" },
+    { id: "v_conventional", name: "conventional", description: "Conventional — organizing, data management" },
   ],
   sections: [
     {

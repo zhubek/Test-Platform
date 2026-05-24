@@ -1,5 +1,4 @@
 import { Trash2 } from "lucide-react";
-import { LocalizedInput } from "@/components/localized-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Variable } from "../../../_components/mock-data";
@@ -30,12 +29,18 @@ export function VariableCard({ variable, onChange, onDelete }: Props) {
           <Trash2 className="w-3.5 h-3.5" />
         </Button>
       </div>
-      <LocalizedInput
+      <Input
+        type="text"
         value={variable.description}
-        onChange={(v) => onChange({ description: v })}
+        onChange={(e) => onChange({ description: e.target.value })}
         placeholder="Description..."
         className="w-full"
       />
+      {variable.source && (
+        <span className="inline-block rounded bg-primary/10 px-1.5 py-0.5 text-[0.6rem] font-medium text-primary">
+          from catalog
+        </span>
+      )}
     </div>
   );
 }
