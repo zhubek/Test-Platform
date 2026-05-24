@@ -2,32 +2,76 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Check, ChevronsUpDown, FolderKanban } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
+import { useProject } from "@/lib/project-context";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/button-link";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const locales = ["kz", "ru", "en"] as const;
 
 const nav = [
   { label: "Tests", href: "/admin/tests" },
-  { label: "Surveys", href: "/admin/surveys" },
+  { label: "Organizations", href: "/admin/organizations" },
+  { label: "Licenses", href: "/admin/licenses" },
   { label: "Dashboards", href: "/admin/dashboards" },
 ];
 
 export function AdminTopbar() {
   const pathname = usePathname();
   const { locale, setLocale } = useLocale();
+  const { projects, project, setProjectId } = useProject();
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 md:px-8">
+      <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 md:px-8">
         <Link href="/admin/tests" className="text-lg font-bold tracking-tight">
           Test<span className="text-primary">Platform</span>
         </Link>
-        <Badge variant="secondary" className="hidden sm:inline-flex">
-          Admin
-        </Badge>
+
+        {/* Project picker */}
+        <DropdownMenu>
+          <DropdownMenuTrigger className="ml-1 inline-flex items-center gap-2 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted">
+            <FolderKanban className="h-4 w-4 text-muted-foreground" />
+            <span className="max-w-[140px] truncate">{project.name}</span>
+            <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-64">
+            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+              Switch project
+            </div>
+            <DropdownMenuSeparator />
+            {projects.map((p) => (
+              <DropdownMenuItem
+                key={p.id}
+                onClick={() => setProjectId(p.id)}
+                className="flex items-start gap-2"
+              >
+                <Check
+                  className={cn(
+                    "mt-0.5 h-4 w-4 shrink-0",
+                    p.id === project.id ? "opacity-100 text-primary" : "opacity-0",
+                  )}
+                />
+                <span className="flex flex-col">
+                  <span className="text-sm font-medium">{p.name}</span>
+                  {p.description && (
+                    <span className="text-xs text-muted-foreground">{p.description}</span>
+                  )}
+                </span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <div className="mx-1 h-5 w-px bg-border" />
 
         <nav className="hidden flex-1 items-center gap-1 md:flex">
           {nav.map((item) => {
