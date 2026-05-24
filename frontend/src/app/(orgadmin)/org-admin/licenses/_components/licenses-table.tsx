@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ResultsDrawer, type DrawerData } from "./results-drawer";
+import { LicenseActions } from "./license-actions";
 
 const testName = (id: number) =>
   availableTests.find((t) => t.id === id)?.name ?? `Test ${id}`;
@@ -147,12 +148,15 @@ export function LicensesTable() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b">
-                {["License code", "Name", "State", "Accessible tests"].map((h) => (
+                {["License code", "Name", "State", "Accessible tests", "Actions"].map((h) => (
                   <th
                     key={h}
-                    className="px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground"
+                    className={cn(
+                      "px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground",
+                      h === "Actions" && "text-right",
+                    )}
                   >
-                    {h}
+                    {h === "Actions" ? <span className="sr-only">{h}</span> : h}
                   </th>
                 ))}
               </tr>
@@ -219,6 +223,13 @@ export function LicensesTable() {
                         ))}
                       </div>
                     )}
+                  </td>
+
+                  {/* actions */}
+                  <td className="px-3 py-3">
+                    <div className="flex justify-end">
+                      <LicenseActions license={lic} />
+                    </div>
                   </td>
                 </tr>
               ))}

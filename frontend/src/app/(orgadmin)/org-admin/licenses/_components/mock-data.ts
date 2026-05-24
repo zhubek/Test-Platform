@@ -24,6 +24,18 @@ export const availableTests: { id: number; name: string }[] = [
 let n = 0;
 const id = () => `lic-${++n}`;
 
+// Magic-link token for a license. In production this would be a stored random
+// secret; here we derive a stable token from the code so it's repeatable.
+export function licenseToken(code: string): string {
+  return code.replace(/[^A-Za-z0-9]/g, "").toLowerCase() + "k7";
+}
+
+export function magicUrl(code: string): string {
+  const base =
+    typeof window !== "undefined" ? window.location.origin : "https://testplatform.kz";
+  return `${base}/t/${licenseToken(code)}`;
+}
+
 const T = (testId: number, status: TestProgress): LicenseTest => ({ testId, status });
 
 // ── Results (for the drawer) ─────────────────────────────────────────────
