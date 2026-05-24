@@ -13,18 +13,28 @@ interface PreviewProps {
   question: Question;
   value: string | string[] | number | null;
   onChange: (value: string | string[] | number) => void;
+  // Engine-derived state (optional; undefined = no constraint).
+  disabled?: boolean;
+  required?: boolean;
+  visibleChoiceIds?: Set<string>; // when set, only these choice ids render
 }
 
-function SingleChoicePreview({ question, value, onChange }: PreviewProps) {
+// Choices the engine says are currently visible (or all, if no constraint).
+function shownChoices(question: Question, visibleChoiceIds?: Set<string>) {
+  if (!visibleChoiceIds) return question.choices;
+  return question.choices.filter((c) => visibleChoiceIds.has(c.id));
+}
+
+function SingleChoicePreview({ question, value, onChange, disabled, visibleChoiceIds }: PreviewProps) {
   const { locale } = useLocale();
   return (
-    <fieldset className="space-y-2">
-      {question.choices.map((opt) => {
+    <fieldset className={cn("space-y-2", disabled && "pointer-events-none opacity-50")}>
+      {shownChoices(question, visibleChoiceIds).map((opt) => {
         const active = value === opt.id;
         return (
           <label
             key={opt.id}
-            onClick={() => onChange(opt.id)}
+            onClick={() => !disabled && onChange(opt.id)}
             className={cn(
               "flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-all",
               active
@@ -50,19 +60,19 @@ function SingleChoicePreview({ question, value, onChange }: PreviewProps) {
   );
 }
 
-function MultiChoicePreview({ question, value, onChange }: PreviewProps) {
+function MultiChoicePreview({ question, value, onChange, disabled, visibleChoiceIds }: PreviewProps) {
   const { locale } = useLocale();
   const arr = Array.isArray(value) ? value : [];
   const toggle = (id: string) =>
     onChange(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]);
   return (
-    <fieldset className="space-y-2">
-      {question.choices.map((opt) => {
+    <fieldset className={cn("space-y-2", disabled && "pointer-events-none opacity-50")}>
+      {shownChoices(question, visibleChoiceIds).map((opt) => {
         const active = arr.includes(opt.id);
         return (
           <label
             key={opt.id}
-            onClick={() => toggle(opt.id)}
+            onClick={() => !disabled && toggle(opt.id)}
             className={cn(
               "flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-all",
               active
@@ -97,15 +107,16 @@ const LIKERT_SIZE: Record<number, string> = {
 };
 const LIKERT_LABELS = ["Strongly\nDisagree", "Disagree", "Neutral", "Agree", "Strongly\nAgree"];
 
-function LikertPreview({ value, onChange }: PreviewProps) {
+function LikertPreview({ value, onChange, disabled }: PreviewProps) {
   return (
-    <div className="flex items-end justify-center gap-1.5 pt-2 sm:gap-2.5">
+    <div className={cn("flex items-end justify-center gap-1.5 pt-2 sm:gap-2.5", disabled && "pointer-events-none opacity-50")}>
       {[1, 2, 3, 4, 5].map((n) => {
         const active = value === n;
         return (
           <button
             key={n}
             type="button"
+            disabled={disabled}
             onClick={() => onChange(n)}
             className={cn(
               "flex flex-col items-center gap-1.5 rounded-xl border-2 transition-all",
@@ -126,18 +137,19 @@ function LikertPreview({ value, onChange }: PreviewProps) {
   );
 }
 
-function DropdownPreview({ question, value, onChange }: PreviewProps) {
+function DropdownPreview({ question, value, onChange, disabled, visibleChoiceIds }: PreviewProps) {
   const { locale } = useLocale();
   return (
     <select
       value={(value as string) ?? ""}
+      disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full max-w-sm rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+      className="w-full max-w-sm rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
     >
       <option value="" disabled>
         Select…
       </option>
-      {question.choices.map((opt) => (
+      {shownChoices(question, visibleChoiceIds).map((opt) => (
         <option key={opt.id} value={opt.id}>
           {localize(opt.text, locale) || "—"}
         </option>
@@ -146,16 +158,17 @@ function DropdownPreview({ question, value, onChange }: PreviewProps) {
   );
 }
 
-function RatingPreview({ question, value, onChange }: PreviewProps) {
+function RatingPreview({ question, value, onChange, disabled }: PreviewProps) {
   const max = question.rateMax ?? 5;
   return (
-    <div className="flex flex-wrap gap-1.5 pt-1">
+    <div className={cn("flex flex-wrap gap-1.5 pt-1", disabled && "pointer-events-none opacity-50")}>
       {Array.from({ length: max }, (_, i) => i + 1).map((n) => {
         const active = value === n;
         return (
           <button
             key={n}
             type="button"
+            disabled={disabled}
             onClick={() => onChange(n)}
             className={cn(
               "flex h-10 w-10 items-center justify-center rounded-lg border-2 text-sm font-semibold transition-all",
@@ -172,9 +185,9 @@ function RatingPreview({ question, value, onChange }: PreviewProps) {
   );
 }
 
-function BooleanPreview({ value, onChange }: PreviewProps) {
+function BooleanPreview({ value, onChange, disabled }: PreviewProps) {
   return (
-    <div className="flex gap-2 pt-1">
+    <div className={cn("flex gap-2 pt-1", disabled && "pointer-events-none opacity-50")}>
       {[
         { v: "true", label: "Yes" },
         { v: "false", label: "No" },
@@ -184,6 +197,7 @@ function BooleanPreview({ value, onChange }: PreviewProps) {
           <button
             key={opt.v}
             type="button"
+            disabled={disabled}
             onClick={() => onChange(opt.v)}
             className={cn(
               "rounded-lg border px-6 py-2 text-sm font-medium transition-all",
@@ -200,16 +214,17 @@ function BooleanPreview({ value, onChange }: PreviewProps) {
   );
 }
 
-function ImagePickerPreview({ question, value, onChange }: PreviewProps) {
+function ImagePickerPreview({ question, value, onChange, disabled, visibleChoiceIds }: PreviewProps) {
   const { locale } = useLocale();
   return (
-    <div className="grid grid-cols-2 gap-3 pt-1 sm:grid-cols-3">
-      {question.choices.map((opt) => {
+    <div className={cn("grid grid-cols-2 gap-3 pt-1 sm:grid-cols-3", disabled && "pointer-events-none opacity-50")}>
+      {shownChoices(question, visibleChoiceIds).map((opt) => {
         const active = value === opt.id;
         return (
           <button
             key={opt.id}
             type="button"
+            disabled={disabled}
             onClick={() => onChange(opt.id)}
             className={cn(
               "flex flex-col items-center gap-1.5 rounded-xl border-2 p-2 transition-all",
@@ -257,6 +272,7 @@ export function QuestionPreview(props: PreviewProps) {
         {localize(props.question.text, locale) || (
           <span className="italic text-muted-foreground">Untitled question</span>
         )}
+        {props.required && <span className="ml-1 text-destructive">*</span>}
       </h4>
       <Renderer {...props} />
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Model } from "survey-core";
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
@@ -68,8 +68,31 @@ export function FullSurveyPreview({ sections }: { sections: Section[] }) {
 
   // Push translated answers into the engine so it recomputes visibility.
   survey.data = engineData;
-  const visibleNames = new Set(survey.getAllQuestions().filter((q) => q.isVisible).map((q) => q.name));
+  const allQ = survey.getAllQuestions();
+  const visibleNames = new Set(allQ.filter((q) => q.isVisible).map((q) => q.name));
+  const disabledNames = new Set(allQ.filter((q) => q.isReadOnly).map((q) => q.name));
+  const requiredNames = new Set(allQ.filter((q) => q.isRequired).map((q) => q.name));
+  // Per-question set of currently-visible choice VALUES (engine space).
+  const visibleChoiceValuesByName = new Map<string, Set<string>>();
+  for (const q of allQ) {
+    const choices = (q as unknown as { visibleChoices?: { value: unknown }[] }).visibleChoices;
+    if (choices) {
+      visibleChoiceValuesByName.set(q.name, new Set(choices.map((c) => String(c.value))));
+    }
+  }
   const visiblePageIds = new Set(survey.pages.filter((p) => p.isVisible).map((p) => p.name));
+
+  // Map a question's visible choice VALUES back to UI choice IDS for rendering.
+  const visibleChoiceIdsFor = (q: Question): Set<string> | undefined => {
+    const name = nameById.get(q.id);
+    const vals = name ? visibleChoiceValuesByName.get(name) : undefined;
+    if (!vals) return undefined;
+    const ids = new Set<string>();
+    q.choices.forEach((c, ci) => {
+      if (vals.has(effectiveChoiceValue(c, ci))) ids.add(c.id);
+    });
+    return ids;
+  };
 
   // Only sections whose page is visible.
   const visibleSections = sections.filter((s) => visiblePageIds.has(s.id) || visiblePageIds.size === 0);
@@ -82,7 +105,7 @@ export function FullSurveyPreview({ sections }: { sections: Section[] }) {
     );
   }
 
-  const active = Math.min(idx, visibleSections.length - 1);
+  const active = Math.min(idx, Math.max(0, visibleSections.length - 1));
   const section = visibleSections[active];
   const visibleQs = (s: Section) =>
     s.questions.filter((q) => {
@@ -100,6 +123,14 @@ export function FullSurveyPreview({ sections }: { sections: Section[] }) {
   const setAnswer = (q: Question, v: unknown) => {
     setAnswers((prev) => ({ ...prev, [q.id]: v }));
   };
+
+  // If answers hid the page we're on (or shifted the visible count), snap the
+  // stored index back into range so we never strand the user on a hidden page.
+  useEffect(() => {
+    if (idx > visibleSections.length - 1) {
+      setIdx(Math.max(0, visibleSections.length - 1));
+    }
+  }, [idx, visibleSections.length]);
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -196,6 +227,9 @@ export function FullSurveyPreview({ sections }: { sections: Section[] }) {
                     question={q}
                     value={(answers[q.id] as never) ?? null}
                     onChange={(v) => setAnswer(q, v)}
+                    disabled={disabledNames.has(nameById.get(q.id)!)}
+                    required={requiredNames.has(nameById.get(q.id)!)}
+                    visibleChoiceIds={visibleChoiceIdsFor(q)}
                   />
                 </div>
               ))

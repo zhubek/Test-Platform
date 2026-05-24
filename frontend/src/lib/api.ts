@@ -133,9 +133,21 @@ function seedQuestion(
   text: Localized,
   type: string,
   answers: { text: Localized; vars?: { variableId: string; value: number }[] }[],
-  opts: { name?: string; visibleIf?: string; rateMax?: number } = {},
+  opts: {
+    name?: string;
+    visibleIf?: string;
+    enableIf?: string;
+    requiredIf?: string;
+    rateMax?: number;
+    // per-choice visibleIf, keyed by the choice's effective value opt{n}
+    choiceVisibleIf?: Record<string, string>;
+  } = {},
 ): QuestionRow {
   const qid = ++qSeq + 100;
+  const logic =
+    opts.visibleIf || opts.enableIf || opts.requiredIf
+      ? { visibleIf: opts.visibleIf, enableIf: opts.enableIf, requiredIf: opts.requiredIf }
+      : undefined;
   return {
     id: qid,
     text,
@@ -144,14 +156,15 @@ function seedQuestion(
     order: 0,
     type,
     rateMax: opts.rateMax,
-    logic: opts.visibleIf ? { visibleIf: opts.visibleIf } : undefined,
+    logic,
     createdAt: now(),
     updatedAt: now(),
-    answers: answers.map((a) => ({
+    answers: answers.map((a, i) => ({
       id: ++aSeq,
       questionId: qid,
       text: a.text,
       vars: a.vars ?? [],
+      visibleIf: opts.choiceVisibleIf?.[`opt${i + 1}`],
       createdAt: now(),
       updatedAt: now(),
     })),
@@ -166,13 +179,19 @@ const likertAnswers = (varId: string) => [
   { text: L("Strongly agree", "Полностью согласен", "Толық келісемін"), vars: [{ variableId: varId, value: 5 }] },
 ];
 
-function section(id: number, testId: number, title: Localized, questions: QuestionRow[]): SectionRow {
+function section(
+  id: number,
+  testId: number,
+  title: Localized,
+  questions: QuestionRow[],
+  visibleIf?: string,
+): SectionRow {
   questions.forEach((q, i) => {
     q.sectionId = id;
     q.order = i;
     q.answers.forEach((a) => (a.questionId = q.id));
   });
-  return { id, title, testId, order: 0, questions, createdAt: now(), updatedAt: now() };
+  return { id, title, testId, order: 0, visibleIf, questions, createdAt: now(), updatedAt: now() };
 }
 
 // ── Holland (RIASEC) — full weighted test ────────────────────────────────
@@ -194,23 +213,26 @@ const tests: TestRow[] = [
     "#0d9488",
     [
       section(11, 1, L("Activities", "Активности", "Әрекеттер"), [
+        // q1 — its last option ("Strongly agree" = opt5) is hidden unless q2 = opt5.
         seedQuestion(11, L("I like to work on cars and machines", "Мне нравится работать с машинами"), "single",
-          likertAnswers("realistic")),
+          likertAnswers("realistic"), { choiceVisibleIf: { opt5: "{q2} = 'opt5'" } }),
         seedQuestion(11, L("I enjoy solving math or science problems", "Мне нравится решать задачи по науке"), "single",
           likertAnswers("investigative")),
-        // Demo of conditional visibility: this question only shows when the
-        // respondent answered "Agree" or "Strongly agree" to question 2 (q2).
+        // q3 — only shows when the respondent answered Agree/Strongly agree to q2.
         seedQuestion(11, L("I like to draw, paint, or write", "Мне нравится рисовать или писать"), "single",
           likertAnswers("artistic"), { visibleIf: "{q2} = 'opt4' or {q2} = 'opt5'" }),
       ]),
+      // Page-level visibleIf — the whole Preferences page is hidden until q1 is answered.
       section(12, 1, L("Preferences", "Предпочтения", "Қалаулар"), [
+        // q4 — disabled (enableIf) until q1 = "Strongly agree" (opt5).
         seedQuestion(12, L("I enjoy helping and teaching others", "Мне нравится помогать другим"), "single",
-          likertAnswers("social")),
+          likertAnswers("social"), { enableIf: "{q1} = 'opt5'" }),
+        // q5 — becomes required once q1 is answered.
         seedQuestion(12, L("I like to lead and persuade people", "Мне нравится вести за собой"), "single",
-          likertAnswers("enterprising")),
+          likertAnswers("enterprising"), { requiredIf: "{q1} notempty" }),
         seedQuestion(12, L("I like to organize and follow procedures", "Мне нравится упорядочивать"), "single",
           likertAnswers("conventional")),
-      ]),
+      ], "{q1} notempty"),
     ],
     {
       icon: "compass",
