@@ -32,7 +32,7 @@ export function ProfessionGrid({ professions, fitKey, fitLabel }: Props) {
           {t("characteristics.profGrid.heading").replace("{fit}", fitLabel)}
         </h3>
         <a
-          href="/professions"
+          href="/explore"
           className="flex items-center gap-1 text-[0.78rem] font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
           {t("characteristics.profGrid.viewAll")}
@@ -43,7 +43,7 @@ export function ProfessionGrid({ professions, fitKey, fitLabel }: Props) {
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {sorted.map((prof, i) => (
-          <ProfessionCard key={prof.code} profession={prof} index={i} />
+          <ProfessionCard key={prof.code} profession={prof} index={i} fitKey={fitKey} />
         ))}
       </div>
     </div>
