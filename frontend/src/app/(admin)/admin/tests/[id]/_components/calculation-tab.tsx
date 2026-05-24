@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Plus, Trash2, ChevronDown, BookOpen, Compass } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Plus, Trash2, ChevronDown, BookOpen, Compass, Braces, Copy, Check } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
 import { Button } from "@/components/ui/button";
@@ -22,11 +22,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { VariableCard } from "./variable-card";
 import { CATALOGS, DISTANCE_METHODS, findGroup } from "@/lib/catalog-characteristics";
-import { effectiveChoiceValue } from "@/lib/surveyjs";
+import { effectiveChoiceValue, effectiveQuestionName } from "@/lib/surveyjs";
 import type {
   CatalogMapping,
   CharacteristicSection,
   Section,
+  SurveyLogic,
   Variable,
 } from "../../../_components/mock-data";
 
@@ -34,6 +35,7 @@ interface Props {
   mappings: CatalogMapping[];
   sections: CharacteristicSection[];
   questionSections: Section[];
+  surveyLogic?: SurveyLogic;
   variables: Variable[];
   onMappingsChange: (mappings: CatalogMapping[]) => void;
   onSectionsChange: (sections: CharacteristicSection[]) => void;
@@ -43,6 +45,7 @@ interface Props {
 export function CalculationTab({
   mappings,
   questionSections,
+  surveyLogic = {},
   variables,
   onMappingsChange,
   onVariablesChange,
@@ -50,6 +53,17 @@ export function CalculationTab({
   const { t, locale } = useLocale();
   const [refOpen, setRefOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
+
+  // ── Survey variable reference (copyable) ────────────────────────
+  // Question names (q1, q2, … via effectiveQuestionName) plus survey-level
+  // calculated values defined in the survey JSON.
+  const questionVars: string[] = (() => {
+    let gi = 0;
+    return questionSections.flatMap((s) => s.questions.map((q) => effectiveQuestionName(q, gi++)));
+  })();
+  const calcValueVars: string[] = (surveyLogic.calculatedValues ?? [])
+    .map((cv) => (cv as { name?: string }).name)
+    .filter((n): n is string => !!n);
 
   // ── Mapping handlers ────────────────────────────────────────────
   const addMapping = () => {
@@ -92,6 +106,15 @@ export function CalculationTab({
       },
     ]);
 
+  // Each question's effective SurveyJS variable name (q1, q2, … by global index),
+  // so a bound choice variable can share its question's name and reference.
+  const nameByQuestionId = (() => {
+    const map = new Map<string, string>();
+    let gi = 0;
+    questionSections.forEach((s) => s.questions.forEach((q) => map.set(q.id, effectiveQuestionName(q, gi++))));
+    return map;
+  })();
+
   // The test's multiple-choice (checkbox) questions, available to add as MC vars.
   const mcQuestions = questionSections
     .flatMap((s) => s.questions)
@@ -103,13 +126,15 @@ export function CalculationTab({
   const addMcVar = (questionId: string) => {
     const q = mcQuestions.find((x) => x.id === questionId);
     if (!q) return;
+    const qName = nameByQuestionId.get(questionId) ?? questionId;
     onVariablesChange([
       ...variables,
       {
         id: `mc_${Date.now()}`,
-        name: q.name?.trim() || `mc_${mcVars.length + 1}`,
+        name: qName,
         label: q.text,
         kind: "multiplechoice",
+        formula: `{${qName}}`,
         scope: "both",
         questionId,
         valueTranslations: q.choices.map((c, i) => ({
@@ -129,13 +154,15 @@ export function CalculationTab({
   const addScVar = (questionId: string) => {
     const q = scQuestions.find((x) => x.id === questionId);
     if (!q) return;
+    const qName = nameByQuestionId.get(questionId) ?? questionId;
     onVariablesChange([
       ...variables,
       {
         id: `sc_${Date.now()}`,
-        name: q.name?.trim() || `sc_${scVars.length + 1}`,
+        name: qName,
         label: q.text,
         kind: "singlechoice",
+        formula: `{${qName}}`,
         scope: "both",
         questionId,
         valueTranslations: q.choices.map((c, i) => ({
@@ -332,10 +359,13 @@ export function CalculationTab({
               {t("cm.calculation.variablesSub")}
             </p>
           </div>
-          <Button variant="ghost" size="sm" onClick={addCustomVar} className="text-primary hover:text-teal-700">
-            <Plus className="h-3.5 w-3.5" />
-            {t("cm.calculation.addVariable")}
-          </Button>
+          <div className="flex items-center gap-1">
+            <SurveyVarsButton questionVars={questionVars} calcValueVars={calcValueVars} />
+            <Button variant="ghost" size="sm" onClick={addCustomVar} className="text-primary hover:text-teal-700">
+              <Plus className="h-3.5 w-3.5" />
+              {t("cm.calculation.addVariable")}
+            </Button>
+          </div>
         </div>
 
         {customVars.length > 0 ? (
@@ -425,7 +455,8 @@ export function CalculationTab({
                 variable={v}
                 onChange={(partial) => updateVar(v.id, partial)}
                 onDelete={() => deleteVar(v.id)}
-                noFormula
+                lockName
+                readOnlyFormula
               />
             ))}
           </div>
@@ -479,7 +510,8 @@ export function CalculationTab({
                 variable={v}
                 onChange={(partial) => updateVar(v.id, partial)}
                 onDelete={() => deleteVar(v.id)}
-                noFormula
+                lockName
+                readOnlyFormula
               />
             ))}
           </div>
@@ -526,6 +558,75 @@ export function CalculationTab({
         </section>
       )}
     </div>
+  );
+}
+
+// ── Survey variables reference (copyable) ───────────────────────
+function SurveyVarsButton({
+  questionVars,
+  calcValueVars,
+}: {
+  questionVars: string[];
+  calcValueVars: string[];
+}) {
+  const { t } = useLocale();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" />}>
+        <Braces className="h-3.5 w-3.5" />
+        {t("cm.calculation.surveyVars")}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-72 p-2">
+        <p className="px-1 pb-1.5 text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
+          {t("cm.calculation.questionVars")}
+        </p>
+        {questionVars.length > 0 ? (
+          <div className="flex flex-wrap gap-1 px-1">
+            {questionVars.map((v) => (
+              <CopyChip key={v} text={v} />
+            ))}
+          </div>
+        ) : (
+          <p className="px-1 text-[0.72rem] text-muted-foreground">{t("cm.calculation.noQuestionVars")}</p>
+        )}
+        <p className="px-1 pt-3 pb-1.5 text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
+          {t("cm.calculation.calcValueVars")}
+        </p>
+        {calcValueVars.length > 0 ? (
+          <div className="flex flex-wrap gap-1 px-1">
+            {calcValueVars.map((v) => (
+              <CopyChip key={v} text={v} />
+            ))}
+          </div>
+        ) : (
+          <p className="px-1 text-[0.72rem] text-muted-foreground">{t("cm.calculation.noCalcValueVars")}</p>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function CopyChip({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(`{${text}}`).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }, [text]);
+  return (
+    <button
+      onClick={handleCopy}
+      className={cn(
+        "inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[0.7rem] transition-colors cursor-pointer",
+        copied
+          ? "bg-teal-100 text-teal-700"
+          : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary",
+      )}
+    >
+      {text}
+      {copied ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5 opacity-40" />}
+    </button>
   );
 }
 

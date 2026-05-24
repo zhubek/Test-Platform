@@ -13,8 +13,9 @@ interface Props {
   onChange: (partial: Partial<Variable>) => void;
   onDelete?: () => void; // omitted for derived (profession) vars
   readOnlyValue?: boolean; // profession vars: formula is computed, not authored
-  noFormula?: boolean; // multiple-choice vars: name + option translations only
-  lockName?: boolean; // characteristic vars: name tied to catalog key, formula editable
+  noFormula?: boolean; // hides the formula field entirely
+  readOnlyFormula?: boolean; // single/multi-choice vars: formula shown but not editable ({qN})
+  lockName?: boolean; // name tied to its source (catalog key / question), not editable
 }
 
 const KIND_BADGE: Record<Variable["kind"], string> = {
@@ -25,7 +26,7 @@ const KIND_BADGE: Record<Variable["kind"], string> = {
   profession: "cm.calculation.kindProfession",
 };
 
-export function VariableCard({ variable, onChange, onDelete, readOnlyValue, noFormula, lockName }: Props) {
+export function VariableCard({ variable, onChange, onDelete, readOnlyValue, noFormula, readOnlyFormula, lockName }: Props) {
   const { t, locale } = useLocale();
   const translations = variable.valueTranslations ?? [];
   // Characteristic vars are pure numeric dimensions — no value→label table.
@@ -83,7 +84,7 @@ export function VariableCard({ variable, onChange, onDelete, readOnlyValue, noFo
       />
 
       {/* Formula — author-set for characteristic/custom; computed for profession;
-          omitted for multiple-choice (stored as selected option rows). */}
+          read-only {qN} for single/multiple-choice; omittable. */}
       {readOnlyValue ? (
         <p className="text-[0.7rem] italic text-muted-foreground">
           {t("cm.calculation.computedByMapping")}
@@ -96,7 +97,8 @@ export function VariableCard({ variable, onChange, onDelete, readOnlyValue, noFo
             value={variable.formula ?? ""}
             onChange={(e) => onChange({ formula: e.target.value })}
             placeholder={t("cm.calculation.formulaPlaceholder")}
-            className="flex-1 font-mono"
+            disabled={readOnlyFormula}
+            className="flex-1 font-mono disabled:opacity-70"
           />
         </div>
       )}

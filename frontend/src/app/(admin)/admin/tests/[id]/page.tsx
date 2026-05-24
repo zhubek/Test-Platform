@@ -78,6 +78,7 @@ function apiTestToContentTest(t: TestRow): ContentTest {
     })),
     mappings,
     variables: vars,
+    surveyLogic: (t.surveyLogic as ContentTest["surveyLogic"]) ?? {},
     characteristicSections: calcLogic,
     resultWidgets,
     orgDashboardWidgets: dashboardWidgets,

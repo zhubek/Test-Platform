@@ -254,6 +254,7 @@ export interface ContentTest {
   sections: Section[];
   mappings: CatalogMapping[];
   variables: Variable[];
+  surveyLogic: SurveyLogic;
   characteristicSections: CharacteristicSection[];
   resultWidgets: Widget[];
   orgDashboardWidgets: Widget[];

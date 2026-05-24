@@ -52,7 +52,7 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
   const [sections, setSections] = useState<Section[]>(initialData.sections);
   const [mappings, setMappings] = useState<CatalogMapping[]>(initialData.mappings);
   const [variables, setVariables] = useState<Variable[]>(initialData.variables);
-  const [surveyLogic, setSurveyLogic] = useState<SurveyLogic>({});
+  const [surveyLogic, setSurveyLogic] = useState<SurveyLogic>(initialData.surveyLogic ?? {});
   const [resultWidgets, setResultWidgets] = useState<Widget[]>(initialData.resultWidgets);
   const [dashboardWidgets, setDashboardWidgets] = useState<Widget[]>(initialData.orgDashboardWidgets);
 
@@ -101,6 +101,7 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
                 state: status,
                 vars: { variables },
                 calcLogic: { characteristicSections, mappings },
+                surveyLogic,
                 resultViewLogic: { widgets: resultWidgets },
                 dashboardViewLogic: { widgets: dashboardWidgets },
               });
@@ -151,6 +152,7 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
           mappings={mappings}
           sections={characteristicSections}
           questionSections={sections}
+          surveyLogic={surveyLogic}
           variables={variables}
           onMappingsChange={setMappings}
           onSectionsChange={setCharacteristicSections}

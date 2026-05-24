@@ -81,6 +81,7 @@ export interface TestInput {
   state?: string;
   vars?: any;
   calcLogic?: any;
+  surveyLogic?: any;
   resultViewLogic?: any;
   dashboardViewLogic?: any;
 }

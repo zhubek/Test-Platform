@@ -19,6 +19,7 @@ export const hollandTest: ContentTest = {
   createdAt: "2025-09-15",
   updatedAt: "2026-01-20",
   mappings: [],
+  surveyLogic: {},
   variables: [
     { id: "v_realistic", name: "realistic", label: l("Realistic"), kind: "characteristic", scope: "both" },
     { id: "v_investigative", name: "investigative", label: l("Investigative"), kind: "characteristic", scope: "both" },
