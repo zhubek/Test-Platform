@@ -14,6 +14,7 @@ interface Props {
   onDelete?: () => void; // omitted for derived (profession) vars
   readOnlyValue?: boolean; // profession vars: formula is computed, not authored
   noFormula?: boolean; // multiple-choice vars: name + option translations only
+  lockName?: boolean; // characteristic vars: name tied to catalog key, formula editable
 }
 
 const KIND_BADGE: Record<Variable["kind"], string> = {
@@ -24,7 +25,7 @@ const KIND_BADGE: Record<Variable["kind"], string> = {
   profession: "cm.calculation.kindProfession",
 };
 
-export function VariableCard({ variable, onChange, onDelete, readOnlyValue, noFormula }: Props) {
+export function VariableCard({ variable, onChange, onDelete, readOnlyValue, noFormula, lockName }: Props) {
   const { t, locale } = useLocale();
   const translations = variable.valueTranslations ?? [];
   // Characteristic vars are pure numeric dimensions — no value→label table.
@@ -55,7 +56,7 @@ export function VariableCard({ variable, onChange, onDelete, readOnlyValue, noFo
           value={variable.name}
           onChange={(e) => onChange({ name: e.target.value })}
           placeholder="variable_name"
-          disabled={readOnlyValue}
+          disabled={readOnlyValue || lockName}
           className="flex-1 font-mono"
         />
         <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[0.6rem] font-medium text-muted-foreground">

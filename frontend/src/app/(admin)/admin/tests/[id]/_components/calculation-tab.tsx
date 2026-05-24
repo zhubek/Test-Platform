@@ -70,9 +70,10 @@ export function CalculationTab({
   const deleteMapping = (id: string) => onMappingsChange(mappings.filter((m) => m.id !== id));
 
   // ── Variable handlers ───────────────────────────────────────────
-  // Three displayed groups: formula vars (characteristic + custom),
-  // multiple-choice vars (bound to checkbox questions), and derived catalog vars.
-  const formulaVars = variables.filter((v) => v.kind === "characteristic" || v.kind === "custom");
+  // Five displayed groups, each its own kind: custom, characteristic (auto
+  // from mappings), single-choice, multiple-choice, and derived catalog vars.
+  const customVars = variables.filter((v) => v.kind === "custom");
+  const charVars = variables.filter((v) => v.kind === "characteristic");
   const scVars = variables.filter((v) => v.kind === "singlechoice");
   const mcVars = variables.filter((v) => v.kind === "multiplechoice");
   const updateVar = (id: string, partial: Partial<Variable>) =>
@@ -337,9 +338,9 @@ export function CalculationTab({
           </Button>
         </div>
 
-        {formulaVars.length > 0 ? (
+        {customVars.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2">
-            {formulaVars.map((v) => (
+            {customVars.map((v) => (
               <VariableCard
                 key={v.id}
                 variable={v}
@@ -356,6 +357,30 @@ export function CalculationTab({
 
         <FormulaReference open={refOpen} onToggle={() => setRefOpen(!refOpen)} />
       </section>
+
+      {/* ── Characteristics (auto from mappings) ─────────────────── */}
+      {charVars.length > 0 && (
+        <section className="space-y-3">
+          <div>
+            <h3 className="text-[0.88rem] font-semibold text-foreground">
+              {t("cm.calculation.charHeading")}
+            </h3>
+            <p className="mt-0.5 text-[0.75rem] text-muted-foreground">
+              {t("cm.calculation.charSub")}
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {charVars.map((v) => (
+              <VariableCard
+                key={v.id}
+                variable={v}
+                onChange={(partial) => updateVar(v.id, partial)}
+                lockName={!!v.source}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Single Choice Variables ──────────────────────────────── */}
       <section className="space-y-3">
