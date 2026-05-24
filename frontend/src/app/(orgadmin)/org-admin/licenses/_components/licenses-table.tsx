@@ -62,8 +62,8 @@ export function LicensesTable() {
   const [search, setSearch] = useState("");
   const [stateFilter, setStateFilter] = useState("all");
 
-  // inline name editing
-  const [editCell, setEditCell] = useState<{ id: string; field: "name" } | null>(null);
+  // inline name / login editing
+  const [editCell, setEditCell] = useState<{ id: string; field: "name" | "login" } | null>(null);
 
   // results drawer
   const [drawerData, setDrawerData] = useState<DrawerData | null>(null);
@@ -85,7 +85,10 @@ export function LicensesTable() {
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(
-        (l) => l.name.toLowerCase().includes(q) || l.code.toLowerCase().includes(q),
+        (l) =>
+          l.name.toLowerCase().includes(q) ||
+          l.code.toLowerCase().includes(q) ||
+          l.login.toLowerCase().includes(q),
       );
     }
     if (stateFilter !== "all") list = list.filter((l) => l.state === stateFilter);
@@ -107,7 +110,7 @@ export function LicensesTable() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or code…"
+            placeholder="Search by name, login, or code…"
             className="pl-9"
           />
         </div>
@@ -148,7 +151,7 @@ export function LicensesTable() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b">
-                {["License code", "Name", "State", "Accessible tests", "Actions"].map((h) => (
+                {["License code", "Login", "Name", "State", "Accessible tests", "Actions"].map((h) => (
                   <th
                     key={h}
                     className={cn(
@@ -167,6 +170,35 @@ export function LicensesTable() {
                   {/* code */}
                   <td className="px-3 py-3">
                     <span className="font-mono text-xs text-muted-foreground">{lic.code}</span>
+                  </td>
+
+                  {/* login (inline edit) */}
+                  <td className="px-3 py-3">
+                    {editCell?.id === lic.id && editCell.field === "login" ? (
+                      <Input
+                        autoFocus
+                        defaultValue={lic.login}
+                        className="h-7 w-32"
+                        onBlur={(e) => {
+                          update(lic.id, { login: e.target.value.trim() });
+                          setEditCell(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                          if (e.key === "Escape") setEditCell(null);
+                        }}
+                      />
+                    ) : (
+                      <button
+                        onClick={() => setEditCell({ id: lic.id, field: "login" })}
+                        className={cn(
+                          "rounded px-1 py-0.5 font-mono text-xs hover:bg-muted",
+                          lic.login ? "text-foreground" : "italic text-muted-foreground",
+                        )}
+                      >
+                        {lic.login || "— set login"}
+                      </button>
+                    )}
                   </td>
 
                   {/* name (inline edit) */}
