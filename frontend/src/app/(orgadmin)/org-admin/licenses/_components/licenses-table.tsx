@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { Search, X, Plus, Check, ChevronDown } from "lucide-react";
-import { tagColor } from "@/lib/tag-color";
+import { Search, X, Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   orgLicenses as seed,
@@ -39,10 +38,6 @@ export function LicensesTable() {
   const [search, setSearch] = useState("");
   const [gradeFilter, setGradeFilter] = useState("all");
   const [stateFilter, setStateFilter] = useState("all");
-
-  // inline tag editor
-  const [editingTagId, setEditingTagId] = useState<string | null>(null);
-  const [newTag, setNewTag] = useState("");
 
   // inline name/grade editing
   const [editCell, setEditCell] = useState<{ id: string; field: "name" | "grade" } | null>(null);
@@ -86,24 +81,6 @@ export function LicensesTable() {
     },
     [],
   );
-
-  const addTag = useCallback((id: string, tag: string) => {
-    const t = tag.trim();
-    if (!t) return;
-    setLicenses((prev) =>
-      prev.map((l) =>
-        l.id === id && !l.tags.includes(t) ? { ...l, tags: [...l.tags, t] } : l,
-      ),
-    );
-    setEditingTagId(null);
-    setNewTag("");
-  }, []);
-
-  const removeTag = useCallback((id: string, tag: string) => {
-    setLicenses((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, tags: l.tags.filter((x) => x !== tag) } : l)),
-    );
-  }, []);
 
   const hasFilters = search !== "" || gradeFilter !== "all" || stateFilter !== "all";
 
@@ -171,7 +148,7 @@ export function LicensesTable() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b">
-                {["License code", "Name", "Grade", "State", "Accessible tests", "Tags"].map((h) => (
+                {["License code", "Name", "Grade", "State", "Accessible tests"].map((h) => (
                   <th
                     key={h}
                     className="px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground"
@@ -295,62 +272,6 @@ export function LicensesTable() {
                         })}
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </td>
-
-                  {/* tags (inline add/remove) */}
-                  <td className="px-3 py-3">
-                    <div className="flex flex-wrap items-center gap-1">
-                      {lic.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className={cn(
-                            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.7rem] font-medium",
-                            tagColor(tag),
-                          )}
-                        >
-                          {tag}
-                          <button
-                            onClick={() => removeTag(lic.id, tag)}
-                            className="opacity-60 hover:opacity-100"
-                          >
-                            <X className="h-2.5 w-2.5" />
-                          </button>
-                        </span>
-                      ))}
-                      {editingTagId === lic.id ? (
-                        <input
-                          autoFocus
-                          value={newTag}
-                          onChange={(e) => setNewTag(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") addTag(lic.id, newTag);
-                            if (e.key === "Escape") {
-                              setEditingTagId(null);
-                              setNewTag("");
-                            }
-                          }}
-                          onBlur={() => {
-                            if (newTag.trim()) addTag(lic.id, newTag);
-                            else {
-                              setEditingTagId(null);
-                              setNewTag("");
-                            }
-                          }}
-                          placeholder="tag"
-                          className="w-16 rounded-full border px-2 py-0.5 text-[0.7rem] outline-none focus:border-primary"
-                        />
-                      ) : (
-                        <button
-                          onClick={() => {
-                            setEditingTagId(lic.id);
-                            setNewTag("");
-                          }}
-                          className="text-muted-foreground/50 hover:text-muted-foreground"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
                   </td>
                 </tr>
               ))}
