@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 interface Props {
   value: Localized;
   onChange: (value: Localized) => void;
+  label?: string;
   placeholder?: string;
   className?: string;
   autoFocus?: boolean;
@@ -16,7 +17,7 @@ const LANGS = ["kz", "ru", "en"] as const;
 
 // Localized text field with the language switch ABOVE the field (so it
 // doesn't eat input space) and an auto-growing textarea (expandable).
-export function LocalizedInput({ value, onChange, placeholder, className, autoFocus }: Props) {
+export function LocalizedInput({ value, onChange, label, placeholder, className, autoFocus }: Props) {
   const [activeLang, setActiveLang] = useState<"kz" | "ru" | "en">("kz");
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -30,8 +31,14 @@ export function LocalizedInput({ value, onChange, placeholder, className, autoFo
 
   return (
     <div className={cn("flex flex-col gap-1", className)}>
-      {/* Language switch — above the field, right-aligned */}
-      <div className="flex items-center justify-end gap-0.5">
+      {/* Label (left) + language switch (right) on one line */}
+      <div className="flex items-center gap-2">
+        {label && (
+          <span className="text-[0.75rem] font-semibold uppercase tracking-wider text-muted-foreground">
+            {label}
+          </span>
+        )}
+        <div className="ml-auto flex items-center gap-0.5">
         {LANGS.map((lang) => (
           <button
             key={lang}
@@ -50,6 +57,7 @@ export function LocalizedInput({ value, onChange, placeholder, className, autoFo
             )}
           </button>
         ))}
+        </div>
       </div>
 
       <textarea

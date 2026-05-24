@@ -105,17 +105,13 @@ export function QuestionEditor({
         {tab === "content" ? (
           <>
             {/* Question text */}
-            <div>
-              <label className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                Question text
-              </label>
-              <LocalizedInput
-                value={question.text}
-                onChange={(v) => onQuestionUpdate({ text: v })}
-                placeholder={t("cm.question.textPlaceholder")}
-                className="w-full"
-              />
-            </div>
+            <LocalizedInput
+              label="Question text"
+              value={question.text}
+              onChange={(v) => onQuestionUpdate({ text: v })}
+              placeholder={t("cm.question.textPlaceholder")}
+              className="w-full"
+            />
 
             {/* Name key */}
             <div>

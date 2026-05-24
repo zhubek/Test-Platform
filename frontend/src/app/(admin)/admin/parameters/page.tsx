@@ -121,23 +121,19 @@ export default function ParametersPage() {
             <CardTitle className="text-base">Project</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <label className="mb-1.5 block text-[0.75rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                Project name
-              </label>
-              <LocalizedInput value={name} onChange={setName} className="max-w-md" />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-[0.75rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                Description
-              </label>
-              <LocalizedTextarea
-                value={description}
-                onChange={setDescription}
-                rows={2}
-                className="max-w-md"
-              />
-            </div>
+            <LocalizedInput
+              label="Project name"
+              value={name}
+              onChange={setName}
+              className="max-w-md"
+            />
+            <LocalizedTextarea
+              label="Description"
+              value={description}
+              onChange={setDescription}
+              rows={2}
+              className="max-w-md"
+            />
             <div className="flex flex-wrap gap-5">
               <div>
                 <label className="mb-1.5 block text-[0.75rem] font-semibold uppercase tracking-wider text-muted-foreground">

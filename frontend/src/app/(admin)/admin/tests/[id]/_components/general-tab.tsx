@@ -80,44 +80,32 @@ export function GeneralTab({
   return (
     <div className="bg-card rounded-xl border shadow-sm p-6 space-y-5">
       {/* Name */}
-      <div>
-        <label className="block text-[0.75rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-          {t("cm.general.nameLabel")}
-        </label>
-        <LocalizedInput
-          value={name}
-          onChange={onNameChange}
-          placeholder={t("cm.general.namePlaceholder")}
-          className="w-full"
-        />
-      </div>
+      <LocalizedInput
+        label={t("cm.general.nameLabel")}
+        value={name}
+        onChange={onNameChange}
+        placeholder={t("cm.general.namePlaceholder")}
+        className="w-full"
+      />
 
       {/* Description */}
-      <div>
-        <label className="block text-[0.75rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-          {t("cm.general.descriptionLabel")}
-        </label>
-        <LocalizedTextarea
-          value={description}
-          onChange={onDescriptionChange}
-          placeholder={t("cm.general.descriptionPlaceholder")}
-          rows={3}
-          className="w-full resize-none"
-        />
-      </div>
+      <LocalizedTextarea
+        label={t("cm.general.descriptionLabel")}
+        value={description}
+        onChange={onDescriptionChange}
+        placeholder={t("cm.general.descriptionPlaceholder")}
+        rows={3}
+        className="w-full"
+      />
 
       {/* Category */}
-      <div>
-        <label className="block text-[0.75rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-          {t("cm.general.categoryLabel")}
-        </label>
-        <LocalizedInput
-          value={category}
-          onChange={onCategoryChange}
-          placeholder={t("cm.general.categoryPlaceholder")}
-          className="w-full max-w-xs"
-        />
-      </div>
+      <LocalizedInput
+        label={t("cm.general.categoryLabel")}
+        value={category}
+        onChange={onCategoryChange}
+        placeholder={t("cm.general.categoryPlaceholder")}
+        className="w-full max-w-xs"
+      />
 
       {/* Color + Icon row */}
       <div className="flex flex-col sm:flex-row gap-5">
