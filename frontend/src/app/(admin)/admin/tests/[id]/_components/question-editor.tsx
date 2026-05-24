@@ -137,38 +137,55 @@ export function QuestionEditor({
                 <label className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
                   Choices
                 </label>
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {question.choices.map((choice, ci) => (
-                    <div key={choice.id} className="group flex items-center gap-2">
-                      <span className="h-3.5 w-3.5 shrink-0 rounded-full border-2 border-border" />
-                      <LocalizedInput
-                        value={choice.text}
-                        onChange={(v) => onChoiceUpdate(ci, { text: v })}
-                        placeholder={t("cm.question.answerPlaceholder")}
-                        className="flex-1"
-                      />
-                      <Input
-                        value={choice.value ?? ""}
-                        onChange={(e) => onChoiceUpdate(ci, { value: e.target.value })}
-                        placeholder="value"
-                        className="h-7 w-24 font-mono text-[0.72rem]"
-                        title="Value key"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => onChoiceDelete(ci)}
-                        className="text-muted-foreground opacity-0 hover:text-red-400 group-hover:opacity-100"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
+                    <div
+                      key={choice.id}
+                      className="group rounded-lg border bg-background p-2.5"
+                    >
+                      {/* Row 1: choice number + answer text + delete */}
+                      <div className="flex items-start gap-2">
+                        <span className="mt-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[0.65rem] font-semibold text-muted-foreground">
+                          {ci + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <LocalizedInput
+                            value={choice.text}
+                            onChange={(v) => onChoiceUpdate(ci, { text: v })}
+                            placeholder={t("cm.question.answerPlaceholder")}
+                            className="w-full"
+                          />
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => onChoiceDelete(ci)}
+                          className="mt-1 text-muted-foreground opacity-0 hover:text-red-500 group-hover:opacity-100"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+
+                      {/* Row 2: value key (for formulas), below the text */}
+                      <div className="mt-2 flex items-center gap-2 pl-7">
+                        <span className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                          value
+                        </span>
+                        <Input
+                          value={choice.value ?? ""}
+                          onChange={(e) => onChoiceUpdate(ci, { value: e.target.value })}
+                          placeholder={`opt${ci + 1}`}
+                          className="h-7 w-32 font-mono text-[0.72rem]"
+                          title="Value key referenced in formulas/logic"
+                        />
+                      </div>
                     </div>
                   ))}
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={onChoiceAdd}
-                    className="ml-5.5 text-muted-foreground hover:text-primary"
+                    className="text-muted-foreground hover:text-primary"
                   >
                     <Plus className="h-3.5 w-3.5" /> {t("cm.question.addChoice")}
                   </Button>
