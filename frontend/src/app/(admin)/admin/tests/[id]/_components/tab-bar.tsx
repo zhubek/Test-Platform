@@ -2,17 +2,17 @@
 
 import { useLocale } from "@/lib/locale-context";
 
-export type TabId = "general" | "questions" | "calculation" | "results" | "dashboard";
+export type TabId = "general" | "variables" | "questions" | "calculation" | "results";
 
 const tabKeys: Record<TabId, string> = {
   general: "cm.testEditor.tabs.general",
+  variables: "cm.testEditor.tabs.variables",
   questions: "cm.testEditor.tabs.questions",
   calculation: "cm.testEditor.tabs.calculation",
-  results: "cm.testEditor.tabs.results",
-  dashboard: "cm.testEditor.tabs.dashboard",
+  results: "cm.testEditor.tabs.resultView",
 };
 
-const tabIds: TabId[] = ["general", "questions", "calculation", "results", "dashboard"];
+const tabIds: TabId[] = ["general", "variables", "questions", "calculation", "results"];
 
 interface Props {
   active: TabId;

@@ -5,7 +5,6 @@ import { Plus } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "./section-card";
-import { VariableCard } from "./variable-card";
 import { SurveyLogicPanel } from "./survey-logic-panel";
 import type { Section, Question, AnswerChoice, Variable, SurveyLogic } from "../../../_components/mock-data";
 import type { Localized } from "@/lib/localized";
@@ -26,7 +25,6 @@ interface Props {
   sections: Section[];
   variables: Variable[];
   onSectionsChange: (sections: Section[]) => void;
-  onVariablesChange: (variables: Variable[]) => void;
   surveyLogic?: SurveyLogic;
   onSurveyLogicChange?: (next: SurveyLogic) => void;
 }
@@ -36,7 +34,6 @@ export function QuestionsTab({
   sections,
   variables,
   onSectionsChange,
-  onVariablesChange,
   surveyLogic,
   onSurveyLogicChange,
 }: Props) {
@@ -284,27 +281,6 @@ export function QuestionsTab({
     [sections, onSectionsChange]
   );
 
-  // ── Variable CRUD (local only — saved via main Save button) ──
-
-  const handleVarUpdate = (idx: number, partial: Partial<Variable>) => {
-    onVariablesChange(
-      variables.map((v, i) => (i === idx ? { ...v, ...partial } : v))
-    );
-  };
-
-  const handleVarDelete = (idx: number) => {
-    onVariablesChange(variables.filter((_, i) => i !== idx));
-  };
-
-  const handleVarAdd = () => {
-    const newVar: Variable = {
-      id: `var_${Date.now()}`,
-      name: "",
-      description: { en: "", ru: "", kz: "" },
-    };
-    onVariablesChange([...variables, newVar]);
-  };
-
   const totalQuestions = sections.reduce(
     (sum, s) => sum + s.questions.length,
     0
@@ -319,46 +295,6 @@ export function QuestionsTab({
           onChange={onSurveyLogicChange}
         />
       )}
-
-      {/* Variables panel */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-[0.88rem] font-semibold text-foreground">
-              {t("cm.calculation.variables")}
-            </h3>
-            <p className="text-[0.75rem] text-muted-foreground mt-0.5">
-              {t("cm.calculation.variablesSub")}
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleVarAdd}
-            className="text-primary hover:text-teal-700"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            {t("cm.calculation.addVariable")}
-          </Button>
-        </div>
-
-        {variables.length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {variables.map((v, i) => (
-              <VariableCard
-                key={v.id}
-                variable={v}
-                onChange={(partial) => handleVarUpdate(i, partial)}
-                onDelete={() => handleVarDelete(i)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-6 text-[0.78rem] text-muted-foreground border border-dashed rounded-xl">
-            {t("cm.calculation.noVariables")}
-          </div>
-        )}
-      </div>
 
       {/* Sections & Questions */}
       <div className="space-y-4">

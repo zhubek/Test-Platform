@@ -344,9 +344,11 @@ const translations: Record<Locale, Record<string, string>> = {
     "cm.testEditor.untitled": "Untitled Test",
     "cm.testEditor.save": "Save",
     "cm.testEditor.tabs.general": "General",
+    "cm.testEditor.tabs.variables": "Variables",
     "cm.testEditor.tabs.questions": "Questions",
     "cm.testEditor.tabs.calculation": "Calculation",
     "cm.testEditor.tabs.results": "Results",
+    "cm.testEditor.tabs.resultView": "Result View",
     "cm.testEditor.tabs.dashboard": "Dashboard",
 
     // General tab
@@ -410,6 +412,8 @@ const translations: Record<Locale, Record<string, string>> = {
     // Results tab
     "cm.results.heading": "Student Results",
     "cm.results.sub": "Design how test results are displayed to students",
+    "cm.resultView.heading": "Result View",
+    "cm.resultView.sub": "Design how test results are displayed to students",
 
     // Dashboard tabs
     "cm.dashboard.heading": "Dashboard",
@@ -1041,9 +1045,11 @@ const translations: Record<Locale, Record<string, string>> = {
     "cm.testEditor.untitled": "Без названия",
     "cm.testEditor.save": "Сохранить",
     "cm.testEditor.tabs.general": "Основное",
+    "cm.testEditor.tabs.variables": "Переменные",
     "cm.testEditor.tabs.questions": "Вопросы",
     "cm.testEditor.tabs.calculation": "Расчёт",
     "cm.testEditor.tabs.results": "Результаты",
+    "cm.testEditor.tabs.resultView": "Вид результата",
     "cm.testEditor.tabs.dashboard": "Дашборд",
 
     // General tab
@@ -1107,6 +1113,8 @@ const translations: Record<Locale, Record<string, string>> = {
     // Results tab
     "cm.results.heading": "Результаты студента",
     "cm.results.sub": "Настройте отображение результатов теста для студентов",
+    "cm.resultView.heading": "Вид результата",
+    "cm.resultView.sub": "Настройте отображение результатов теста для студентов",
 
     // Dashboard tabs
     "cm.dashboard.heading": "Дашборд",
