@@ -39,13 +39,19 @@ function apiTestToContentTest(t: TestRow): ContentTest {
       id: String(s.id),
       title: s.title,
       description: { en: "", ru: "", kz: "" },
+      visibleIf: s.visibleIf,
       questions: (s.questions ?? []).map((q) => ({
         id: String(q.id),
         text: q.text,
+        name: q.name,
         type: (q.type as any) ?? "single",
+        rateMax: q.rateMax,
+        logic: q.logic,
         choices: (q.answers ?? []).map((a) => ({
           id: String(a.id),
           text: a.text,
+          value: a.value,
+          visibleIf: a.visibleIf,
           variables: Array.isArray(a.vars)
             ? a.vars
             : a.vars?.variableId

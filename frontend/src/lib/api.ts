@@ -19,6 +19,8 @@ export interface AnswerRow {
   questionId: number;
   text: Localized;
   vars: any;
+  value?: string;
+  visibleIf?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -26,9 +28,12 @@ export interface AnswerRow {
 export interface QuestionRow {
   id: number;
   text: Localized;
+  name?: string;
   sectionId: number;
   order: number;
   type: string;
+  rateMax?: number;
+  logic?: any;
   answers: AnswerRow[];
   createdAt: string;
   updatedAt: string;
@@ -39,6 +44,7 @@ export interface SectionRow {
   title: Localized;
   testId: number;
   order: number;
+  visibleIf?: string;
   questions: QuestionRow[];
   createdAt: string;
   updatedAt: string;
@@ -127,14 +133,18 @@ function seedQuestion(
   text: Localized,
   type: string,
   answers: { text: Localized; vars?: { variableId: string; value: number }[] }[],
+  opts: { name?: string; visibleIf?: string; rateMax?: number } = {},
 ): QuestionRow {
   const qid = ++qSeq + 100;
   return {
     id: qid,
     text,
+    name: opts.name,
     sectionId,
     order: 0,
     type,
+    rateMax: opts.rateMax,
+    logic: opts.visibleIf ? { visibleIf: opts.visibleIf } : undefined,
     createdAt: now(),
     updatedAt: now(),
     answers: answers.map((a) => ({
@@ -188,8 +198,10 @@ const tests: TestRow[] = [
           likertAnswers("realistic")),
         seedQuestion(11, L("I enjoy solving math or science problems", "Мне нравится решать задачи по науке"), "single",
           likertAnswers("investigative")),
+        // Demo of conditional visibility: this question only shows when the
+        // respondent answered "Agree" or "Strongly agree" to question 2 (q2).
         seedQuestion(11, L("I like to draw, paint, or write", "Мне нравится рисовать или писать"), "single",
-          likertAnswers("artistic")),
+          likertAnswers("artistic"), { visibleIf: "{q2} = 'opt4' or {q2} = 'opt5'" }),
       ]),
       section(12, 1, L("Preferences", "Предпочтения", "Қалаулар"), [
         seedQuestion(12, L("I enjoy helping and teaching others", "Мне нравится помогать другим"), "single",

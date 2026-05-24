@@ -1,44 +1,105 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Model } from "survey-core";
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { sectionsToSurveyJson } from "@/lib/surveyjs";
+import { effectiveQuestionName, effectiveChoiceValue } from "@/lib/surveyjs";
 import { QuestionPreview } from "../_components/preview/question-preview";
 import type { Section, Question } from "../../../_components/mock-data";
 
-function isAnswered(q: Question, v: unknown): boolean {
+function isAnswered(v: unknown): boolean {
   if (v == null) return false;
   if (Array.isArray(v)) return v.length > 0;
   return true;
 }
 
-// Full-width respondent preview using the custom (profwise2-style) layout:
-// vertical stepper sidebar + question cards + progress bar.
+// Full-width respondent preview. Renders with custom components, but uses a
+// headless survey-core Model to evaluate logic (visibleIf, calculatedValues)
+// exactly as the real engine would.
 export function FullSurveyPreview({ sections }: { sections: Section[] }) {
   const { locale } = useLocale();
   const [idx, setIdx] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string | string[] | number>>({});
+  // UI answers keyed by question id, values are choice ids (what the custom
+  // QuestionPreview components emit/compare).
+  const [answers, setAnswers] = useState<Record<string, unknown>>({});
 
-  if (sections.length === 0) {
+  // Build the headless engine once from the schema.
+  const survey = useMemo(() => {
+    const schema = sectionsToSurveyJson(sections);
+    const m = new Model(schema);
+    m.showInvisibleElements = false;
+    return m;
+  }, [sections]);
+
+  // Map each question's id -> its effective SurveyJS name (global index based).
+  const nameById = useMemo(() => {
+    const map = new Map<string, string>();
+    let gi = 0;
+    sections.forEach((s) => s.questions.forEach((q) => map.set(q.id, effectiveQuestionName(q, gi++))));
+    return map;
+  }, [sections]);
+
+  // Translate UI answers (by question id, choice id) → engine data
+  // (by question name, effective choice value), so SurveyJS evaluates logic
+  // against the same values its expressions reference.
+  const engineData = useMemo(() => {
+    const data: Record<string, unknown> = {};
+    sections.forEach((s) =>
+      s.questions.forEach((q) => {
+        const name = nameById.get(q.id);
+        const a = answers[q.id];
+        if (!name || a == null) return;
+        const choiceValue = (id: string) => {
+          const ci = q.choices.findIndex((c) => c.id === id);
+          return ci >= 0 ? effectiveChoiceValue(q.choices[ci], ci) : id;
+        };
+        if (Array.isArray(a)) data[name] = a.map((id) => choiceValue(String(id)));
+        else if (q.choices.length) data[name] = choiceValue(String(a));
+        else data[name] = a; // likert/rating/boolean — value is already final
+      }),
+    );
+    return data;
+  }, [answers, sections, nameById]);
+
+  // Push translated answers into the engine so it recomputes visibility.
+  survey.data = engineData;
+  const visibleNames = new Set(survey.getAllQuestions().filter((q) => q.isVisible).map((q) => q.name));
+  const visiblePageIds = new Set(survey.pages.filter((p) => p.isVisible).map((p) => p.name));
+
+  // Only sections whose page is visible.
+  const visibleSections = sections.filter((s) => visiblePageIds.has(s.id) || visiblePageIds.size === 0);
+
+  if (visibleSections.length === 0) {
     return (
       <div className="rounded-2xl border bg-card py-20 text-center text-sm text-muted-foreground">
-        This test has no questions yet.
+        No visible sections for the current answers.
       </div>
     );
   }
 
-  const active = Math.min(idx, sections.length - 1);
-  const section = sections[active];
+  const active = Math.min(idx, visibleSections.length - 1);
+  const section = visibleSections[active];
+  const visibleQs = (s: Section) =>
+    s.questions.filter((q) => {
+      const n = nameById.get(q.id);
+      return n ? visibleNames.has(n) : true;
+    });
 
-  const answeredCounts = sections.map(
-    (s) => s.questions.filter((q) => isAnswered(q, answers[q.id])).length,
+  const answeredCounts = visibleSections.map(
+    (s) => visibleQs(s).filter((q) => isAnswered(answers[q.id])).length,
   );
-  const totalQuestions = sections.reduce((n, s) => n + s.questions.length, 0);
+  const totalQuestions = visibleSections.reduce((n, s) => n + visibleQs(s).length, 0);
   const totalAnswered = answeredCounts.reduce((a, b) => a + b, 0);
   const pct = totalQuestions ? Math.round((totalAnswered / totalQuestions) * 100) : 0;
+
+  const setAnswer = (q: Question, v: unknown) => {
+    setAnswers((prev) => ({ ...prev, [q.id]: v }));
+  };
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -63,8 +124,8 @@ export function FullSurveyPreview({ sections }: { sections: Section[] }) {
             <p className="mb-3 text-[0.68rem] font-bold uppercase tracking-wider text-muted-foreground">
               Sections
             </p>
-            {sections.map((s, i) => {
-              const total = s.questions.length;
+            {visibleSections.map((s, i) => {
+              const total = visibleQs(s).length;
               const answered = answeredCounts[i];
               const complete = total > 0 && answered === total;
               const isActive = i === active;
@@ -124,17 +185,17 @@ export function FullSurveyPreview({ sections }: { sections: Section[] }) {
           </div>
 
           <div className="space-y-4">
-            {section.questions.length === 0 ? (
+            {visibleQs(section).length === 0 ? (
               <div className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground">
-                No questions in this section.
+                No visible questions in this section.
               </div>
             ) : (
-              section.questions.map((q) => (
+              visibleQs(section).map((q) => (
                 <div key={q.id} className="rounded-2xl border bg-card p-6 shadow-sm">
                   <QuestionPreview
                     question={q}
-                    value={answers[q.id] ?? null}
-                    onChange={(v) => setAnswers((prev) => ({ ...prev, [q.id]: v }))}
+                    value={(answers[q.id] as never) ?? null}
+                    onChange={(v) => setAnswer(q, v)}
                   />
                 </div>
               ))
@@ -146,11 +207,11 @@ export function FullSurveyPreview({ sections }: { sections: Section[] }) {
               <ChevronLeft className="mr-1 h-4 w-4" /> Previous
             </Button>
             <span className="text-sm text-muted-foreground">
-              {active + 1} / {sections.length}
+              {active + 1} / {visibleSections.length}
             </span>
             <Button
               variant="outline"
-              disabled={active === sections.length - 1}
+              disabled={active === visibleSections.length - 1}
               onClick={() => setIdx(active + 1)}
             >
               Next <ChevronRight className="ml-1 h-4 w-4" />
