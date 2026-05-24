@@ -6,7 +6,7 @@ import { LocalizedInput } from "@/components/localized-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { Variable, VariableScope } from "../../../_components/mock-data";
+import type { Variable } from "../../../_components/mock-data";
 
 interface Props {
   variable: Variable;
@@ -15,12 +15,6 @@ interface Props {
   readOnlyValue?: boolean; // profession vars: formula is computed, not authored
   noFormula?: boolean; // multiple-choice vars: name + option translations only
 }
-
-const SCOPES: { id: VariableScope; key: string }[] = [
-  { id: "result", key: "cm.calculation.scopeResult" },
-  { id: "dashboard", key: "cm.calculation.scopeDashboard" },
-  { id: "both", key: "cm.calculation.scopeBoth" },
-];
 
 const KIND_BADGE: Record<Variable["kind"], string> = {
   characteristic: "cm.calculation.kindCharacteristic",
@@ -92,30 +86,14 @@ export function VariableCard({ variable, onChange, onDelete, readOnlyValue, noFo
         </div>
       )}
 
-      {/* Scope + catalog badge */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="inline-flex rounded-lg border bg-muted/50 p-0.5">
-          {SCOPES.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => onChange({ scope: s.id })}
-              className={cn(
-                "rounded-md px-2.5 py-1 text-[0.7rem] font-medium transition-colors",
-                variable.scope === s.id
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t(s.key)}
-            </button>
-          ))}
-        </div>
-        {variable.source && (
+      {/* Catalog badge */}
+      {variable.source && (
+        <div className="flex justify-end">
           <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[0.6rem] font-medium text-primary">
             {t("cm.calculation.fromCatalog")}
           </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Value → label translation table (for coded outputs) */}
       {translations.length > 0 && (
