@@ -2,9 +2,9 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { useLocale } from "@/lib/locale-context";
-import type { ProfessionsPageData, ProfessionGroup, ProfessionData } from "./mock-data";
+import type { ProfessionsPageData, ProfessionGroup, PrepLevel } from "./mock-data";
+import { PREP_LEVELS } from "./mock-data";
 import { FilterSidebar } from "./filter-sidebar";
-import { SortBar, type SortKey } from "./sort-bar";
 import { ProfessionCard } from "./profession-card";
 import { Button } from "@/components/ui/button";
 
@@ -16,11 +16,6 @@ const ALL_GROUPS: ProfessionGroup[] = [
   "Creative Arts",
   "Science",
 ];
-
-function avgFit(p: ProfessionData): number {
-  const vals = Object.values(p.fit).filter((v): v is number => v !== undefined);
-  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : -1;
-}
 
 interface Props {
   data: ProfessionsPageData;
@@ -35,7 +30,9 @@ export function ProfessionsShell({ data, mode }: Props) {
   const [activeGroups, setActiveGroups] = useState<Set<ProfessionGroup>>(
     () => new Set(ALL_GROUPS),
   );
-  const [sortBy, setSortBy] = useState<SortKey>("overall");
+  const [activeLevels, setActiveLevels] = useState<Set<PrepLevel>>(
+    () => new Set(PREP_LEVELS),
+  );
   const [showAll, setShowAll] = useState(false);
 
   const toggleGroup = useCallback((g: ProfessionGroup) => {
@@ -43,6 +40,15 @@ export function ProfessionsShell({ data, mode }: Props) {
       const next = new Set(prev);
       if (next.has(g)) next.delete(g);
       else next.add(g);
+      return next;
+    });
+  }, []);
+
+  const toggleLevel = useCallback((l: PrepLevel) => {
+    setActiveLevels((prev) => {
+      const next = new Set(prev);
+      if (next.has(l)) next.delete(l);
+      else next.add(l);
       return next;
     });
   }, []);
@@ -58,28 +64,13 @@ export function ProfessionsShell({ data, mode }: Props) {
       if (likedOnly && !p.liked) return false;
       if (popularOnly && !p.popular) return false;
       if (!activeGroups.has(p.group)) return false;
+      if (!activeLevels.has(p.prepLevel)) return false;
       return true;
     });
-  }, [professions, likedOnly, popularOnly, activeGroups]);
+  }, [professions, likedOnly, popularOnly, activeGroups, activeLevels]);
 
-  const sorted = useMemo(() => {
-    const list = [...filtered];
-    list.sort((a, b) => {
-      let va: number, vb: number;
-      if (sortBy === "overall") {
-        va = avgFit(a);
-        vb = avgFit(b);
-      } else {
-        va = a.fit[sortBy] ?? -1;
-        vb = b.fit[sortBy] ?? -1;
-      }
-      return vb - va;
-    });
-    return list;
-  }, [filtered, sortBy]);
-
-  const popular = sorted.filter((p) => p.popular);
-  const others = sorted.filter((p) => !p.popular);
+  const popular = filtered.filter((p) => p.popular);
+  const others = filtered.filter((p) => !p.popular);
 
   return (
     <div className="flex gap-0">
@@ -90,15 +81,11 @@ export function ProfessionsShell({ data, mode }: Props) {
         onPopularOnlyChange={setPopularOnly}
         activeGroups={activeGroups}
         onToggleGroup={toggleGroup}
+        activeLevels={activeLevels}
+        onToggleLevel={toggleLevel}
       />
 
       <div className="flex-1 min-w-0 pl-0 md:pl-6">
-        <SortBar
-          value={sortBy}
-          onChange={setSortBy}
-          hidden={!data.hasFitData}
-        />
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Popular section */}
           {popular.length > 0 && (
@@ -145,7 +132,7 @@ export function ProfessionsShell({ data, mode }: Props) {
             </>
           )}
 
-          {sorted.length === 0 && (
+          {filtered.length === 0 && (
             <div className="col-span-full animate-fade-in flex flex-col items-center justify-center py-16 text-center">
               <p className="text-[0.88rem] text-muted-foreground">
                 {t("professions.empty")}

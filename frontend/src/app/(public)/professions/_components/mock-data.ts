@@ -13,6 +13,20 @@ export type ProfessionGroup =
 
 export type ComplexityLevel = "low" | "medium" | "high";
 
+// Preparation level: how much preparation is needed to enter the profession.
+// 1 = minimal, 5 = extensive.
+export type PrepLevel = 1 | 2 | 3 | 4 | 5;
+
+export const PREP_LEVELS: PrepLevel[] = [1, 2, 3, 4, 5];
+
+export const prepLevelLabels: Record<PrepLevel, Localized> = {
+  1: l("Minimal preparation", "Минимальная подготовка", "Ең аз дайындық"),
+  2: l("Light preparation", "Лёгкая подготовка", "Жеңіл дайындық"),
+  3: l("Moderate preparation", "Средняя подготовка", "Орташа дайындық"),
+  4: l("Advanced preparation", "Продвинутая подготовка", "Жоғары дайындық"),
+  5: l("Extensive preparation", "Обширная подготовка", "Кең дайындық"),
+};
+
 export interface ProfessionData {
   id: number;
   title: Localized;
@@ -23,6 +37,7 @@ export interface ProfessionData {
   liked: boolean;
   icon: string;
   complexity: ComplexityLevel;
+  prepLevel: PrepLevel;
   fit: Partial<Record<"interest" | "personality" | "skills" | "values", number>>;
 }
 
@@ -182,18 +197,18 @@ interface MockScenario {
 }
 
 export const allProfessions: ProfessionData[] = [
-  { id: 1, title: l("Data Scientist", "Дата-сайентист"), code: "DS-401", desc: l("Analyze complex data to drive business decisions", "Анализ сложных данных для принятия бизнес-решений"), group: "Technology", popular: true, liked: true, icon: "\u{1F4CA}", complexity: "high", fit: { interest: 85, personality: 90, skills: 78, values: 82 } },
-  { id: 2, title: l("Registered Nurse", "Медсестра/медбрат"), code: "HC-201", desc: l("Provide patient care and coordinate treatments", "Уход за пациентами и координация лечения"), group: "Healthcare", popular: true, liked: false, icon: "\u{1FA7A}", complexity: "medium", fit: { interest: 70, personality: 88, skills: 75, values: 90 } },
-  { id: 3, title: l("High School Teacher", "Учитель старших классов"), code: "ED-105", desc: l("Educate and inspire students in subject areas", "Обучение и вдохновение учеников по предметам"), group: "Education", popular: false, liked: false, icon: "\u{1F4DA}", complexity: "medium", fit: { interest: 65, personality: 80, skills: 72, values: 88 } },
-  { id: 4, title: l("Marketing Manager", "Менеджер по маркетингу"), code: "BU-302", desc: l("Plan and execute marketing strategies for growth", "Планирование и реализация маркетинговых стратегий роста"), group: "Business", popular: true, liked: true, icon: "\u{1F4C8}", complexity: "medium", fit: { interest: 60, personality: 75, skills: 80, values: 65 } },
-  { id: 5, title: l("Graphic Designer", "Графический дизайнер"), code: "CA-110", desc: l("Create visual content for brands and media", "Создание визуального контента для брендов и медиа"), group: "Creative Arts", popular: false, liked: false, icon: "\u{1F3A8}", complexity: "low", fit: { interest: 92, personality: 70, skills: 85, values: 78 } },
-  { id: 6, title: l("Biomedical Researcher", "Биомедицинский исследователь"), code: "SC-501", desc: l("Conduct research to advance medical knowledge", "Проведение исследований для развития медицинских знаний"), group: "Science", popular: false, liked: true, icon: "\u{1F52C}", complexity: "high", fit: { interest: 88, personality: 82, skills: 70, values: 92 } },
-  { id: 7, title: l("Software Engineer", "Инженер-программист"), code: "DS-402", desc: l("Design and build software applications and systems", "Проектирование и создание программных приложений и систем"), group: "Technology", popular: true, liked: false, icon: "\u{1F4BB}", complexity: "high", fit: { interest: 80, personality: 72, skills: 90, values: 70 } },
-  { id: 8, title: l("Clinical Psychologist", "Клинический психолог"), code: "HC-305", desc: l("Assess and treat mental health conditions", "Диагностика и лечение психических расстройств"), group: "Healthcare", popular: false, liked: false, icon: "\u{1F9E0}", complexity: "high", fit: { interest: 78, personality: 92, skills: 68, values: 85 } },
-  { id: 9, title: l("Financial Analyst", "Финансовый аналитик"), code: "BU-210", desc: l("Evaluate investments and guide financial decisions", "Оценка инвестиций и консультирование по финансовым решениям"), group: "Business", popular: true, liked: false, icon: "\u{1F4B9}", complexity: "medium", fit: { interest: 55, personality: 68, skills: 82, values: 60 } },
-  { id: 10, title: l("UX Designer", "UX-дизайнер"), code: "CA-112", desc: l("Design intuitive user experiences for digital products", "Проектирование интуитивного пользовательского опыта для цифровых продуктов"), group: "Creative Arts", popular: true, liked: false, icon: "\u{270F}\uFE0F", complexity: "medium", fit: { interest: 90, personality: 75, skills: 88, values: 80 } },
-  { id: 11, title: l("Environmental Scientist", "Эколог"), code: "SC-310", desc: l("Study and protect the natural environment", "Изучение и защита окружающей среды"), group: "Science", popular: false, liked: false, icon: "\u{1F33F}", complexity: "medium", fit: { interest: 82, personality: 78, skills: 65, values: 95 } },
-  { id: 12, title: l("Curriculum Developer", "Разработчик учебных программ"), code: "ED-208", desc: l("Design educational programs and learning materials", "Разработка образовательных программ и учебных материалов"), group: "Education", popular: false, liked: false, icon: "\u{1F4DD}", complexity: "low", fit: { interest: 72, personality: 76, skills: 74, values: 80 } },
+  { id: 1, title: l("Data Scientist", "Дата-сайентист"), code: "DS-401", desc: l("Analyze complex data to drive business decisions", "Анализ сложных данных для принятия бизнес-решений"), group: "Technology", popular: true, liked: true, icon: "\u{1F4CA}", complexity: "high", prepLevel: 5, fit: { interest: 85, personality: 90, skills: 78, values: 82 } },
+  { id: 2, title: l("Registered Nurse", "Медсестра/медбрат"), code: "HC-201", desc: l("Provide patient care and coordinate treatments", "Уход за пациентами и координация лечения"), group: "Healthcare", popular: true, liked: false, icon: "\u{1FA7A}", complexity: "medium", prepLevel: 4, fit: { interest: 70, personality: 88, skills: 75, values: 90 } },
+  { id: 3, title: l("High School Teacher", "Учитель старших классов"), code: "ED-105", desc: l("Educate and inspire students in subject areas", "Обучение и вдохновение учеников по предметам"), group: "Education", popular: false, liked: false, icon: "\u{1F4DA}", complexity: "medium", prepLevel: 3, fit: { interest: 65, personality: 80, skills: 72, values: 88 } },
+  { id: 4, title: l("Marketing Manager", "Менеджер по маркетингу"), code: "BU-302", desc: l("Plan and execute marketing strategies for growth", "Планирование и реализация маркетинговых стратегий роста"), group: "Business", popular: true, liked: true, icon: "\u{1F4C8}", complexity: "medium", prepLevel: 3, fit: { interest: 60, personality: 75, skills: 80, values: 65 } },
+  { id: 5, title: l("Graphic Designer", "Графический дизайнер"), code: "CA-110", desc: l("Create visual content for brands and media", "Создание визуального контента для брендов и медиа"), group: "Creative Arts", popular: false, liked: false, icon: "\u{1F3A8}", complexity: "low", prepLevel: 2, fit: { interest: 92, personality: 70, skills: 85, values: 78 } },
+  { id: 6, title: l("Biomedical Researcher", "Биомедицинский исследователь"), code: "SC-501", desc: l("Conduct research to advance medical knowledge", "Проведение исследований для развития медицинских знаний"), group: "Science", popular: false, liked: true, icon: "\u{1F52C}", complexity: "high", prepLevel: 5, fit: { interest: 88, personality: 82, skills: 70, values: 92 } },
+  { id: 7, title: l("Software Engineer", "Инженер-программист"), code: "DS-402", desc: l("Design and build software applications and systems", "Проектирование и создание программных приложений и систем"), group: "Technology", popular: true, liked: false, icon: "\u{1F4BB}", complexity: "high", prepLevel: 4, fit: { interest: 80, personality: 72, skills: 90, values: 70 } },
+  { id: 8, title: l("Clinical Psychologist", "Клинический психолог"), code: "HC-305", desc: l("Assess and treat mental health conditions", "Диагностика и лечение психических расстройств"), group: "Healthcare", popular: false, liked: false, icon: "\u{1F9E0}", complexity: "high", prepLevel: 5, fit: { interest: 78, personality: 92, skills: 68, values: 85 } },
+  { id: 9, title: l("Financial Analyst", "Финансовый аналитик"), code: "BU-210", desc: l("Evaluate investments and guide financial decisions", "Оценка инвестиций и консультирование по финансовым решениям"), group: "Business", popular: true, liked: false, icon: "\u{1F4B9}", complexity: "medium", prepLevel: 3, fit: { interest: 55, personality: 68, skills: 82, values: 60 } },
+  { id: 10, title: l("UX Designer", "UX-дизайнер"), code: "CA-112", desc: l("Design intuitive user experiences for digital products", "Проектирование интуитивного пользовательского опыта для цифровых продуктов"), group: "Creative Arts", popular: true, liked: false, icon: "\u{270F}\uFE0F", complexity: "medium", prepLevel: 2, fit: { interest: 90, personality: 75, skills: 88, values: 80 } },
+  { id: 11, title: l("Environmental Scientist", "Эколог"), code: "SC-310", desc: l("Study and protect the natural environment", "Изучение и защита окружающей среды"), group: "Science", popular: false, liked: false, icon: "\u{1F33F}", complexity: "medium", prepLevel: 4, fit: { interest: 82, personality: 78, skills: 65, values: 95 } },
+  { id: 12, title: l("Curriculum Developer", "Разработчик учебных программ"), code: "ED-208", desc: l("Design educational programs and learning materials", "Разработка образовательных программ и учебных материалов"), group: "Education", popular: false, liked: false, icon: "\u{1F4DD}", complexity: "low", prepLevel: 2, fit: { interest: 72, personality: 76, skills: 74, values: 80 } },
 ];
 
 export const mockScenarios: Record<MockMode, MockScenario> = {

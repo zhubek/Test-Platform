@@ -1,29 +1,13 @@
 "use client";
 
 import type { ProfessionData } from "./mock-data";
-import { groupBadgeColors, groupBgColors } from "./mock-data";
+import { groupBadgeColors, groupBgColors, prepLevelLabels } from "./mock-data";
 import { Heart } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/button-link";
 import { cn } from "@/lib/utils";
-
-const FIT_KEYS = ["interest", "personality", "skills", "values"] as const;
-
-const fitI18nKeys: Record<string, string> = {
-  interest: "fit.interest",
-  personality: "fit.personality",
-  skills: "fit.skills",
-  values: "fit.values",
-};
-
-const fitColors: Record<string, string> = {
-  interest: "bg-blue-50 text-blue-700",
-  personality: "bg-violet-50 text-violet-700",
-  skills: "bg-emerald-50 text-emerald-700",
-  values: "bg-pink-50 text-pink-700",
-};
 
 interface Props {
   profession: ProfessionData;
@@ -34,10 +18,6 @@ interface Props {
 
 export function ProfessionCard({ profession: p, onToggleLike, mode, index }: Props) {
   const { t, locale } = useLocale();
-
-  const fitEntries = FIT_KEYS.filter(
-    (k) => p.fit[k as keyof typeof p.fit] !== undefined,
-  );
 
   const detailHref = `/professions/${p.id}${mode ? `?mode=${mode}` : ""}`;
 
@@ -96,22 +76,23 @@ export function ProfessionCard({ profession: p, onToggleLike, mode, index }: Pro
           {localize(p.desc, locale)}
         </p>
 
-        {/* Fit chips */}
-        {fitEntries.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {fitEntries.map((key) => (
+        {/* Preparation level */}
+        <div className="mb-3 flex items-center gap-2">
+          <div className="flex gap-0.5">
+            {[1, 2, 3, 4, 5].map((seg) => (
               <span
-                key={key}
-                className={
-                  "text-[0.7rem] px-2 py-0.5 rounded font-medium whitespace-nowrap " +
-                  fitColors[key]
-                }
-              >
-                {t(fitI18nKeys[key])}: {p.fit[key as keyof typeof p.fit]}%
-              </span>
+                key={seg}
+                className={cn(
+                  "h-1.5 w-5 rounded-full",
+                  seg <= p.prepLevel ? "bg-primary" : "bg-muted",
+                )}
+              />
             ))}
           </div>
-        )}
+          <span className="text-[0.72rem] font-medium text-muted-foreground">
+            {localize(prepLevelLabels[p.prepLevel], locale)}
+          </span>
+        </div>
 
         {/* Actions */}
         <div className="mt-auto pt-1.5">

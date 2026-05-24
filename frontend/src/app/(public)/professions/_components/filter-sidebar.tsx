@@ -1,7 +1,9 @@
 "use client";
 
-import type { ProfessionGroup } from "./mock-data";
+import type { ProfessionGroup, PrepLevel } from "./mock-data";
+import { PREP_LEVELS, prepLevelLabels } from "./mock-data";
 import { useLocale } from "@/lib/locale-context";
+import { localize } from "@/lib/localized";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const ALL_GROUPS: ProfessionGroup[] = [
@@ -20,6 +22,8 @@ interface Props {
   onPopularOnlyChange: (v: boolean) => void;
   activeGroups: Set<ProfessionGroup>;
   onToggleGroup: (g: ProfessionGroup) => void;
+  activeLevels: Set<PrepLevel>;
+  onToggleLevel: (l: PrepLevel) => void;
 }
 
 export function FilterSidebar({
@@ -29,8 +33,10 @@ export function FilterSidebar({
   onPopularOnlyChange,
   activeGroups,
   onToggleGroup,
+  activeLevels,
+  onToggleLevel,
 }: Props) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   return (
     <aside className="hidden md:block w-[210px] shrink-0 pr-6 border-r">
@@ -49,6 +55,17 @@ export function FilterSidebar({
             label={g}
             checked={activeGroups.has(g)}
             onChange={() => onToggleGroup(g)}
+          />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup title={t("professions.filter.prepLevel")}>
+        {PREP_LEVELS.map((lvl) => (
+          <FilterCheckbox
+            key={lvl}
+            label={localize(prepLevelLabels[lvl], locale)}
+            checked={activeLevels.has(lvl)}
+            onChange={() => onToggleLevel(lvl)}
           />
         ))}
       </FilterGroup>
