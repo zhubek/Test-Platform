@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   orgLicenses as seed,
   availableTests,
+  licenseResults,
   type OrgLicense,
   type LicenseState,
   type LicenseTest,
@@ -19,18 +20,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ResultsDrawer, type DrawerData } from "./results-drawer";
 
 const testName = (id: number) =>
   availableTests.find((t) => t.id === id)?.name ?? `Test ${id}`;
 
-function TestTag({ test }: { test: LicenseTest }) {
+function TestTag({ test, onClick }: { test: LicenseTest; onClick: () => void }) {
   const completed = test.status === "completed";
   const label = testName(test.testId);
   return (
-    <span
-      title={`${label} (${completed ? "Completed" : "Assigned"})`}
+    <button
+      onClick={onClick}
+      title={`${label} (${completed ? "Completed" : "Assigned"}) — view results`}
       className={cn(
-        "relative inline-flex items-center rounded-md px-2.5 py-1 text-[0.7rem] font-medium",
+        "relative inline-flex cursor-pointer items-center rounded-md px-2.5 py-1 text-[0.7rem] font-medium transition-all hover:brightness-95",
         completed ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800",
       )}
     >
@@ -43,7 +46,7 @@ function TestTag({ test }: { test: LicenseTest }) {
       >
         {completed ? <Check className="h-2 w-2" /> : "!"}
       </span>
-    </span>
+    </button>
   );
 }
 
@@ -61,6 +64,21 @@ export function LicensesTable() {
 
   // inline name/grade editing
   const [editCell, setEditCell] = useState<{ id: string; field: "name" | "grade" } | null>(null);
+
+  // results drawer
+  const [drawerData, setDrawerData] = useState<DrawerData | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const openResults = useCallback((lic: OrgLicense, test: LicenseTest) => {
+    const attempts = licenseResults[lic.id]?.[test.testId] ?? [];
+    setDrawerData({
+      studentName: lic.name || lic.code,
+      testLabel: testName(test.testId),
+      status: test.status,
+      attempts,
+    });
+    setDrawerOpen(true);
+  }, []);
 
   const grades = useMemo(
     () => Array.from(new Set(licenses.map((l) => l.grade).filter(Boolean))).sort(),
@@ -240,7 +258,11 @@ export function LicensesTable() {
                     ) : (
                       <div className="flex max-w-md flex-wrap gap-2">
                         {lic.tests.map((tt) => (
-                          <TestTag key={tt.testId} test={tt} />
+                          <TestTag
+                            key={tt.testId}
+                            test={tt}
+                            onClick={() => openResults(lic, tt)}
+                          />
                         ))}
                       </div>
                     )}
@@ -257,6 +279,12 @@ export function LicensesTable() {
           )}
         </div>
       </div>
+
+      <ResultsDrawer
+        open={drawerOpen}
+        data={drawerData}
+        onClose={() => setDrawerOpen(false)}
+      />
     </>
   );
 }
