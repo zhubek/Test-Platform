@@ -10,8 +10,8 @@ import { ButtonLink } from "@/components/button-link";
 const locales = ["kz", "ru", "en"] as const;
 
 const nav = [
-  { label: "Dashboard", href: "/org-admin/dashboard" },
   { label: "Licenses", href: "/org-admin/licenses" },
+  { label: "Dashboard", href: "/org-admin/dashboard" },
 ];
 
 export function OrgAdminTopbar() {
@@ -21,7 +21,7 @@ export function OrgAdminTopbar() {
   return (
     <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4 md:px-8">
-        <Link href="/org-admin/dashboard" className="text-lg font-bold tracking-tight">
+        <Link href="/org-admin/licenses" className="text-lg font-bold tracking-tight">
           Test<span className="text-primary">Platform</span>
         </Link>
         <Badge variant="secondary" className="hidden sm:inline-flex">
