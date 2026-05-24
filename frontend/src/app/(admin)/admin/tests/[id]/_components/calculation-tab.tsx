@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Plus, Trash2, ChevronDown, BookOpen, Compass, Braces, Copy, Check } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Plus, Trash2, ChevronDown, BookOpen, Compass, Braces, Copy, Check, Code2, X } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
 import { VariableCard } from "./variable-card";
 import { CATALOGS, DISTANCE_METHODS, findGroup } from "@/lib/catalog-characteristics";
 import { effectiveChoiceValue, effectiveQuestionName } from "@/lib/surveyjs";
+import { buildCalculationJson } from "@/lib/calculation-json";
 import type {
   CatalogMapping,
   CharacteristicSection,
@@ -53,6 +54,14 @@ export function CalculationTab({
   const { t, locale } = useLocale();
   const [refOpen, setRefOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
+  const [showJson, setShowJson] = useState(false);
+
+  // Read-only JSON snapshot of the calculation config (excludes derived
+  // data-catalog/profession variables — they're produced by the mappings).
+  const calcJson = useMemo(
+    () => JSON.stringify(buildCalculationJson(mappings, variables), null, 2),
+    [mappings, variables],
+  );
 
   // ── Survey variable reference (copyable) ────────────────────────
   // Question names (q1, q2, … via effectiveQuestionName) plus survey-level
@@ -235,8 +244,25 @@ export function CalculationTab({
     }));
   });
 
+  if (showJson) {
+    return <CalculationJsonView json={calcJson} onClose={() => setShowJson(false)} />;
+  }
+
   return (
     <div className="space-y-8">
+      {/* Top toolbar: view the whole calculation config as JSON. */}
+      <div className="flex justify-end">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowJson(true)}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <Code2 className="h-3.5 w-3.5" />
+          {t("cm.calculation.viewJson")}
+        </Button>
+      </div>
+
       {/* ── Catalog mappings ─────────────────────────────────────── */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
@@ -557,6 +583,37 @@ export function CalculationTab({
           )}
         </section>
       )}
+    </div>
+  );
+}
+
+// ── Calculation JSON view (read-only) ───────────────────────────
+function CalculationJsonView({ json, onClose }: { json: string; onClose: () => void }) {
+  const { t } = useLocale();
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard?.writeText(json);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <div className="overflow-hidden rounded-xl border">
+      <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
+        <span className="text-xs text-muted-foreground">{t("cm.calculation.jsonHeading")}</span>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={copy}>
+            {copied ? <Check className="mr-1 h-3.5 w-3.5" /> : <Copy className="mr-1 h-3.5 w-3.5" />}
+            {copied ? t("common.copied") : t("common.copy")}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="mr-1 h-3.5 w-3.5" />
+            {t("cm.calculation.closeJson")}
+          </Button>
+        </div>
+      </div>
+      <pre className="max-h-[70vh] overflow-auto bg-muted/20 p-4 font-mono text-[0.72rem] leading-relaxed text-foreground">
+        {json}
+      </pre>
     </div>
   );
 }
