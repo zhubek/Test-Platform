@@ -93,7 +93,7 @@ export function ProfessionCard({ profession, index }: Props) {
 
       {/* Actions */}
       <div className="mt-auto pt-1">
-        <ButtonLink href="/professions" variant="outline" size="sm">
+        <ButtonLink href="/explore" variant="outline" size="sm">
           {t("professions.card.details")}
         </ButtonLink>
       </div>
