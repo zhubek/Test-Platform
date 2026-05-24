@@ -196,21 +196,6 @@ function section(
 }
 
 // ── Holland (RIASEC) — full weighted test ────────────────────────────────
-const charVar = (id: string, label: ReturnType<typeof L>) => ({
-  id,
-  name: id,
-  label,
-  kind: "characteristic" as const,
-  scope: "both" as const,
-});
-const hollandVars = [
-  charVar("realistic", L("Realistic", "Реалистичный", "Реалистік")),
-  charVar("investigative", L("Investigative", "Исследовательский", "Зерттеушілік")),
-  charVar("artistic", L("Artistic", "Артистичный", "Көркемдік")),
-  charVar("social", L("Social", "Социальный", "Әлеуметтік")),
-  charVar("enterprising", L("Enterprising", "Предприимчивый", "Кәсіпкерлік")),
-  charVar("conventional", L("Conventional", "Традиционный", "Дәстүрлі")),
-];
 
 const tests: TestRow[] = [
   seedTest(
@@ -253,7 +238,14 @@ const tests: TestRow[] = [
       icon: "compass",
       duration: 12,
       category: "Career",
-      vars: { variables: hollandVars },
+      // Characteristics are produced by this catalog mapping (no standalone vars).
+      vars: { variables: [] },
+      calcLogic: {
+        characteristicSections: [],
+        mappings: [
+          { id: "map_holland", catalogId: "professions", groupId: "interests", method: "euclidean", topN: 5 },
+        ],
+      },
       // Survey-level logic demo (evaluated in the preview):
       surveyLogic: {
         calculatedValues: [
@@ -303,14 +295,7 @@ const tests: TestRow[] = [
       icon: "fingerprint",
       duration: 10,
       category: "Personality",
-      vars: {
-        variables: [
-          charVar("openness", L("Openness", "Открытость")),
-          charVar("conscientiousness", L("Conscientiousness", "Сознательность")),
-          charVar("extraversion", L("Extraversion", "Экстраверсия")),
-          charVar("agreeableness", L("Agreeableness", "Доброжелательность")),
-        ],
-      },
+      vars: { variables: [] },
       resultViewLogic: {
         widgets: [{ id: "w1", componentType: "radar_chart", title: L("Trait profile", "Профиль черт"), bind: "characteristics" }],
       },
@@ -332,12 +317,7 @@ const tests: TestRow[] = [
       icon: "heart",
       duration: 8,
       category: "Soft skills",
-      vars: {
-        variables: [
-          charVar("awareness", L("Self-awareness", "Самосознание")),
-          charVar("regulation", L("Self-regulation", "Саморегуляция")),
-        ],
-      },
+      vars: { variables: [] },
     },
   ),
   seedTest(

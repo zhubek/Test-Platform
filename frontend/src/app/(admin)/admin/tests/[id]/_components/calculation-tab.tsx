@@ -160,10 +160,10 @@ export function CalculationTab({
       }
     }
 
-    // Only auto-manage CATALOG-sourced characteristic vars. Manually-seeded
-    // characteristics (no source) and all other kinds are left untouched.
-    const managed = variables.filter((v) => v.kind === "characteristic" && v.source);
-    const untouched = variables.filter((v) => !(v.kind === "characteristic" && v.source));
+    // Characteristics are ENTIRELY driven by mappings — no standalone ones.
+    // No mapping → no characteristics. Other kinds are left untouched.
+    const managed = variables.filter((v) => v.kind === "characteristic");
+    const untouched = variables.filter((v) => v.kind !== "characteristic");
     const haveByName = new Map(managed.map((v) => [v.name, v]));
 
     // Keep existing managed vars still wanted (preserve their formula);
