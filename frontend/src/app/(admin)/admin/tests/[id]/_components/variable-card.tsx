@@ -13,6 +13,7 @@ interface Props {
   onChange: (partial: Partial<Variable>) => void;
   onDelete?: () => void; // omitted for derived (profession) vars
   readOnlyValue?: boolean; // profession vars: formula is computed, not authored
+  noFormula?: boolean; // multiple-choice vars: name + option translations only
 }
 
 const SCOPES: { id: VariableScope; key: string }[] = [
@@ -24,10 +25,11 @@ const SCOPES: { id: VariableScope; key: string }[] = [
 const KIND_BADGE: Record<Variable["kind"], string> = {
   characteristic: "cm.calculation.kindCharacteristic",
   custom: "cm.calculation.kindCustom",
+  multiplechoice: "cm.calculation.kindMultiplechoice",
   profession: "cm.calculation.kindProfession",
 };
 
-export function VariableCard({ variable, onChange, onDelete, readOnlyValue }: Props) {
+export function VariableCard({ variable, onChange, onDelete, readOnlyValue, noFormula }: Props) {
   const { t, locale } = useLocale();
   const [trOpen, setTrOpen] = useState(false);
   const translations = variable.valueTranslations ?? [];
@@ -71,12 +73,13 @@ export function VariableCard({ variable, onChange, onDelete, readOnlyValue }: Pr
         className="w-full"
       />
 
-      {/* Formula — author-set for characteristic/custom; computed for profession */}
+      {/* Formula — author-set for characteristic/custom; computed for profession;
+          omitted for multiple-choice (stored as selected option rows). */}
       {readOnlyValue ? (
         <p className="text-[0.7rem] italic text-muted-foreground">
           {t("cm.calculation.computedByMapping")}
         </p>
-      ) : (
+      ) : noFormula ? null : (
         <div className="flex items-center gap-2">
           <span className="text-[0.75rem] text-muted-foreground">=</span>
           <Input

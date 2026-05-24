@@ -233,6 +233,13 @@ const tests: TestRow[] = [
           likertAnswers("enterprising"), { requiredIf: "{q1} notempty" }),
         seedQuestion(12, L("I like to organize and follow procedures", "Мне нравится упорядочивать"), "single",
           likertAnswers("conventional")),
+        // Multiple-choice question — usable as a Multiple Choice Variable.
+        seedQuestion(12, L("Which subjects interest you?", "Какие предметы вам интересны?", "Қандай пәндер қызықтырады?"), "multiple", [
+          { text: L("Mathematics", "Математика", "Математика") },
+          { text: L("Art", "Искусство", "Өнер") },
+          { text: L("Science", "Наука", "Ғылым") },
+          { text: L("Languages", "Языки", "Тілдер") },
+        ]),
       ], "{q1} notempty"),
     ],
     {

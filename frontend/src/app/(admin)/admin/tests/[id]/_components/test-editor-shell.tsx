@@ -150,6 +150,7 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
         <CalculationTab
           mappings={mappings}
           sections={characteristicSections}
+          questionSections={sections}
           variables={variables}
           onMappingsChange={setMappings}
           onSectionsChange={setCharacteristicSections}

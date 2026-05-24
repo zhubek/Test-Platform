@@ -28,9 +28,11 @@ export type VariableScope = "result" | "dashboard" | "both";
 // parts of its editor row are shown.
 //  - characteristic: a matching dimension (e.g. RIASEC realistic), value from a formula
 //  - custom: free-form variable, value from a formula
+//  - multiplechoice: bound to a checkbox question; name + option translations,
+//    no formula (stored as one row per selected option)
 //  - profession: a top-N match result of a catalog mapping; value is a numeric
 //    catalog item code (read-only — produced by the distance computation)
-export type VariableKind = "characteristic" | "custom" | "profession";
+export type VariableKind = "characteristic" | "custom" | "multiplechoice" | "profession";
 
 // One entry in a value→label translation table (e.g. code 101 → "Doctor").
 export interface ValueTranslation {
@@ -55,6 +57,8 @@ export interface Variable {
   // For profession vars: which mapping produced it, and its 1-based rank.
   mappingId?: string;
   rank?: number;
+  // For multiplechoice vars: the bound checkbox question id.
+  questionId?: string;
 }
 
 // A catalog mapping: match the respondent's computed characteristic values

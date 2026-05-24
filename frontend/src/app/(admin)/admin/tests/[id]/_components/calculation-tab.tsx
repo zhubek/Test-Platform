@@ -14,17 +14,26 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { VariableCard } from "./variable-card";
 import { CATALOGS, DISTANCE_METHODS, findGroup } from "@/lib/catalog-characteristics";
+import { effectiveChoiceValue } from "@/lib/surveyjs";
 import type {
   CatalogMapping,
   CharacteristicSection,
+  Section,
   Variable,
 } from "../../../_components/mock-data";
 
 interface Props {
   mappings: CatalogMapping[];
   sections: CharacteristicSection[];
+  questionSections: Section[];
   variables: Variable[];
   onMappingsChange: (mappings: CatalogMapping[]) => void;
   onSectionsChange: (sections: CharacteristicSection[]) => void;
@@ -33,12 +42,14 @@ interface Props {
 
 export function CalculationTab({
   mappings,
+  questionSections,
   variables,
   onMappingsChange,
   onVariablesChange,
 }: Props) {
   const { t, locale } = useLocale();
   const [refOpen, setRefOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
 
   // ── Mapping handlers ────────────────────────────────────────────
   const addMapping = () => {
@@ -58,8 +69,11 @@ export function CalculationTab({
     onMappingsChange(mappings.map((m) => (m.id === id ? { ...m, ...partial } : m)));
   const deleteMapping = (id: string) => onMappingsChange(mappings.filter((m) => m.id !== id));
 
-  // ── Variable handlers (characteristic + custom only; profession is derived) ──
-  const ownVars = variables.filter((v) => v.kind !== "profession");
+  // ── Variable handlers ───────────────────────────────────────────
+  // Three displayed groups: formula vars (characteristic + custom),
+  // multiple-choice vars (bound to checkbox questions), and derived catalog vars.
+  const formulaVars = variables.filter((v) => v.kind === "characteristic" || v.kind === "custom");
+  const mcVars = variables.filter((v) => v.kind === "multiplechoice");
   const updateVar = (id: string, partial: Partial<Variable>) =>
     onVariablesChange(variables.map((v) => (v.id === id ? { ...v, ...partial } : v)));
   const deleteVar = (id: string) => onVariablesChange(variables.filter((v) => v.id !== id));
@@ -75,6 +89,34 @@ export function CalculationTab({
         scope: "both",
       },
     ]);
+
+  // The test's multiple-choice (checkbox) questions, available to add as MC vars.
+  const mcQuestions = questionSections
+    .flatMap((s) => s.questions)
+    .filter((q) => q.type === "multiple");
+  const addedQuestionIds = new Set(mcVars.map((v) => v.questionId));
+
+  // Add a MC variable bound to a checkbox question; seed option translations
+  // from the question's choices (value = numeric choice value, label = choice text).
+  const addMcVar = (questionId: string) => {
+    const q = mcQuestions.find((x) => x.id === questionId);
+    if (!q) return;
+    onVariablesChange([
+      ...variables,
+      {
+        id: `mc_${Date.now()}`,
+        name: q.name?.trim() || `mc_${mcVars.length + 1}`,
+        label: q.text,
+        kind: "multiplechoice",
+        scope: "both",
+        questionId,
+        valueTranslations: q.choices.map((c, i) => ({
+          value: effectiveChoiceValue(c, i),
+          label: c.text,
+        })),
+      },
+    ]);
+  };
 
   // Import a mapping group's characteristic keys as characteristic variables.
   const importCharacteristics = (m: CatalogMapping) => {
@@ -232,7 +274,7 @@ export function CalculationTab({
         )}
       </section>
 
-      {/* ── Variables ────────────────────────────────────────────── */}
+      {/* ── Variables (formula) ──────────────────────────────────── */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
@@ -249,19 +291,15 @@ export function CalculationTab({
           </Button>
         </div>
 
-        {ownVars.length > 0 || professionVars.length > 0 ? (
+        {formulaVars.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2">
-            {ownVars.map((v) => (
+            {formulaVars.map((v) => (
               <VariableCard
                 key={v.id}
                 variable={v}
                 onChange={(partial) => updateVar(v.id, partial)}
                 onDelete={() => deleteVar(v.id)}
               />
-            ))}
-            {/* Derived profession variables (read-only; produced by a mapping) */}
-            {professionVars.map((v) => (
-              <VariableCard key={v.id} variable={v} onChange={() => {}} readOnlyValue />
             ))}
           </div>
         ) : (
@@ -270,15 +308,98 @@ export function CalculationTab({
           </div>
         )}
 
-        {professionVars.length > 0 && (
-          <p className="flex items-center gap-1.5 text-[0.7rem] text-muted-foreground">
-            <Compass className="h-3.5 w-3.5" />
-            {t("cm.calculation.professionNote")}
-          </p>
-        )}
-
         <FormulaReference open={refOpen} onToggle={() => setRefOpen(!refOpen)} />
       </section>
+
+      {/* ── Multiple Choice Variables ────────────────────────────── */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-[0.88rem] font-semibold text-foreground">
+              {t("cm.calculation.mcHeading")}
+            </h3>
+            <p className="mt-0.5 text-[0.75rem] text-muted-foreground">
+              {t("cm.calculation.mcSub")}
+            </p>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={<Button variant="ghost" size="sm" className="text-primary hover:text-teal-700" />}
+              disabled={mcQuestions.every((q) => addedQuestionIds.has(q.id))}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t("cm.calculation.addMcVar")}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              {mcQuestions.filter((q) => !addedQuestionIds.has(q.id)).length === 0 ? (
+                <DropdownMenuItem disabled>{t("cm.calculation.noMcQuestions")}</DropdownMenuItem>
+              ) : (
+                mcQuestions
+                  .filter((q) => !addedQuestionIds.has(q.id))
+                  .map((q) => (
+                    <DropdownMenuItem key={q.id} onClick={() => addMcVar(q.id)}>
+                      {localize(q.text, locale) || q.name || q.id}
+                    </DropdownMenuItem>
+                  ))
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {mcVars.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {mcVars.map((v) => (
+              <VariableCard
+                key={v.id}
+                variable={v}
+                onChange={(partial) => updateVar(v.id, partial)}
+                onDelete={() => deleteVar(v.id)}
+                noFormula
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed py-6 text-center text-[0.78rem] text-muted-foreground">
+            {t("cm.calculation.noMcVars")}
+          </div>
+        )}
+      </section>
+
+      {/* ── Data Catalog Variables (derived, hidden by default) ──── */}
+      {professionVars.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-[0.88rem] font-semibold text-foreground">
+                {t("cm.calculation.catalogVarsHeading")}
+              </h3>
+              <p className="mt-0.5 flex items-center gap-1.5 text-[0.75rem] text-muted-foreground">
+                <Compass className="h-3.5 w-3.5" />
+                {t("cm.calculation.professionNote")}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCatalogOpen(!catalogOpen)}
+              className="text-primary hover:text-teal-700"
+            >
+              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", catalogOpen && "rotate-180")} />
+              {catalogOpen
+                ? t("cm.calculation.hide")
+                : `${t("cm.calculation.showAll")} (${professionVars.length})`}
+            </Button>
+          </div>
+
+          {catalogOpen && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {professionVars.map((v) => (
+                <VariableCard key={v.id} variable={v} onChange={() => {}} readOnlyValue />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
