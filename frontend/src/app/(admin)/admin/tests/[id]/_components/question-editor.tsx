@@ -24,6 +24,7 @@ import type {
 
 interface Props {
   question: Question;
+  globalIndex: number; // position across all questions in the test (for fallback name)
   pageTitle: string;
   onBack: () => void;
   onQuestionUpdate: (partial: Partial<Question>) => void;
@@ -40,6 +41,7 @@ const QUESTION_TYPES: { value: QuestionType; key: string }[] = [
 
 export function QuestionEditor({
   question,
+  globalIndex,
   pageTitle,
   onBack,
   onQuestionUpdate,
@@ -50,6 +52,8 @@ export function QuestionEditor({
   const { t, locale } = useLocale();
   const [tab, setTab] = useState<"content" | "logic">("content");
   const isLikert = question.type === "likert";
+  // What the question is actually referenced as (auto-numbered if blank).
+  const effectiveName = question.name?.trim() || `q${globalIndex + 1}`;
 
   return (
     <div className="flex h-full flex-col">
@@ -122,11 +126,12 @@ export function QuestionEditor({
                 <Input
                   value={question.name ?? ""}
                   onChange={(e) => onQuestionUpdate({ name: e.target.value })}
-                  placeholder="q1"
+                  placeholder={effectiveName}
                   className="w-48 font-mono"
                 />
                 <span className="text-[0.7rem] text-muted-foreground">
-                  reference as <code className="font-mono">{`{${question.name || "name"}}`}</code>
+                  reference as <code className="font-mono">{`{${effectiveName}}`}</code>
+                  {!question.name?.trim() && " (auto)"}
                 </span>
               </div>
             </div>
@@ -194,7 +199,7 @@ export function QuestionEditor({
             ) : (
               <p className="text-[0.78rem] text-muted-foreground">
                 Likert scale (1–5). Reference its value as{" "}
-                <code className="font-mono">{`{${question.name || "name"}}`}</code>.
+                <code className="font-mono">{`{${effectiveName}}`}</code>.
               </p>
             )}
           </>

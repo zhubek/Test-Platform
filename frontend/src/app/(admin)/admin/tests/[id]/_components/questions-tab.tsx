@@ -326,6 +326,11 @@ export function QuestionsTab({
             <div className="h-[70vh]">
               <QuestionEditor
                 question={sections[openQ.si].questions[openQ.qi]}
+                globalIndex={
+                  sections
+                    .slice(0, openQ.si)
+                    .reduce((sum, s) => sum + s.questions.length, 0) + openQ.qi
+                }
                 pageTitle={localize(sections[openQ.si].title, "en") || `Page ${openQ.si + 1}`}
                 onBack={() => setOpenQ(null)}
                 onQuestionUpdate={(partial) => handleQuestionUpdate(openQ.si, openQ.qi, partial)}
