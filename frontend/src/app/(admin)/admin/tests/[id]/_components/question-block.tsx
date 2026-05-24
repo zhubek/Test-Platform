@@ -18,16 +18,12 @@ import type {
   Question,
   QuestionType,
   AnswerChoice,
-  VariableAssignment,
-  Variable,
   QuestionLogic,
 } from "../../../_components/mock-data";
 
 interface Props {
   question: Question;
   questionIndex?: number;
-  variables: Variable[];
-  // New granular callbacks
   onQuestionUpdate?: (partial: Partial<Question>) => void;
   onQuestionDelete?: () => void;
   onChoiceAdd?: () => void;
@@ -40,8 +36,6 @@ interface Props {
 
 export function QuestionBlock({
   question,
-  questionIndex,
-  variables,
   onQuestionUpdate,
   onQuestionDelete,
   onChoiceAdd,
@@ -86,6 +80,7 @@ export function QuestionBlock({
     } else if (onChange) {
       const newChoice: AnswerChoice = {
         id: `ch${Date.now()}`,
+        value: `opt${question.choices.length + 1}`,
         text: { en: "", ru: "", kz: "" },
         variables: [],
       };
@@ -93,162 +88,110 @@ export function QuestionBlock({
     }
   };
 
-  const handleVarAdd = (choiceIdx: number, variableId: string) => {
-    const choice = question.choices[choiceIdx]!;
-    if (choice.variables.some((v) => v.variableId === variableId)) return;
-    const newAssignment: VariableAssignment = { variableId, value: 1 };
-    handleChoiceUpdateInternal(choiceIdx, {
-      variables: [...choice.variables, newAssignment],
-    });
-  };
-
-  const handleVarUpdate = (
-    choiceIdx: number,
-    varIdx: number,
-    value: number
-  ) => {
-    const choice = question.choices[choiceIdx]!;
-    const next = choice.variables.map((v, i) =>
-      i === varIdx ? { ...v, value } : v
-    );
-    handleChoiceUpdateInternal(choiceIdx, { variables: next });
-  };
-
-  const handleVarRemove = (choiceIdx: number, varIdx: number) => {
-    const choice = question.choices[choiceIdx]!;
-    handleChoiceUpdateInternal(choiceIdx, {
-      variables: choice.variables.filter((_, i) => i !== varIdx),
-    });
-  };
-
-  const getVarName = (id: string) =>
-    variables.find((v) => v.id === id)?.name ?? id;
+  const isLikert = question.type === "likert";
 
   return (
     <div className="border rounded-lg bg-muted/50">
-      {/* Question header */}
-      <div className="flex items-center gap-2 px-3 py-2.5 border-b">
-        <LocalizedInput
-          value={question.text}
-          onChange={(v) => handleQUpdate({ text: v })}
-          placeholder={t("cm.question.textPlaceholder")}
-          className="flex-1 font-medium"
-        />
-        <Select
-          value={question.type}
-          onValueChange={(v) => handleQUpdate({ type: (v ?? "single") as QuestionType })}
-        >
-          <SelectTrigger size="sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {questionTypes.map((qt) => (
-              <SelectItem key={qt.value} value={qt.value}>
-                {qt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={handleQDelete}
-          className="text-muted-foreground hover:text-red-500 hover:bg-red-50"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </Button>
+      {/* Question header: text + type + name key */}
+      <div className="space-y-2 px-3 py-2.5 border-b">
+        <div className="flex items-center gap-2">
+          <LocalizedInput
+            value={question.text}
+            onChange={(v) => handleQUpdate({ text: v })}
+            placeholder={t("cm.question.textPlaceholder")}
+            className="flex-1 font-medium"
+          />
+          <Select
+            value={question.type}
+            onValueChange={(v) => handleQUpdate({ type: (v ?? "single") as QuestionType })}
+          >
+            <SelectTrigger size="sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {questionTypes.map((qt) => (
+                <SelectItem key={qt.value} value={qt.value}>
+                  {qt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={handleQDelete}
+            className="text-muted-foreground hover:text-red-500 hover:bg-red-50"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+        {/* Name key — referenced in formulas/logic */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
+            name
+          </span>
+          <Input
+            type="text"
+            value={question.name ?? ""}
+            onChange={(e) => handleQUpdate({ name: e.target.value })}
+            placeholder="q1"
+            className="h-6 w-40 font-mono text-[0.72rem]"
+          />
+          <span className="text-[0.62rem] text-muted-foreground">
+            reference as <code className="font-mono">{`{${question.name || "name"}}`}</code>
+          </span>
+        </div>
       </div>
 
       {/* Choices */}
-      <div className="px-3 py-2.5 space-y-2">
-        {question.choices.map((choice, ci) => (
-          <div
-            key={choice.id}
-            className="flex items-start gap-2 group"
-          >
-            {/* Radio / checkbox indicator */}
-            <span className="mt-1.5 w-3.5 h-3.5 shrink-0 rounded-full border-2 border-border" />
-
-            <div className="flex-1 space-y-1">
-              <div className="flex items-center gap-1.5">
-                <LocalizedInput
-                  value={choice.text}
-                  onChange={(v) =>
-                    handleChoiceUpdateInternal(ci, { text: v })
-                  }
-                  placeholder={t("cm.question.answerPlaceholder")}
-                  className="flex-1"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => handleChoiceDeleteInternal(ci)}
-                  className="text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100"
-                >
-                  <X className="w-3 h-3" />
-                </Button>
-              </div>
-
-              {/* Variable badges */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {choice.variables.map((va, vi) => (
-                  <span
-                    key={va.variableId}
-                    className="inline-flex items-center gap-1 text-[0.68rem] font-medium bg-primary/10 text-primary rounded-md pl-1.5 pr-0.5 py-0.5"
-                  >
-                    {getVarName(va.variableId)}
-                    <input
-                      type="number"
-                      value={va.value}
-                      onChange={(e) =>
-                        handleVarUpdate(ci, vi, Number(e.target.value))
-                      }
-                      className="w-8 text-center text-[0.68rem] bg-card/60 rounded border border-teal-200 outline-none"
-                    />
-                    <button
-                      onClick={() => handleVarRemove(ci, vi)}
-                      className="p-0.5 rounded hover:bg-teal-100"
-                    >
-                      <X className="w-2.5 h-2.5" />
-                    </button>
-                  </span>
-                ))}
-                {variables.length > 0 && (
-                  <Select
-                    value=""
-                    onValueChange={(v) => {
-                      if (v) handleVarAdd(ci, v);
-                    }}
-                  >
-                    <SelectTrigger
-                      size="sm"
-                      className="border-dashed text-muted-foreground"
-                    >
-                      <SelectValue placeholder={t("cm.question.addVar")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {variables.map((v) => (
-                        <SelectItem key={v.id} value={v.id}>
-                          {v.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
+      {!isLikert && (
+        <div className="px-3 py-2.5 space-y-2">
+          {question.choices.map((choice, ci) => (
+            <div key={choice.id} className="flex items-center gap-2 group">
+              <span className="w-3.5 h-3.5 shrink-0 rounded-full border-2 border-border" />
+              <LocalizedInput
+                value={choice.text}
+                onChange={(v) => handleChoiceUpdateInternal(ci, { text: v })}
+                placeholder={t("cm.question.answerPlaceholder")}
+                className="flex-1"
+              />
+              {/* value key */}
+              <Input
+                type="text"
+                value={choice.value ?? ""}
+                onChange={(e) => handleChoiceUpdateInternal(ci, { value: e.target.value })}
+                placeholder="value"
+                className="h-7 w-24 font-mono text-[0.72rem]"
+                title="Value key (referenced in formulas/logic)"
+              />
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => handleChoiceDeleteInternal(ci)}
+                className="text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100"
+              >
+                <X className="w-3 h-3" />
+              </Button>
             </div>
-          </div>
-        ))}
+          ))}
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleChoiceAddInternal}
-          className="text-muted-foreground hover:text-primary ml-5.5"
-        >
-          {t("cm.question.addChoice")}
-        </Button>
-      </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleChoiceAddInternal}
+            className="text-muted-foreground hover:text-primary ml-5.5"
+          >
+            {t("cm.question.addChoice")}
+          </Button>
+        </div>
+      )}
+
+      {isLikert && (
+        <div className="px-3 py-2.5 text-[0.72rem] text-muted-foreground">
+          Likert scale (1–5). Reference its value as{" "}
+          <code className="font-mono">{`{${question.name || "name"}}`}</code>.
+        </div>
+      )}
 
       {/* Logic panel */}
       <LogicPanel

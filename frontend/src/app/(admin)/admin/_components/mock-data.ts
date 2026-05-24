@@ -25,6 +25,7 @@ export interface Variable {
 
 export interface AnswerChoice {
   id: string;
+  value?: string; // stable key referenced in formulas/logic (e.g. "agree"); defaults to id
   text: Localized;
   variables: VariableAssignment[];
 }
@@ -37,6 +38,7 @@ export interface QuestionLogic {
 
 export interface Question {
   id: string;
+  name?: string; // stable key referenced in formulas/logic (e.g. "q1"); defaults to id
   text: Localized;
   type: QuestionType;
   choices: AnswerChoice[];

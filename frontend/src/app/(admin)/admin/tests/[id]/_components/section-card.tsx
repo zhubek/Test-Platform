@@ -180,7 +180,6 @@ export function SectionCard({
               key={q.id}
               question={q}
               questionIndex={qi}
-              variables={variables}
               onQuestionUpdate={(partial) => handleQuestionUpdateLegacy(qi, partial)}
               onQuestionDelete={() => handleQuestionDeleteLegacy(qi)}
               onChoiceAdd={() => handleChoiceAddLegacy(qi)}

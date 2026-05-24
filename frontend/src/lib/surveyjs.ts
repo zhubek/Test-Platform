@@ -61,7 +61,7 @@ function toLocalized(v: Localized): SurveyJsLocalized {
 function buildQuestion(q: Question): SurveyJsQuestion {
   const base: SurveyJsQuestion = {
     type: typeMap[q.type],
-    name: q.id,
+    name: q.name || q.id,
     title: toLocalized(q.text),
   };
 
@@ -76,7 +76,7 @@ function buildQuestion(q: Question): SurveyJsQuestion {
   }
 
   base.choices = q.choices.map((c) => ({
-    value: c.id,
+    value: c.value || c.id,
     text: toLocalized(c.text),
   }));
   return base;
