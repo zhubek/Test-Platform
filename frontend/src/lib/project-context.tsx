@@ -7,20 +7,22 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { Localized } from "@/lib/localized";
+import { l } from "@/lib/localized";
 
 // A license-redemption parameter: a field the student fills in when
-// redeeming a license. Single- or multiple-choice, with options.
+// redeeming a license. Single- or multiple-choice, with localized options.
 export interface ProjectParameter {
   id: string;
-  label: string;
+  label: Localized;
   type: "single" | "multiple";
-  options: string[];
+  options: Localized[];
 }
 
 export interface Project {
   id: string;
-  name: string;
-  description?: string;
+  name: Localized;
+  description: Localized;
   licenseLimit: number;
   organizationLimit: number;
   parameters: ProjectParameter[];
@@ -32,37 +34,47 @@ export const MAX_PARAMETERS = 10;
 export const PROJECTS: Project[] = [
   {
     id: "spring-2026",
-    name: "Spring 2026",
-    description: "Spring intake assessments",
+    name: l("Spring 2026", "Весна 2026", "Көктем 2026"),
+    description: l("Spring intake assessments", "Весенние тестирования"),
     licenseLimit: 1000,
     organizationLimit: 20,
     parameters: [
-      { id: "p1", label: "Region", type: "single", options: ["Almaty", "Astana", "Shymkent", "Other"] },
-      { id: "p2", label: "Interests", type: "multiple", options: ["STEM", "Arts", "Sports", "Languages"] },
+      {
+        id: "p1",
+        label: l("Region", "Регион", "Аймақ"),
+        type: "single",
+        options: [l("Almaty", "Алматы"), l("Astana", "Астана"), l("Shymkent", "Шымкент"), l("Other", "Другое")],
+      },
+      {
+        id: "p2",
+        label: l("Interests", "Интересы", "Қызығушылықтар"),
+        type: "multiple",
+        options: [l("STEM"), l("Arts", "Искусство"), l("Sports", "Спорт"), l("Languages", "Языки")],
+      },
     ],
   },
   {
     id: "pilot",
-    name: "Pilot Program",
-    description: "Early-access pilot cohort",
+    name: l("Pilot Program", "Пилотная программа"),
+    description: l("Early-access pilot cohort", "Пилотная группа раннего доступа"),
     licenseLimit: 200,
     organizationLimit: 5,
     parameters: [
-      { id: "p1", label: "Grade", type: "single", options: ["9", "10", "11"] },
+      { id: "p1", label: l("Grade", "Класс", "Сынып"), type: "single", options: [l("9"), l("10"), l("11")] },
     ],
   },
   {
     id: "region-x",
-    name: "Region X",
-    description: "Regional rollout",
+    name: l("Region X", "Регион X"),
+    description: l("Regional rollout", "Региональное внедрение"),
     licenseLimit: 500,
     organizationLimit: 10,
     parameters: [],
   },
   {
     id: "summer-camp",
-    name: "Summer Camp 2026",
-    description: "Summer guidance camp",
+    name: l("Summer Camp 2026", "Летний лагерь 2026"),
+    description: l("Summer guidance camp", "Летний профориентационный лагерь"),
     licenseLimit: 300,
     organizationLimit: 3,
     parameters: [],

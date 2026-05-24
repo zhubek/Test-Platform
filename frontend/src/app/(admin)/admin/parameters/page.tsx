@@ -7,10 +7,13 @@ import {
   MAX_PARAMETERS,
   type ProjectParameter,
 } from "@/lib/project-context";
+import { useLocale } from "@/lib/locale-context";
+import { localize, l, type Localized } from "@/lib/localized";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { LocalizedInput } from "@/components/localized-input";
+import { LocalizedTextarea } from "@/components/localized-textarea";
 import {
   Select,
   SelectContent,
@@ -25,10 +28,11 @@ const newParamId = () => `np-${Date.now()}-${++pid}`;
 
 export default function ParametersPage() {
   const { project, updateProject } = useProject();
+  const { locale } = useLocale();
 
   // Local editable copy, reset when the active project changes.
-  const [name, setName] = useState(project.name);
-  const [description, setDescription] = useState(project.description ?? "");
+  const [name, setName] = useState<Localized>(project.name);
+  const [description, setDescription] = useState<Localized>(project.description);
   const [licenseLimit, setLicenseLimit] = useState(project.licenseLimit);
   const [orgLimit, setOrgLimit] = useState(project.organizationLimit);
   const [params, setParams] = useState<ProjectParameter[]>(project.parameters);
@@ -36,7 +40,7 @@ export default function ParametersPage() {
 
   useEffect(() => {
     setName(project.name);
-    setDescription(project.description ?? "");
+    setDescription(project.description);
     setLicenseLimit(project.licenseLimit);
     setOrgLimit(project.organizationLimit);
     setParams(project.parameters);
@@ -46,7 +50,7 @@ export default function ParametersPage() {
     if (params.length >= MAX_PARAMETERS) return;
     setParams((p) => [
       ...p,
-      { id: newParamId(), label: "", type: "single", options: [""] },
+      { id: newParamId(), label: l(""), type: "single", options: [l("")] },
     ]);
   };
 
@@ -58,10 +62,10 @@ export default function ParametersPage() {
 
   const addOption = (id: string) =>
     setParams((p) =>
-      p.map((x) => (x.id === id ? { ...x, options: [...x.options, ""] } : x)),
+      p.map((x) => (x.id === id ? { ...x, options: [...x.options, l("")] } : x)),
     );
 
-  const updateOption = (id: string, idx: number, value: string) =>
+  const updateOption = (id: string, idx: number, value: Localized) =>
     setParams((p) =>
       p.map((x) =>
         x.id === id
@@ -84,8 +88,11 @@ export default function ParametersPage() {
       licenseLimit,
       organizationLimit: orgLimit,
       parameters: params
-        .map((p) => ({ ...p, options: p.options.filter((o) => o.trim() !== "") }))
-        .filter((p) => p.label.trim() !== ""),
+        .map((p) => ({
+          ...p,
+          options: p.options.filter((o) => (o.en || o.ru || o.kz).trim() !== ""),
+        }))
+        .filter((p) => (p.label.en || p.label.ru || p.label.kz).trim() !== ""),
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 1800);
@@ -97,7 +104,8 @@ export default function ParametersPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Project parameters</h1>
           <p className="text-sm text-muted-foreground">
-            Settings for <span className="font-medium text-foreground">{project.name}</span>.
+            Settings for{" "}
+            <span className="font-medium text-foreground">{localize(project.name, locale)}</span>.
           </p>
         </div>
         <Button onClick={save}>
@@ -117,15 +125,15 @@ export default function ParametersPage() {
               <label className="mb-1.5 block text-[0.75rem] font-semibold uppercase tracking-wider text-muted-foreground">
                 Project name
               </label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} className="max-w-md" />
+              <LocalizedInput value={name} onChange={setName} className="max-w-md" />
             </div>
             <div>
               <label className="mb-1.5 block text-[0.75rem] font-semibold uppercase tracking-wider text-muted-foreground">
                 Description
               </label>
-              <Textarea
+              <LocalizedTextarea
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={setDescription}
                 rows={2}
                 className="max-w-md"
               />
@@ -191,12 +199,14 @@ export default function ParametersPage() {
                     <span className="text-xs font-semibold text-muted-foreground">
                       #{pIdx + 1}
                     </span>
-                    <Input
-                      value={p.label}
-                      onChange={(e) => updateParam(p.id, { label: e.target.value })}
-                      placeholder="Parameter name (e.g. Region)"
-                      className="flex-1"
-                    />
+                    <div className="flex-1">
+                      <LocalizedInput
+                        value={p.label}
+                        onChange={(v) => updateParam(p.id, { label: v })}
+                        placeholder="Parameter name (e.g. Region)"
+                        className="w-full"
+                      />
+                    </div>
                     <Select
                       value={p.type}
                       onValueChange={(v) =>
@@ -231,12 +241,14 @@ export default function ParametersPage() {
                             p.type === "single" ? "rounded-full" : "rounded-[3px]",
                           )}
                         />
-                        <Input
-                          value={opt}
-                          onChange={(e) => updateOption(p.id, oIdx, e.target.value)}
-                          placeholder={`Option ${oIdx + 1}`}
-                          className="h-8 max-w-xs"
-                        />
+                        <div className="max-w-xs flex-1">
+                          <LocalizedInput
+                            value={opt}
+                            onChange={(v) => updateOption(p.id, oIdx, v)}
+                            placeholder={`Option ${oIdx + 1}`}
+                            className="w-full"
+                          />
+                        </div>
                         <button
                           onClick={() => removeOption(p.id, oIdx)}
                           className="text-muted-foreground/50 hover:text-muted-foreground"

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Check, ChevronsUpDown, FolderKanban } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { useProject } from "@/lib/project-context";
+import { localize } from "@/lib/localized";
 import { cn } from "@/lib/utils";
 import { ButtonLink } from "@/components/button-link";
 import {
@@ -41,7 +42,7 @@ export function AdminTopbar() {
         <DropdownMenu>
           <DropdownMenuTrigger className="ml-1 inline-flex items-center gap-2 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted">
             <FolderKanban className="h-4 w-4 text-muted-foreground" />
-            <span className="max-w-[140px] truncate">{project.name}</span>
+            <span className="max-w-[140px] truncate">{localize(project.name, locale)}</span>
             <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
@@ -62,9 +63,11 @@ export function AdminTopbar() {
                   )}
                 />
                 <span className="flex flex-col">
-                  <span className="text-sm font-medium">{p.name}</span>
-                  {p.description && (
-                    <span className="text-xs text-muted-foreground">{p.description}</span>
+                  <span className="text-sm font-medium">{localize(p.name, locale)}</span>
+                  {localize(p.description, locale) && (
+                    <span className="text-xs text-muted-foreground">
+                      {localize(p.description, locale)}
+                    </span>
                   )}
                 </span>
               </DropdownMenuItem>

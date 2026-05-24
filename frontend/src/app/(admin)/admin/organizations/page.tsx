@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { Plus, Building2, Search } from "lucide-react";
 import { useProject } from "@/lib/project-context";
+import { useLocale } from "@/lib/locale-context";
+import { localize } from "@/lib/localized";
 import { adminOrgs } from "./_components/mock-data";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +13,7 @@ import { Input } from "@/components/ui/input";
 
 export default function AdminOrganizationsPage() {
   const { project } = useProject();
+  const { locale } = useLocale();
   const [search, setSearch] = useState("");
 
   const orgs = useMemo(() => {
@@ -30,7 +33,7 @@ export default function AdminOrganizationsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Organizations</h1>
           <p className="text-sm text-muted-foreground">
-            Organizations in <span className="font-medium text-foreground">{project.name}</span>.
+            Organizations in <span className="font-medium text-foreground">{localize(project.name, locale)}</span>.
           </p>
         </div>
         <Button>
