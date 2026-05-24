@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { Search, X, Check, ChevronDown } from "lucide-react";
+import { Search, X, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   orgLicenses as seed,
   availableTests,
   type OrgLicense,
   type LicenseState,
+  type LicenseTest,
 } from "./mock-data";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -18,14 +19,33 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 const testName = (id: number) =>
   availableTests.find((t) => t.id === id)?.name ?? `Test ${id}`;
+
+function TestTag({ test }: { test: LicenseTest }) {
+  const completed = test.status === "completed";
+  const label = testName(test.testId);
+  return (
+    <span
+      title={`${label} (${completed ? "Completed" : "Assigned"})`}
+      className={cn(
+        "relative inline-flex items-center rounded-md px-2.5 py-1 text-[0.7rem] font-medium",
+        completed ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800",
+      )}
+    >
+      {label}
+      <span
+        className={cn(
+          "absolute -right-1.5 -top-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border-[1.5px] border-background text-[0.5rem] font-bold text-white",
+          completed ? "bg-emerald-500" : "bg-amber-500",
+        )}
+      >
+        {completed ? <Check className="h-2 w-2" /> : "!"}
+      </span>
+    </span>
+  );
+}
 
 const stateBadge: Record<LicenseState, { label: string; variant: "default" | "secondary" | "outline"; className?: string }> = {
   redeemed: { label: "Redeemed", variant: "default", className: "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" },
@@ -63,24 +83,6 @@ export function LicensesTable() {
   const update = useCallback((id: string, patch: Partial<OrgLicense>) => {
     setLicenses((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
   }, []);
-
-  const toggleTest = useCallback(
-    (id: string, testId: number) => {
-      setLicenses((prev) =>
-        prev.map((l) => {
-          if (l.id !== id) return l;
-          const has = l.accessibleTestIds.includes(testId);
-          return {
-            ...l,
-            accessibleTestIds: has
-              ? l.accessibleTestIds.filter((t) => t !== testId)
-              : [...l.accessibleTestIds, testId],
-          };
-        }),
-      );
-    },
-    [],
-  );
 
   const hasFilters = search !== "" || gradeFilter !== "all" || stateFilter !== "all";
 
@@ -231,47 +233,17 @@ export function LicensesTable() {
                     </Badge>
                   </td>
 
-                  {/* accessible tests (multi-select popover) */}
+                  {/* accessible tests — status tags (completed / assigned) */}
                   <td className="px-3 py-3">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger className="flex max-w-xs flex-wrap items-center gap-1 rounded-md border border-dashed px-2 py-1 text-left hover:border-solid hover:bg-muted">
-                        {lic.accessibleTestIds.length === 0 ? (
-                          <span className="text-xs text-muted-foreground">No tests · add</span>
-                        ) : (
-                          lic.accessibleTestIds.map((tid) => (
-                            <span
-                              key={tid}
-                              className="rounded bg-primary/10 px-1.5 py-0.5 text-[0.7rem] font-medium text-primary"
-                            >
-                              {testName(tid)}
-                            </span>
-                          ))
-                        )}
-                        <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-56">
-                        {availableTests.map((t) => {
-                          const checked = lic.accessibleTestIds.includes(t.id);
-                          return (
-                            <button
-                              key={t.id}
-                              onClick={() => toggleTest(lic.id, t.id)}
-                              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm hover:bg-muted"
-                            >
-                              <span
-                                className={cn(
-                                  "flex h-4 w-4 items-center justify-center rounded border",
-                                  checked ? "border-primary bg-primary text-primary-foreground" : "border-input",
-                                )}
-                              >
-                                {checked && <Check className="h-3 w-3" />}
-                              </span>
-                              {t.name}
-                            </button>
-                          );
-                        })}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {lic.tests.length === 0 ? (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    ) : (
+                      <div className="flex max-w-md flex-wrap gap-2">
+                        {lic.tests.map((tt) => (
+                          <TestTag key={tt.testId} test={tt} />
+                        ))}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
