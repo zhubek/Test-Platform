@@ -1,0 +1,186 @@
+"use client";
+
+import { useState } from "react";
+import { ChevronDown, ChevronRight, Plus, Trash2, Pencil, GripVertical } from "lucide-react";
+import { useLocale } from "@/lib/locale-context";
+import { localize } from "@/lib/localized";
+import { LocalizedInput } from "@/components/localized-input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import type { Section, QuestionType } from "../../../_components/mock-data";
+
+const QUESTION_TYPES: { value: QuestionType; key: string }[] = [
+  { value: "single", key: "cm.question.type.single" },
+  { value: "multiple", key: "cm.question.type.multiple" },
+  { value: "likert", key: "cm.question.type.likert" },
+];
+
+interface Props {
+  sections: Section[];
+  onSectionUpdate: (si: number, partial: Partial<Section>) => void;
+  onSectionDelete: (si: number) => void;
+  onSectionAdd: () => void;
+  onQuestionAdd: (si: number) => void;
+  onQuestionUpdate: (si: number, qi: number, partial: Partial<{ type: QuestionType }>) => void;
+  onQuestionDelete: (si: number, qi: number) => void;
+  onOpenQuestion: (si: number, qi: number) => void;
+  activePage: number;
+  onActivePageChange: (si: number) => void;
+}
+
+export function BlocksList({
+  sections,
+  onSectionUpdate,
+  onSectionDelete,
+  onSectionAdd,
+  onQuestionAdd,
+  onQuestionUpdate,
+  onQuestionDelete,
+  onOpenQuestion,
+  activePage,
+  onActivePageChange,
+}: Props) {
+  const { t, locale } = useLocale();
+  const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+  const [editingTitle, setEditingTitle] = useState<number | null>(null);
+
+  const toggle = (si: number) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      next.has(si) ? next.delete(si) : next.add(si);
+      return next;
+    });
+
+  return (
+    <div className="space-y-3">
+      {sections.map((section, si) => {
+        const isCollapsed = collapsed.has(si);
+        return (
+          <div
+            key={section.id}
+            className={cn(
+              "rounded-lg border",
+              si === activePage ? "border-primary/40" : "border-border",
+            )}
+          >
+            {/* Page header */}
+            <div className="flex items-center gap-1.5 border-b px-2.5 py-2">
+              <button onClick={() => toggle(si)} className="text-muted-foreground hover:text-foreground">
+                {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+              {editingTitle === si ? (
+                <LocalizedInput
+                  value={section.title}
+                  onChange={(v) => onSectionUpdate(si, { title: v })}
+                  placeholder="Page title"
+                  className="flex-1"
+                />
+              ) : (
+                <button
+                  onClick={() => onActivePageChange(si)}
+                  className="flex-1 text-left text-sm font-semibold"
+                >
+                  <span className="text-muted-foreground">{si + 1}. </span>
+                  {localize(section.title, locale) || `Page ${si + 1}`}
+                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                    ({section.questions.length})
+                  </span>
+                </button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => setEditingTitle(editingTitle === si ? null : si)}
+                title="Rename page"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => onSectionDelete(si)}
+                className="text-muted-foreground hover:text-red-500"
+                title="Delete page"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+
+            {/* Questions */}
+            {!isCollapsed && (
+              <div className="space-y-1.5 p-2.5">
+                {section.questions.map((q, qi) => (
+                  <div
+                    key={q.id}
+                    className="group flex items-center gap-2 rounded-md border bg-background px-2 py-1.5"
+                  >
+                    <GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground/30" />
+                    <button
+                      onClick={() => onOpenQuestion(si, qi)}
+                      className="flex-1 truncate text-left text-sm hover:text-primary"
+                    >
+                      {localize(q.text, locale) || (
+                        <span className="italic text-muted-foreground">Untitled question</span>
+                      )}
+                    </button>
+                    <Select
+                      value={q.type}
+                      onValueChange={(v) =>
+                        onQuestionUpdate(si, qi, { type: (v as QuestionType) ?? "single" })
+                      }
+                    >
+                      <SelectTrigger size="sm" className="w-28">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {QUESTION_TYPES.map((qt) => (
+                          <SelectItem key={qt.value} value={qt.value}>
+                            {t(qt.key)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button variant="outline" size="sm" onClick={() => onOpenQuestion(si, qi)}>
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => onQuestionDelete(si, qi)}
+                      className="text-muted-foreground opacity-0 hover:text-red-500 group-hover:opacity-100"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onQuestionAdd(si)}
+                  className="text-muted-foreground hover:text-primary"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add question
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      <Button
+        variant="outline"
+        onClick={onSectionAdd}
+        className="h-auto w-full rounded-xl border-2 border-dashed py-3 text-muted-foreground hover:border-teal-300 hover:text-primary"
+      >
+        <Plus className="h-4 w-4" /> {t("cm.questions.addSection")}
+      </Button>
+    </div>
+  );
+}

@@ -5,10 +5,12 @@ import { Plus } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { SectionCard } from "./section-card";
 import { SurveyLogicPanel } from "./survey-logic-panel";
 import { JsonView } from "./json-view";
 import { SurveyPreview } from "./preview/survey-preview";
+import { BlocksList } from "./blocks-list";
+import { QuestionEditor } from "./question-editor";
+import { localize } from "@/lib/localized";
 import type { Section, Question, AnswerChoice, Variable, SurveyLogic } from "../../../_components/mock-data";
 import type { Localized } from "@/lib/localized";
 import {
@@ -43,6 +45,8 @@ export function QuestionsTab({
   const { t } = useLocale();
   const [leftMode, setLeftMode] = useState<"blocks" | "json">("blocks");
   const [activeSection, setActiveSection] = useState(0);
+  // Drill-in: which question is open in the editor (null = list view)
+  const [openQ, setOpenQ] = useState<{ si: number; qi: number } | null>(null);
 
   // ── Section CRUD ─────────────────────────────────────────────
 
@@ -318,37 +322,40 @@ export function QuestionsTab({
         </div>
 
         {leftMode === "blocks" ? (
-          <div className="max-h-[70vh] space-y-4 overflow-auto p-4">
-            {onSurveyLogicChange && (
-              <SurveyLogicPanel value={surveyLogic ?? {}} onChange={onSurveyLogicChange} />
-            )}
-
-            {sections.map((section, si) => (
-              <SectionCard
-                key={section.id}
-                section={section}
-                sectionIndex={si}
-                variables={variables}
-                onSectionUpdate={(partial) => handleSectionUpdate(si, partial)}
-                onSectionDelete={() => handleSectionDelete(si)}
-                onQuestionAdd={() => handleQuestionAdd(si)}
-                onQuestionUpdate={(qIdx, partial) => handleQuestionUpdate(si, qIdx, partial)}
-                onQuestionDelete={(qIdx) => handleQuestionDelete(si, qIdx)}
-                onChoiceAdd={(qIdx) => handleChoiceAdd(si, qIdx)}
-                onChoiceUpdate={(qIdx, cIdx, partial) => handleChoiceUpdate(si, qIdx, cIdx, partial)}
-                onChoiceDelete={(qIdx, cIdx) => handleChoiceDelete(si, qIdx, cIdx)}
+          openQ && sections[openQ.si]?.questions[openQ.qi] ? (
+            <div className="h-[70vh]">
+              <QuestionEditor
+                question={sections[openQ.si].questions[openQ.qi]}
+                pageTitle={localize(sections[openQ.si].title, "en") || `Page ${openQ.si + 1}`}
+                onBack={() => setOpenQ(null)}
+                onQuestionUpdate={(partial) => handleQuestionUpdate(openQ.si, openQ.qi, partial)}
+                onChoiceAdd={() => handleChoiceAdd(openQ.si, openQ.qi)}
+                onChoiceUpdate={(cIdx, partial) => handleChoiceUpdate(openQ.si, openQ.qi, cIdx, partial)}
+                onChoiceDelete={(cIdx) => handleChoiceDelete(openQ.si, openQ.qi, cIdx)}
               />
-            ))}
-
-            <Button
-              variant="outline"
-              onClick={handleSectionAdd}
-              className="h-auto w-full rounded-xl border-2 border-dashed py-4 text-muted-foreground hover:border-teal-300 hover:text-primary"
-            >
-              <Plus className="h-4 w-4" />
-              {t("cm.questions.addSection")}
-            </Button>
-          </div>
+            </div>
+          ) : (
+            <div className="max-h-[70vh] space-y-4 overflow-auto p-4">
+              {onSurveyLogicChange && (
+                <SurveyLogicPanel value={surveyLogic ?? {}} onChange={onSurveyLogicChange} />
+              )}
+              <BlocksList
+                sections={sections}
+                onSectionUpdate={(si, partial) => handleSectionUpdate(si, partial)}
+                onSectionDelete={(si) => handleSectionDelete(si)}
+                onSectionAdd={handleSectionAdd}
+                onQuestionAdd={(si) => handleQuestionAdd(si)}
+                onQuestionUpdate={(si, qi, partial) => handleQuestionUpdate(si, qi, partial)}
+                onQuestionDelete={(si, qi) => handleQuestionDelete(si, qi)}
+                onOpenQuestion={(si, qi) => {
+                  setActiveSection(si);
+                  setOpenQ({ si, qi });
+                }}
+                activePage={activeSection}
+                onActivePageChange={setActiveSection}
+              />
+            </div>
+          )
         ) : (
           <div className="h-[70vh]">
             <JsonView sections={sections} />
