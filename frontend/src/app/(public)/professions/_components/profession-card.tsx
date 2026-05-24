@@ -1,13 +1,31 @@
 "use client";
 
-import type { ProfessionData } from "./mock-data";
+import type { ProfessionData, ProfessionGroup } from "./mock-data";
 import { groupBadgeColors, groupBgColors, prepLevelLabels } from "./mock-data";
-import { Heart } from "lucide-react";
+import {
+  Heart,
+  Cpu,
+  HeartPulse,
+  GraduationCap,
+  Briefcase,
+  Palette,
+  FlaskConical,
+  type LucideIcon,
+} from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/button-link";
 import { cn } from "@/lib/utils";
+
+const groupIcons: Record<ProfessionGroup, LucideIcon> = {
+  Technology: Cpu,
+  Healthcare: HeartPulse,
+  Education: GraduationCap,
+  Business: Briefcase,
+  "Creative Arts": Palette,
+  Science: FlaskConical,
+};
 
 interface Props {
   profession: ProfessionData;
@@ -104,12 +122,15 @@ export function ProfessionCard({ profession: p, onToggleLike, mode, index }: Pro
 
       {/* Icon */}
       <div
-        className={
-          "w-16 h-16 rounded-full shrink-0 flex items-center justify-center text-[1.6rem] self-center " +
-          groupBgColors[p.group]
-        }
+        className={cn(
+          "h-14 w-14 shrink-0 self-center flex items-center justify-center rounded-2xl",
+          groupBgColors[p.group],
+        )}
       >
-        {p.icon}
+        {(() => {
+          const Icon = groupIcons[p.group];
+          return <Icon className="h-6 w-6" strokeWidth={1.75} />;
+        })()}
       </div>
     </div>
   );

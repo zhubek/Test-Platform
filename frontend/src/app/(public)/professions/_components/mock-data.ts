@@ -479,13 +479,14 @@ export const professionDetails: Record<number, ProfessionDetail> = {
 };
 
 // Helper to get group bg color for icons
+// Soft tinted circle + matching icon color per group (theme-friendly).
 export const groupBgColors: Record<ProfessionGroup, string> = {
-  Technology: "bg-blue-100",
-  Healthcare: "bg-emerald-100",
-  Education: "bg-amber-100",
-  Business: "bg-violet-100",
-  "Creative Arts": "bg-pink-100",
-  Science: "bg-sky-100",
+  Technology: "bg-blue-50 text-blue-600",
+  Healthcare: "bg-emerald-50 text-emerald-600",
+  Education: "bg-amber-50 text-amber-600",
+  Business: "bg-violet-50 text-violet-600",
+  "Creative Arts": "bg-pink-50 text-pink-600",
+  Science: "bg-sky-50 text-sky-600",
 };
 
 export const groupBadgeColors: Record<ProfessionGroup, string> = {
