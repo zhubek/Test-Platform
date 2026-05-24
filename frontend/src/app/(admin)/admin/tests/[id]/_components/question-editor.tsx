@@ -21,6 +21,7 @@ import type {
   AnswerChoice,
   QuestionLogic,
 } from "../../../_components/mock-data";
+import { hasChoiceList, defaultChoicesForType } from "../../../_components/mock-data";
 
 interface Props {
   question: Question;
@@ -55,14 +56,20 @@ export function QuestionEditor({
 }: Props) {
   const { t, locale } = useLocale();
   const [tab, setTab] = useState<"content" | "advanced">("content");
-  // Choice-based types show an options list; the rest don't.
-  const hasChoices =
-    question.type === "single" ||
-    question.type === "multiple" ||
-    question.type === "dropdown" ||
-    question.type === "imagepicker";
+  // Choice-based types (incl. likert/rating) show an editable options list.
+  const hasChoices = hasChoiceList(question.type);
   const isImagePicker = question.type === "imagepicker";
   const isRating = question.type === "rating";
+
+  // Switching type: seed default choices for likert/rating when none exist
+  // (they are single-choice over a fixed numeric scale).
+  const handleTypeChange = (next: QuestionType) => {
+    const patch: Partial<Question> = { type: next };
+    if ((next === "likert" || next === "rating") && question.choices.length === 0) {
+      patch.choices = defaultChoicesForType(next, question.rateMax ?? 5);
+    }
+    onQuestionUpdate(patch);
+  };
   // What the question is actually referenced as (auto-numbered if blank).
   const effectiveName = question.name?.trim() || `q${globalIndex + 1}`;
 
@@ -84,7 +91,7 @@ export function QuestionEditor({
           </span>
           <Select
             value={question.type}
-            onValueChange={(v) => onQuestionUpdate({ type: (v as QuestionType) ?? "single" })}
+            onValueChange={(v) => handleTypeChange((v as QuestionType) ?? "single")}
           >
             <SelectTrigger size="sm" className="w-32">
               <SelectValue />
@@ -128,7 +135,7 @@ export function QuestionEditor({
               className="w-full"
             />
 
-            {/* Rating scale size */}
+            {/* Rating scale size — reseeds the choice list to match N. */}
             {isRating && (
               <div>
                 <label className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -139,11 +146,15 @@ export function QuestionEditor({
                   min={2}
                   max={10}
                   value={question.rateMax ?? 5}
-                  onChange={(e) =>
-                    onQuestionUpdate({ rateMax: Math.max(2, Math.min(10, parseInt(e.target.value) || 5)) })
-                  }
+                  onChange={(e) => {
+                    const n = Math.max(2, Math.min(10, parseInt(e.target.value) || 5));
+                    onQuestionUpdate({ rateMax: n, choices: defaultChoicesForType("rating", n) });
+                  }}
                   className="w-20"
                 />
+                <p className="mt-1 text-[0.65rem] text-muted-foreground">
+                  Changing N regenerates the options below.
+                </p>
               </div>
             )}
 
@@ -326,9 +337,14 @@ function AdvancedEditor({
                     value
                   </span>
                   <Input
+                    type="number"
                     value={choice.value ?? ""}
-                    onChange={(e) => onChoiceUpdate(ci, { value: e.target.value })}
-                    placeholder={`opt${ci + 1}`}
+                    onChange={(e) =>
+                      onChoiceUpdate(ci, {
+                        value: e.target.value === "" ? undefined : Number(e.target.value),
+                      })
+                    }
+                    placeholder={`${ci + 1}`}
                     className="h-7 w-40 font-mono text-[0.72rem]"
                   />
                   <span className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">

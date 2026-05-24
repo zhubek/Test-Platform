@@ -114,7 +114,7 @@ export function FullSurveyPreview({
         const ev = survey.getValue(name);
         if (ev == null) continue;
         const toId = (val: unknown) => {
-          const ci = q.choices.findIndex((c, i) => effectiveChoiceValue(c, i) === String(val));
+          const ci = q.choices.findIndex((c, i) => effectiveChoiceValue(c, i) === Number(val));
           return ci >= 0 ? q.choices[ci].id : val;
         };
         engineWrites[q.id] = Array.isArray(ev) ? ev.map(toId) : q.choices.length ? toId(ev) : ev;
@@ -152,7 +152,7 @@ export function FullSurveyPreview({
     if (!vals) return undefined;
     const ids = new Set<string>();
     q.choices.forEach((c, ci) => {
-      if (vals.has(effectiveChoiceValue(c, ci))) ids.add(c.id);
+      if (vals.has(String(effectiveChoiceValue(c, ci)))) ids.add(c.id);
     });
     return ids;
   };

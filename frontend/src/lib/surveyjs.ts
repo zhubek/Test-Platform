@@ -9,7 +9,7 @@ export interface SurveyJsLocalized {
 }
 
 export interface SurveyJsChoice {
-  value: string;
+  value: number;
   text: SurveyJsLocalized;
   imageLink?: string;
   visibleIf?: string;
@@ -49,9 +49,12 @@ export interface SurveyJsSchema {
 const typeMap: Record<QuestionType, SurveyJsQuestion["type"]> = {
   single: "radiogroup",
   multiple: "checkbox",
-  likert: "rating",
+  // likert/rating are single-choice over a fixed numeric scale; modeled as
+  // radiogroups with explicit numeric-valued choices so logic/formulas resolve
+  // the same way as any other choice question.
+  likert: "radiogroup",
   dropdown: "dropdown",
-  rating: "rating",
+  rating: "radiogroup",
   boolean: "boolean",
   imagepicker: "imagepicker",
 };
@@ -71,9 +74,10 @@ export function effectiveQuestionName(q: Question, globalIndex: number): string 
   return q.name?.trim() || `q${globalIndex + 1}`;
 }
 
-// Effective value for a choice. Blank → opt{index+1} within its question.
-export function effectiveChoiceValue(c: AnswerChoice, index: number): string {
-  return c.value?.trim() || `opt${index + 1}`;
+// Effective numeric value for a choice. Blank → 1-based position within its
+// question. All answer values are numbers; text labels are resolved at view time.
+export function effectiveChoiceValue(c: AnswerChoice, index: number): number {
+  return typeof c.value === "number" && !Number.isNaN(c.value) ? c.value : index + 1;
 }
 
 function buildQuestion(q: Question, globalIndex: number): SurveyJsQuestion {
@@ -87,19 +91,12 @@ function buildQuestion(q: Question, globalIndex: number): SurveyJsQuestion {
   if (q.logic?.enableIf) base.enableIf = q.logic.enableIf;
   if (q.logic?.requiredIf) base.requiredIf = q.logic.requiredIf;
 
-  // Rating / Likert — numeric scale, no choices.
-  if (q.type === "likert" || q.type === "rating") {
-    base.rateMin = 1;
-    base.rateMax = q.type === "likert" ? 5 : q.rateMax ?? 5;
-    return base;
-  }
-
   // Boolean — yes/no, no choices.
   if (q.type === "boolean") {
     return base;
   }
 
-  // Choice-based types (single / multiple / dropdown / imagepicker).
+  // Choice-based types (single / multiple / dropdown / imagepicker / likert / rating).
   base.choices = q.choices.map((c, ci) => {
     const choice: SurveyJsChoice = {
       value: effectiveChoiceValue(c, ci),

@@ -19,7 +19,7 @@ export interface AnswerRow {
   questionId: number;
   text: Localized;
   vars: any;
-  value?: string;
+  value?: number;
   visibleIf?: string;
   createdAt: string;
   updatedAt: string;
@@ -140,8 +140,8 @@ function seedQuestion(
     enableIf?: string;
     requiredIf?: string;
     rateMax?: number;
-    // per-choice visibleIf, keyed by the choice's effective value opt{n}
-    choiceVisibleIf?: Record<string, string>;
+    // per-choice visibleIf, keyed by the choice's 1-based position
+    choiceVisibleIf?: Record<number, string>;
   } = {},
 ): QuestionRow {
   const qid = ++qSeq + 100;
@@ -165,7 +165,7 @@ function seedQuestion(
       questionId: qid,
       text: a.text,
       vars: a.vars ?? [],
-      visibleIf: opts.choiceVisibleIf?.[`opt${i + 1}`],
+      visibleIf: opts.choiceVisibleIf?.[i + 1],
       createdAt: now(),
       updatedAt: now(),
     })),
@@ -214,20 +214,20 @@ const tests: TestRow[] = [
     "#0d9488",
     [
       section(11, 1, L("Activities", "Активности", "Әрекеттер"), [
-        // q1 — its last option ("Strongly agree" = opt5) is hidden unless q2 = opt5.
+        // q1 — its last option ("Strongly agree" = value 5) is hidden unless q2 = 5.
         seedQuestion(11, L("I like to work on cars and machines", "Мне нравится работать с машинами"), "single",
-          likertAnswers("realistic"), { choiceVisibleIf: { opt5: "{q2} = 'opt5'" } }),
+          likertAnswers("realistic"), { choiceVisibleIf: { 5: "{q2} = 5" } }),
         seedQuestion(11, L("I enjoy solving math or science problems", "Мне нравится решать задачи по науке"), "single",
           likertAnswers("investigative")),
         // q3 — only shows when the respondent answered Agree/Strongly agree to q2.
         seedQuestion(11, L("I like to draw, paint, or write", "Мне нравится рисовать или писать"), "single",
-          likertAnswers("artistic"), { visibleIf: "{q2} = 'opt4' or {q2} = 'opt5'" }),
+          likertAnswers("artistic"), { visibleIf: "{q2} = 4 or {q2} = 5" }),
       ]),
       // Page-level visibleIf — the whole Preferences page is hidden until q1 is answered.
       section(12, 1, L("Preferences", "Предпочтения", "Қалаулар"), [
-        // q4 — disabled (enableIf) until q1 = "Strongly agree" (opt5).
+        // q4 — disabled (enableIf) until q1 = "Strongly agree" (value 5).
         seedQuestion(12, L("I enjoy helping and teaching others", "Мне нравится помогать другим"), "single",
-          likertAnswers("social"), { enableIf: "{q1} = 'opt5'" }),
+          likertAnswers("social"), { enableIf: "{q1} = 5" }),
         // q5 — becomes required once q1 is answered.
         seedQuestion(12, L("I like to lead and persuade people", "Мне нравится вести за собой"), "single",
           likertAnswers("enterprising"), { requiredIf: "{q1} notempty" }),
@@ -246,15 +246,15 @@ const tests: TestRow[] = [
           // {engagement} — derived from q2, referenceable in any expression.
           {
             name: "engagement",
-            expression: "iif({q2} = 'opt4' or {q2} = 'opt5', 'high', 'low')",
+            expression: "iif({q2} = 4 or {q2} = 5, 'high', 'low')",
             includeIntoResult: true,
           },
         ],
         triggers: [
-          // Auto-complete the survey if q1 is "Strongly disagree" (opt1).
-          { type: "complete", expression: "{q1} = 'opt1'" },
-          // copyvalue: when q2 is "Strongly agree" (opt5), copy it into q6.
-          { type: "copyvalue", expression: "{q2} = 'opt5'", setToName: "q6", fromName: "q2" },
+          // Auto-complete the survey if q1 is "Strongly disagree" (value 1).
+          { type: "complete", expression: "{q1} = 1" },
+          // copyvalue: when q2 is "Strongly agree" (value 5), copy it into q6.
+          { type: "copyvalue", expression: "{q2} = 5", setToName: "q6", fromName: "q2" },
         ],
         completedHtmlOnCondition: [
           { expression: "{engagement} = 'high'", html: "<b>High engagement</b> — you showed strong interest." },

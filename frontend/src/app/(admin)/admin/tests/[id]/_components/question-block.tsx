@@ -80,7 +80,7 @@ export function QuestionBlock({
     } else if (onChange) {
       const newChoice: AnswerChoice = {
         id: `ch${Date.now()}`,
-        value: `opt${question.choices.length + 1}`,
+        value: question.choices.length + 1,
         text: { en: "", ru: "", kz: "" },
         variables: [],
       };
@@ -155,14 +155,18 @@ export function QuestionBlock({
                 placeholder={t("cm.question.answerPlaceholder")}
                 className="flex-1"
               />
-              {/* value key */}
+              {/* numeric value (referenced in formulas/logic) */}
               <Input
-                type="text"
+                type="number"
                 value={choice.value ?? ""}
-                onChange={(e) => handleChoiceUpdateInternal(ci, { value: e.target.value })}
+                onChange={(e) =>
+                  handleChoiceUpdateInternal(ci, {
+                    value: e.target.value === "" ? undefined : Number(e.target.value),
+                  })
+                }
                 placeholder="value"
                 className="h-7 w-24 font-mono text-[0.72rem]"
-                title="Value key (referenced in formulas/logic)"
+                title="Numeric value (referenced in formulas/logic)"
               />
               <Button
                 variant="ghost"

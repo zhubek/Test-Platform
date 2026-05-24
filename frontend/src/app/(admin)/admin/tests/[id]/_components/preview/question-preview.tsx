@@ -98,37 +98,30 @@ function MultiChoicePreview({ question, value, onChange, disabled, visibleChoice
   );
 }
 
-const LIKERT_SIZE: Record<number, string> = {
-  1: "min-w-[56px] py-4 px-3 sm:px-5",
-  2: "min-w-[52px] py-3.5 px-2.5 sm:px-4",
-  3: "min-w-[48px] py-3 px-2 sm:px-3.5",
-  4: "min-w-[52px] py-3.5 px-2.5 sm:px-4",
-  5: "min-w-[56px] py-4 px-3 sm:px-5",
-};
-const LIKERT_LABELS = ["Strongly\nDisagree", "Disagree", "Neutral", "Agree", "Strongly\nAgree"];
-
-function LikertPreview({ value, onChange, disabled }: PreviewProps) {
+// Likert is single-choice over a fixed scale; render its editable choices as a
+// graduated row (label under each point), selecting by choice id like single.
+function LikertPreview({ question, value, onChange, disabled, visibleChoiceIds }: PreviewProps) {
+  const { locale } = useLocale();
   return (
     <div className={cn("flex items-end justify-center gap-1.5 pt-2 sm:gap-2.5", disabled && "pointer-events-none opacity-50")}>
-      {[1, 2, 3, 4, 5].map((n) => {
-        const active = value === n;
+      {shownChoices(question, visibleChoiceIds).map((opt, i) => {
+        const active = value === opt.id;
         return (
           <button
-            key={n}
+            key={opt.id}
             type="button"
             disabled={disabled}
-            onClick={() => onChange(n)}
+            onClick={() => onChange(opt.id)}
             className={cn(
-              "flex flex-col items-center gap-1.5 rounded-xl border-2 transition-all",
-              LIKERT_SIZE[n],
+              "flex min-w-[52px] flex-col items-center gap-1.5 rounded-xl border-2 px-2.5 py-3.5 transition-all sm:px-4",
               active
                 ? "border-foreground bg-foreground text-background shadow-md"
                 : "border-border text-muted-foreground hover:border-muted-foreground/40 hover:bg-muted",
             )}
           >
-            <span className="text-base font-bold">{n}</span>
+            <span className="text-base font-bold">{i + 1}</span>
             <span className="whitespace-pre-line text-center text-[0.6rem] leading-tight">
-              {LIKERT_LABELS[n - 1]}
+              {localize(opt.text, locale) || "—"}
             </span>
           </button>
         );
@@ -158,26 +151,28 @@ function DropdownPreview({ question, value, onChange, disabled, visibleChoiceIds
   );
 }
 
-function RatingPreview({ question, value, onChange, disabled }: PreviewProps) {
-  const max = question.rateMax ?? 5;
+// Rating is single-choice over a numeric scale; render its editable choices as
+// square buttons, selecting by choice id like single.
+function RatingPreview({ question, value, onChange, disabled, visibleChoiceIds }: PreviewProps) {
+  const { locale } = useLocale();
   return (
     <div className={cn("flex flex-wrap gap-1.5 pt-1", disabled && "pointer-events-none opacity-50")}>
-      {Array.from({ length: max }, (_, i) => i + 1).map((n) => {
-        const active = value === n;
+      {shownChoices(question, visibleChoiceIds).map((opt) => {
+        const active = value === opt.id;
         return (
           <button
-            key={n}
+            key={opt.id}
             type="button"
             disabled={disabled}
-            onClick={() => onChange(n)}
+            onClick={() => onChange(opt.id)}
             className={cn(
-              "flex h-10 w-10 items-center justify-center rounded-lg border-2 text-sm font-semibold transition-all",
+              "flex h-10 min-w-10 items-center justify-center rounded-lg border-2 px-2 text-sm font-semibold transition-all",
               active
                 ? "border-foreground bg-foreground text-background shadow-md"
                 : "border-border text-muted-foreground hover:border-muted-foreground/40 hover:bg-muted",
             )}
           >
-            {n}
+            {localize(opt.text, locale) || "—"}
           </button>
         );
       })}

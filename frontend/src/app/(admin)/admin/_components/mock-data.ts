@@ -40,7 +40,10 @@ export interface Variable {
 
 export interface AnswerChoice {
   id: string;
-  value?: string; // stable key referenced in formulas/logic (e.g. "agree"); defaults to id
+  // Numeric value this choice contributes / is stored as (e.g. Likert 1–5,
+  // boolean 1/0). Referenced in formulas & logic as a number. Author sets it;
+  // defaults to the 1-based position when blank.
+  value?: number;
   text: Localized;
   imageUrl?: string; // for imagepicker questions
   visibleIf?: string; // show this option only if the expression holds
@@ -75,6 +78,47 @@ export interface Section {
   description: Localized;
   questions: Question[];
   visibleIf?: string; // show this page only if the expression holds
+}
+
+// Classic 5-point Likert labels, used to seed a likert question's choices.
+const LIKERT_5: Localized[] = [
+  l("Strongly disagree", "Совсем не согласен", "Мүлдем келіспеймін"),
+  l("Disagree", "Не согласен", "Келіспеймін"),
+  l("Neutral", "Нейтрально", "Бейтарап"),
+  l("Agree", "Согласен", "Келісемін"),
+  l("Strongly agree", "Полностью согласен", "Толық келісемін"),
+];
+
+// Choice-based question types show an editable options list.
+export const CHOICE_TYPES: QuestionType[] = [
+  "single",
+  "multiple",
+  "dropdown",
+  "imagepicker",
+  "likert",
+  "rating",
+];
+
+export function hasChoiceList(type: QuestionType): boolean {
+  return CHOICE_TYPES.includes(type);
+}
+
+// Seed default choices when a question becomes likert/rating (treated as a
+// single-choice over a fixed numeric scale). likert → 5 classic labels valued
+// 1–5; rating → 1..rateMax with numeric labels. Author can edit text & values.
+export function defaultChoicesForType(type: QuestionType, rateMax = 5): AnswerChoice[] {
+  if (type === "likert") {
+    return LIKERT_5.map((text, i) => ({ id: `ch_${Date.now()}_${i}`, value: i + 1, text, variables: [] }));
+  }
+  if (type === "rating") {
+    return Array.from({ length: rateMax }, (_, i) => ({
+      id: `ch_${Date.now()}_${i}`,
+      value: i + 1,
+      text: l(String(i + 1)),
+      variables: [],
+    }));
+  }
+  return [];
 }
 
 // ── Characteristics ──────────────────────────────────────────────
