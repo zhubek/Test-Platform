@@ -4,7 +4,14 @@ import type { VisibilityRule } from "@/lib/visibility-rule";
 // ── Shared types ─────────────────────────────────────────────────
 
 export type VisualizationType = "bar" | "pie" | "histogram" | "table";
-export type QuestionType = "single" | "multiple" | "likert";
+export type QuestionType =
+  | "single"
+  | "multiple"
+  | "likert"
+  | "dropdown"
+  | "rating"
+  | "boolean"
+  | "imagepicker";
 
 // ── Variables ────────────────────────────────────────────────────
 
@@ -27,6 +34,7 @@ export interface AnswerChoice {
   id: string;
   value?: string; // stable key referenced in formulas/logic (e.g. "agree"); defaults to id
   text: Localized;
+  imageUrl?: string; // for imagepicker questions
   visibleIf?: string; // show this option only if the expression holds
   variables: VariableAssignment[];
 }
@@ -43,6 +51,7 @@ export interface Question {
   text: Localized;
   type: QuestionType;
   choices: AnswerChoice[];
+  rateMax?: number; // for rating questions (default 5)
   logic?: QuestionLogic;
 }
 

@@ -28,7 +28,11 @@ import type { Section, QuestionType } from "../../../_components/mock-data";
 const QUESTION_TYPES: { value: QuestionType; key: string }[] = [
   { value: "single", key: "cm.question.type.single" },
   { value: "multiple", key: "cm.question.type.multiple" },
+  { value: "dropdown", key: "cm.question.type.dropdown" },
   { value: "likert", key: "cm.question.type.likert" },
+  { value: "rating", key: "cm.question.type.rating" },
+  { value: "boolean", key: "cm.question.type.boolean" },
+  { value: "imagepicker", key: "cm.question.type.imagepicker" },
 ];
 
 interface Props {

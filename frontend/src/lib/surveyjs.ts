@@ -11,11 +11,12 @@ export interface SurveyJsLocalized {
 export interface SurveyJsChoice {
   value: string;
   text: SurveyJsLocalized;
+  imageLink?: string;
   visibleIf?: string;
 }
 
 export interface SurveyJsQuestion {
-  type: "radiogroup" | "checkbox" | "rating";
+  type: "radiogroup" | "checkbox" | "rating" | "dropdown" | "boolean" | "imagepicker";
   name: string;
   title: SurveyJsLocalized;
   isRequired?: boolean;
@@ -49,6 +50,10 @@ const typeMap: Record<QuestionType, SurveyJsQuestion["type"]> = {
   single: "radiogroup",
   multiple: "checkbox",
   likert: "rating",
+  dropdown: "dropdown",
+  rating: "rating",
+  boolean: "boolean",
+  imagepicker: "imagepicker",
 };
 
 function toLocalized(v: Localized): SurveyJsLocalized {
@@ -82,17 +87,25 @@ function buildQuestion(q: Question, globalIndex: number): SurveyJsQuestion {
   if (q.logic?.enableIf) base.enableIf = q.logic.enableIf;
   if (q.logic?.requiredIf) base.requiredIf = q.logic.requiredIf;
 
-  if (q.type === "likert") {
+  // Rating / Likert — numeric scale, no choices.
+  if (q.type === "likert" || q.type === "rating") {
     base.rateMin = 1;
-    base.rateMax = 5;
+    base.rateMax = q.type === "likert" ? 5 : q.rateMax ?? 5;
     return base;
   }
 
+  // Boolean — yes/no, no choices.
+  if (q.type === "boolean") {
+    return base;
+  }
+
+  // Choice-based types (single / multiple / dropdown / imagepicker).
   base.choices = q.choices.map((c, ci) => {
     const choice: SurveyJsChoice = {
       value: effectiveChoiceValue(c, ci),
       text: toLocalized(c.text),
     };
+    if (q.type === "imagepicker" && c.imageUrl?.trim()) choice.imageLink = c.imageUrl;
     if (c.visibleIf?.trim()) choice.visibleIf = c.visibleIf;
     return choice;
   });

@@ -36,7 +36,11 @@ interface Props {
 const QUESTION_TYPES: { value: QuestionType; key: string }[] = [
   { value: "single", key: "cm.question.type.single" },
   { value: "multiple", key: "cm.question.type.multiple" },
+  { value: "dropdown", key: "cm.question.type.dropdown" },
   { value: "likert", key: "cm.question.type.likert" },
+  { value: "rating", key: "cm.question.type.rating" },
+  { value: "boolean", key: "cm.question.type.boolean" },
+  { value: "imagepicker", key: "cm.question.type.imagepicker" },
 ];
 
 export function QuestionEditor({
@@ -51,7 +55,14 @@ export function QuestionEditor({
 }: Props) {
   const { t, locale } = useLocale();
   const [tab, setTab] = useState<"content" | "advanced">("content");
-  const isLikert = question.type === "likert";
+  // Choice-based types show an options list; the rest don't.
+  const hasChoices =
+    question.type === "single" ||
+    question.type === "multiple" ||
+    question.type === "dropdown" ||
+    question.type === "imagepicker";
+  const isImagePicker = question.type === "imagepicker";
+  const isRating = question.type === "rating";
   // What the question is actually referenced as (auto-numbered if blank).
   const effectiveName = question.name?.trim() || `q${globalIndex + 1}`;
 
@@ -117,34 +128,70 @@ export function QuestionEditor({
               className="w-full"
             />
 
-            {/* Choices — text only */}
-            {!isLikert ? (
+            {/* Rating scale size */}
+            {isRating && (
               <div>
                 <label className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Choices
+                  Scale (1 to N)
+                </label>
+                <Input
+                  type="number"
+                  min={2}
+                  max={10}
+                  value={question.rateMax ?? 5}
+                  onChange={(e) =>
+                    onQuestionUpdate({ rateMax: Math.max(2, Math.min(10, parseInt(e.target.value) || 5)) })
+                  }
+                  className="w-20"
+                />
+              </div>
+            )}
+
+            {/* Choices — text (+ image url for imagepicker) */}
+            {hasChoices ? (
+              <div>
+                <label className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {isImagePicker ? "Options (image)" : "Choices"}
                 </label>
                 <div className="space-y-2">
                   {question.choices.map((choice, ci) => (
-                    <div key={choice.id} className="group flex items-start gap-2">
-                      <span className="mt-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[0.65rem] font-semibold text-muted-foreground">
-                        {ci + 1}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <LocalizedInput
-                          value={choice.text}
-                          onChange={(v) => onChoiceUpdate(ci, { text: v })}
-                          placeholder={t("cm.question.answerPlaceholder")}
-                          className="w-full"
-                        />
+                    <div key={choice.id} className="group">
+                      <div className="flex items-start gap-2">
+                        <span className="mt-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[0.65rem] font-semibold text-muted-foreground">
+                          {ci + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <LocalizedInput
+                            value={choice.text}
+                            onChange={(v) => onChoiceUpdate(ci, { text: v })}
+                            placeholder={t("cm.question.answerPlaceholder")}
+                            className="w-full"
+                          />
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => onChoiceDelete(ci)}
+                          className="mt-1 text-muted-foreground opacity-0 hover:text-red-500 group-hover:opacity-100"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => onChoiceDelete(ci)}
-                        className="mt-1 text-muted-foreground opacity-0 hover:text-red-500 group-hover:opacity-100"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
+                      {isImagePicker && (
+                        <div className="mt-1.5 flex items-center gap-2 pl-7">
+                          <span className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                            image url
+                          </span>
+                          <Input
+                            value={choice.imageUrl ?? ""}
+                            onChange={(e) =>
+                              onChoiceUpdate(ci, { imageUrl: e.target.value || undefined })
+                            }
+                            placeholder="https://…"
+                            className="h-7 flex-1 text-[0.72rem]"
+                          />
+                        </div>
+                      )}
                     </div>
                   ))}
                   <Button
@@ -159,7 +206,9 @@ export function QuestionEditor({
               </div>
             ) : (
               <p className="text-[0.78rem] text-muted-foreground">
-                Likert scale (1–5).
+                {question.type === "boolean"
+                  ? "Yes / No question — no options to configure."
+                  : `Scale 1–${question.type === "likert" ? 5 : question.rateMax ?? 5}.`}
               </p>
             )}
           </>
@@ -167,7 +216,7 @@ export function QuestionEditor({
           <AdvancedEditor
             question={question}
             effectiveName={effectiveName}
-            isLikert={isLikert}
+            hasChoices={hasChoices}
             t={t}
             onQuestionUpdate={onQuestionUpdate}
             onChoiceAdd={onChoiceAdd}
@@ -183,7 +232,7 @@ export function QuestionEditor({
 function AdvancedEditor({
   question,
   effectiveName,
-  isLikert,
+  hasChoices,
   t,
   onQuestionUpdate,
   onChoiceAdd,
@@ -192,7 +241,7 @@ function AdvancedEditor({
 }: {
   question: Question;
   effectiveName: string;
-  isLikert: boolean;
+  hasChoices: boolean;
   t: (key: string) => string;
   onQuestionUpdate: (partial: Partial<Question>) => void;
   onChoiceAdd: () => void;
@@ -241,7 +290,7 @@ function AdvancedEditor({
       </div>
 
       {/* Options — editable text + value + visibleIf */}
-      {!isLikert ? (
+      {hasChoices ? (
         <div>
           <label className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
             Options
@@ -308,7 +357,7 @@ function AdvancedEditor({
         </div>
       ) : (
         <p className="text-[0.78rem] text-muted-foreground">
-          Likert scale (1–5). Reference its value as{" "}
+          No options for this type. Reference its value as{" "}
           <code className="font-mono">{`{${effectiveName}}`}</code>.
         </p>
       )}
