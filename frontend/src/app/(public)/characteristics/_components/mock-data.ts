@@ -24,12 +24,15 @@ export type ProfessionGroup =
   | "Creative Arts"
   | "Science";
 
+export type PrepLevel = 1 | 2 | 3 | 4 | 5;
+
 export interface ProfessionData {
   title: Localized;
   code: string;
   desc: Localized;
   group: ProfessionGroup;
   popular: boolean;
+  prepLevel: PrepLevel;
   fit: { interest: number; personality: number; skills: number; values: number };
 }
 
@@ -106,18 +109,18 @@ const valuesData: CategoryData = {
 };
 
 const allProfessions: ProfessionData[] = [
-  { title: l("Data Scientist", "Дата-сайентист"), code: "DS-401", desc: l("Analyze complex data to drive business decisions", "Анализ сложных данных для принятия бизнес-решений"), group: "Technology", popular: true, fit: { interest: 85, personality: 90, skills: 78, values: 82 } },
-  { title: l("Registered Nurse", "Медсестра/медбрат"), code: "HC-201", desc: l("Provide patient care and coordinate treatments", "Уход за пациентами и координация лечения"), group: "Healthcare", popular: true, fit: { interest: 70, personality: 88, skills: 75, values: 90 } },
-  { title: l("High School Teacher", "Учитель старших классов"), code: "ED-105", desc: l("Educate and inspire students in subject areas", "Обучение и вдохновение учеников по предметам"), group: "Education", popular: false, fit: { interest: 65, personality: 80, skills: 72, values: 88 } },
-  { title: l("Marketing Manager", "Менеджер по маркетингу"), code: "BU-302", desc: l("Plan and execute marketing strategies for growth", "Планирование и реализация маркетинговых стратегий роста"), group: "Business", popular: true, fit: { interest: 60, personality: 75, skills: 80, values: 65 } },
-  { title: l("Graphic Designer", "Графический дизайнер"), code: "CA-110", desc: l("Create visual content for brands and media", "Создание визуального контента для брендов и медиа"), group: "Creative Arts", popular: false, fit: { interest: 92, personality: 70, skills: 85, values: 78 } },
-  { title: l("Biomedical Researcher", "Биомедицинский исследователь"), code: "SC-501", desc: l("Conduct research to advance medical knowledge", "Проведение исследований для развития медицинских знаний"), group: "Science", popular: false, fit: { interest: 88, personality: 82, skills: 70, values: 92 } },
-  { title: l("Software Engineer", "Инженер-программист"), code: "DS-402", desc: l("Design and build software applications and systems", "Проектирование и создание программных приложений и систем"), group: "Technology", popular: true, fit: { interest: 80, personality: 72, skills: 90, values: 70 } },
-  { title: l("Clinical Psychologist", "Клинический психолог"), code: "HC-305", desc: l("Assess and treat mental health conditions", "Диагностика и лечение психических расстройств"), group: "Healthcare", popular: false, fit: { interest: 78, personality: 92, skills: 68, values: 85 } },
-  { title: l("Financial Analyst", "Финансовый аналитик"), code: "BU-210", desc: l("Evaluate investments and guide financial decisions", "Оценка инвестиций и консультирование по финансовым решениям"), group: "Business", popular: true, fit: { interest: 55, personality: 68, skills: 82, values: 60 } },
-  { title: l("UX Designer", "UX-дизайнер"), code: "CA-112", desc: l("Design intuitive user experiences for digital products", "Проектирование интуитивного пользовательского опыта для цифровых продуктов"), group: "Creative Arts", popular: true, fit: { interest: 90, personality: 75, skills: 88, values: 80 } },
-  { title: l("Environmental Scientist", "Эколог"), code: "SC-310", desc: l("Study and protect the natural environment", "Изучение и защита окружающей среды"), group: "Science", popular: false, fit: { interest: 82, personality: 78, skills: 65, values: 95 } },
-  { title: l("Curriculum Developer", "Разработчик учебных программ"), code: "ED-208", desc: l("Design educational programs and learning materials", "Разработка образовательных программ и учебных материалов"), group: "Education", popular: false, fit: { interest: 72, personality: 76, skills: 74, values: 80 } },
+  { title: l("Data Scientist", "Дата-сайентист"), code: "DS-401", desc: l("Analyze complex data to drive business decisions", "Анализ сложных данных для принятия бизнес-решений"), group: "Technology", popular: true, prepLevel: 5, fit: { interest: 85, personality: 90, skills: 78, values: 82 } },
+  { title: l("Registered Nurse", "Медсестра/медбрат"), code: "HC-201", desc: l("Provide patient care and coordinate treatments", "Уход за пациентами и координация лечения"), group: "Healthcare", popular: true, prepLevel: 4, fit: { interest: 70, personality: 88, skills: 75, values: 90 } },
+  { title: l("High School Teacher", "Учитель старших классов"), code: "ED-105", desc: l("Educate and inspire students in subject areas", "Обучение и вдохновение учеников по предметам"), group: "Education", popular: false, prepLevel: 3, fit: { interest: 65, personality: 80, skills: 72, values: 88 } },
+  { title: l("Marketing Manager", "Менеджер по маркетингу"), code: "BU-302", desc: l("Plan and execute marketing strategies for growth", "Планирование и реализация маркетинговых стратегий роста"), group: "Business", popular: true, prepLevel: 3, fit: { interest: 60, personality: 75, skills: 80, values: 65 } },
+  { title: l("Graphic Designer", "Графический дизайнер"), code: "CA-110", desc: l("Create visual content for brands and media", "Создание визуального контента для брендов и медиа"), group: "Creative Arts", popular: false, prepLevel: 2, fit: { interest: 92, personality: 70, skills: 85, values: 78 } },
+  { title: l("Biomedical Researcher", "Биомедицинский исследователь"), code: "SC-501", desc: l("Conduct research to advance medical knowledge", "Проведение исследований для развития медицинских знаний"), group: "Science", popular: false, prepLevel: 5, fit: { interest: 88, personality: 82, skills: 70, values: 92 } },
+  { title: l("Software Engineer", "Инженер-программист"), code: "DS-402", desc: l("Design and build software applications and systems", "Проектирование и создание программных приложений и систем"), group: "Technology", popular: true, prepLevel: 4, fit: { interest: 80, personality: 72, skills: 90, values: 70 } },
+  { title: l("Clinical Psychologist", "Клинический психолог"), code: "HC-305", desc: l("Assess and treat mental health conditions", "Диагностика и лечение психических расстройств"), group: "Healthcare", popular: false, prepLevel: 5, fit: { interest: 78, personality: 92, skills: 68, values: 85 } },
+  { title: l("Financial Analyst", "Финансовый аналитик"), code: "BU-210", desc: l("Evaluate investments and guide financial decisions", "Оценка инвестиций и консультирование по финансовым решениям"), group: "Business", popular: true, prepLevel: 3, fit: { interest: 55, personality: 68, skills: 82, values: 60 } },
+  { title: l("UX Designer", "UX-дизайнер"), code: "CA-112", desc: l("Design intuitive user experiences for digital products", "Проектирование интуитивного пользовательского опыта для цифровых продуктов"), group: "Creative Arts", popular: true, prepLevel: 2, fit: { interest: 90, personality: 75, skills: 88, values: 80 } },
+  { title: l("Environmental Scientist", "Эколог"), code: "SC-310", desc: l("Study and protect the natural environment", "Изучение и защита окружающей среды"), group: "Science", popular: false, prepLevel: 4, fit: { interest: 82, personality: 78, skills: 65, values: 95 } },
+  { title: l("Curriculum Developer", "Разработчик учебных программ"), code: "ED-208", desc: l("Design educational programs and learning materials", "Разработка образовательных программ и учебных материалов"), group: "Education", popular: false, prepLevel: 2, fit: { interest: 72, personality: 76, skills: 74, values: 80 } },
 ];
 
 export const mockScenarios: Record<MockMode, MockScenario> = {

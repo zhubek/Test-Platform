@@ -42,6 +42,15 @@ const groupIcons: Record<ProfessionGroup, LucideIcon> = {
   Science: FlaskConical,
 };
 
+// Dynamic match color: green near 100, amber mid, red low.
+function matchColor(pct: number): string {
+  if (pct >= 80) return "bg-emerald-100 text-emerald-800";
+  if (pct >= 65) return "bg-lime-100 text-lime-800";
+  if (pct >= 50) return "bg-amber-100 text-amber-800";
+  if (pct >= 35) return "bg-orange-100 text-orange-800";
+  return "bg-red-100 text-red-800";
+}
+
 interface Props {
   profession: ProfessionData;
   index: number;
@@ -67,7 +76,7 @@ export function ProfessionCard({ profession: p, index, fitKey }: Props) {
         </span>
       </h3>
 
-      {/* Badges */}
+      {/* Badges: category + popular + match */}
       <div className="flex items-center gap-1.5 mt-2.5 mb-2.5 flex-wrap">
         <span
           className={
@@ -80,6 +89,16 @@ export function ProfessionCard({ profession: p, index, fitKey }: Props) {
         {p.popular && (
           <span className="text-[0.65rem] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold whitespace-nowrap">
             {t("professions.card.popular")}
+          </span>
+        )}
+        {match != null && (
+          <span
+            className={cn(
+              "text-[0.68rem] px-2.5 py-0.5 rounded-full font-semibold whitespace-nowrap",
+              matchColor(match),
+            )}
+          >
+            {t("professions.card.match")}: {match}%
           </span>
         )}
       </div>
@@ -100,13 +119,22 @@ export function ProfessionCard({ profession: p, index, fitKey }: Props) {
         <div className="clear-both" />
       </div>
 
-      {/* Actions: match (related tab only) + details */}
+      {/* Actions: difficulty dots (left) + details (right) */}
       <div className="mt-auto flex items-center gap-2 pt-1.5">
-        {match != null && (
-          <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-[0.72rem] font-semibold text-primary">
-            {t("professions.card.match")}: {match}%
-          </span>
-        )}
+        <span className="text-[0.72rem] font-medium text-muted-foreground">
+          {t("professions.card.difficulty")}
+        </span>
+        <div className="flex items-center gap-1">
+          {[1, 2, 3, 4, 5].map((seg) => (
+            <span
+              key={seg}
+              className={cn(
+                "h-1.5 w-1.5 rounded-full",
+                seg <= p.prepLevel ? "bg-primary" : "bg-muted",
+              )}
+            />
+          ))}
+        </div>
         <ButtonLink
           href="/explore"
           variant="outline"
