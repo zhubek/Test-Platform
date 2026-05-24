@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Trash2, ChevronDown, BookOpen, Compass } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
@@ -145,24 +145,51 @@ export function CalculationTab({
     ]);
   };
 
-  // Import a mapping group's characteristic keys as characteristic variables.
-  const importCharacteristics = (m: CatalogMapping) => {
-    const group = findGroup(m.catalogId, m.groupId);
-    if (!group) return;
-    const existing = new Set(variables.map((v) => v.name));
-    const additions: Variable[] = group.keys
-      .filter((k) => !existing.has(k.key))
-      .map((k, i) => ({
-        id: `var_${Date.now()}_${i}`,
-        name: k.key,
-        label: k.label,
-        kind: "characteristic" as const,
-        formula: "",
-        scope: "both" as const,
-        source: { catalogId: m.catalogId, groupId: m.groupId },
-      }));
-    if (additions.length) onVariablesChange([...variables, ...additions]);
-  };
+  // Characteristic variables appear AUTOMATICALLY for every mapped group's keys
+  // (no import step). Their formulas are author-editable and persist; we only
+  // add missing ones and drop those whose source group is no longer mapped.
+  useEffect(() => {
+    const wanted = new Map<string, { key: string; label: typeof variables[number]["label"]; src: { catalogId: string; groupId: string } }>();
+    for (const m of mappings) {
+      const group = findGroup(m.catalogId, m.groupId);
+      if (!group) continue;
+      for (const k of group.keys) {
+        // key per (group, characteristic) so two mappings on the same group share one var
+        if (!wanted.has(k.key)) wanted.set(k.key, { key: k.key, label: k.label, src: { catalogId: m.catalogId, groupId: m.groupId } });
+      }
+    }
+
+    // Only auto-manage CATALOG-sourced characteristic vars. Manually-seeded
+    // characteristics (no source) and all other kinds are left untouched.
+    const managed = variables.filter((v) => v.kind === "characteristic" && v.source);
+    const untouched = variables.filter((v) => !(v.kind === "characteristic" && v.source));
+    const haveByName = new Map(managed.map((v) => [v.name, v]));
+
+    // Keep existing managed vars still wanted (preserve their formula);
+    // add new ones for newly-mapped keys; drop ones no longer wanted.
+    const nextChar: Variable[] = [];
+    for (const [name, w] of wanted) {
+      const existing = haveByName.get(name);
+      if (existing) nextChar.push(existing);
+      else
+        nextChar.push({
+          id: `char_${w.src.groupId}_${name}`,
+          name,
+          label: w.label,
+          kind: "characteristic",
+          formula: "",
+          scope: "both",
+          source: w.src,
+        });
+    }
+
+    // Only push an update if the managed set actually changed.
+    const sameSet =
+      nextChar.length === managed.length &&
+      nextChar.every((v, i) => managed[i] && managed[i].id === v.id);
+    if (!sameSet) onVariablesChange([...untouched, ...nextChar]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mappings]);
 
   // Derived profession variables: topN per mapping, value→label = catalog items.
   const professionVars: Variable[] = mappings.flatMap((m) => {
@@ -272,14 +299,6 @@ export function CalculationTab({
                     </Field>
 
                     <div className="ml-auto flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => importCharacteristics(m)}
-                        className="text-[0.72rem] text-primary hover:text-teal-700"
-                      >
-                        {t("cm.calculation.importChars")}
-                      </Button>
                       <Button
                         variant="ghost"
                         size="icon-sm"
