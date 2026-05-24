@@ -409,7 +409,7 @@ export function CalculationTab({
                   .filter((q) => !addedScQuestionIds.has(q.id))
                   .map((q) => (
                     <DropdownMenuItem key={q.id} onClick={() => addScVar(q.id)}>
-                      {localize(q.text, locale) || q.name || q.id}
+                      {scQuestions.indexOf(q) + 1}. {localize(q.text, locale) || q.name || q.id}
                     </DropdownMenuItem>
                   ))
               )}
@@ -463,7 +463,7 @@ export function CalculationTab({
                   .filter((q) => !addedQuestionIds.has(q.id))
                   .map((q) => (
                     <DropdownMenuItem key={q.id} onClick={() => addMcVar(q.id)}>
-                      {localize(q.text, locale) || q.name || q.id}
+                      {mcQuestions.indexOf(q) + 1}. {localize(q.text, locale) || q.name || q.id}
                     </DropdownMenuItem>
                   ))
               )}
