@@ -12,7 +12,12 @@ export function PublicTopbar() {
   const pathname = usePathname();
   const { locale, setLocale } = useLocale();
 
-  const nav = [{ label: "Tests", href: "/tests" }];
+  const nav = [
+    { label: "My tests", href: "/home" },
+    { label: "Explore", href: "/tests" },
+    { label: "Characteristics", href: "/characteristics" },
+    { label: "Professions", href: "/professions" },
+  ];
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-xl">
