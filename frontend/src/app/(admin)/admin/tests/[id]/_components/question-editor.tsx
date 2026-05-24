@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, X, Plus, HelpCircle } from "lucide-react";
+import { ArrowLeft, X, Plus, HelpCircle, ChevronRight } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
 import { LocalizedInput } from "@/components/localized-input";
@@ -51,6 +51,7 @@ export function QuestionEditor({
 }: Props) {
   const { t, locale } = useLocale();
   const [tab, setTab] = useState<"content" | "logic">("content");
+  const [showIds, setShowIds] = useState(false);
   const isLikert = question.type === "likert";
   // What the question is actually referenced as (auto-numbered if blank).
   const effectiveName = question.name?.trim() || `q${globalIndex + 1}`;
@@ -117,24 +118,39 @@ export function QuestionEditor({
               className="w-full"
             />
 
-            {/* Name key */}
-            <div>
-              <label className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                Name (for formulas / logic)
-              </label>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={question.name ?? ""}
-                  onChange={(e) => onQuestionUpdate({ name: e.target.value })}
-                  placeholder={effectiveName}
-                  className="w-48 font-mono"
-                />
-                <span className="text-[0.7rem] text-muted-foreground">
-                  reference as <code className="font-mono">{`{${effectiveName}}`}</code>
-                  {!question.name?.trim() && " (auto)"}
-                </span>
+            {/* Advanced identifiers toggle */}
+            <button
+              type="button"
+              onClick={() => setShowIds((s) => !s)}
+              className="inline-flex items-center gap-1 text-[0.72rem] font-medium text-muted-foreground hover:text-foreground"
+            >
+              <ChevronRight
+                className={cn("h-3.5 w-3.5 transition-transform", showIds && "rotate-90")}
+              />
+              Advanced — identifiers (referenced as{" "}
+              <code className="font-mono">{`{${effectiveName}}`}</code>)
+            </button>
+
+            {/* Name key (advanced) */}
+            {showIds && (
+              <div>
+                <label className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Name (for formulas / logic)
+                </label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={question.name ?? ""}
+                    onChange={(e) => onQuestionUpdate({ name: e.target.value })}
+                    placeholder={effectiveName}
+                    className="w-48 font-mono"
+                  />
+                  <span className="text-[0.7rem] text-muted-foreground">
+                    reference as <code className="font-mono">{`{${effectiveName}}`}</code>
+                    {!question.name?.trim() && " (auto)"}
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Choices */}
             {!isLikert ? (
@@ -171,19 +187,21 @@ export function QuestionEditor({
                         </Button>
                       </div>
 
-                      {/* Row 2: value key (for formulas), below the text */}
-                      <div className="mt-2 flex items-center gap-2 pl-7">
-                        <span className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                          value
-                        </span>
-                        <Input
-                          value={choice.value ?? ""}
-                          onChange={(e) => onChoiceUpdate(ci, { value: e.target.value })}
-                          placeholder={`opt${ci + 1}`}
-                          className="h-7 w-32 font-mono text-[0.72rem]"
-                          title="Value key referenced in formulas/logic"
-                        />
-                      </div>
+                      {/* Row 2: value key (for formulas) — advanced */}
+                      {showIds && (
+                        <div className="mt-2 flex items-center gap-2 pl-7">
+                          <span className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                            value
+                          </span>
+                          <Input
+                            value={choice.value ?? ""}
+                            onChange={(e) => onChoiceUpdate(ci, { value: e.target.value })}
+                            placeholder={`opt${ci + 1}`}
+                            className="h-7 w-32 font-mono text-[0.72rem]"
+                            title="Value key referenced in formulas/logic"
+                          />
+                        </div>
+                      )}
                     </div>
                   ))}
                   <Button
