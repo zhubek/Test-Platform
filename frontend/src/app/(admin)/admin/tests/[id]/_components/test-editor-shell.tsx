@@ -21,6 +21,7 @@ import type {
   TestIconKey,
   SurveyLogic,
 } from "../../../_components/mock-data";
+import type { VisibilityRule } from "@/lib/visibility-rule";
 
 interface Props {
   initialData: ContentTest;
@@ -38,6 +39,9 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
   const [category, setCategory] = useState(initialData.category);
   const [visibilityTags, setVisibilityTags] = useState<string[]>(
     initialData.visibilityTags ?? [],
+  );
+  const [visibilityRule, setVisibilityRule] = useState<VisibilityRule>(
+    initialData.visibilityRule ?? { combinator: "all", items: [] },
   );
   const [duration, setDuration] = useState(initialData.duration);
   const [status, setStatus] = useState(initialData.status);
@@ -106,6 +110,7 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
                 icon,
                 category: typeof category === "object" ? (category as any).en || "" : category,
                 visibilityTags,
+                visibilityRule,
                 duration,
                 state: status,
                 vars: { variables },
@@ -131,6 +136,7 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
           icon={icon}
           category={category}
           visibilityTags={visibilityTags}
+          visibilityRule={visibilityRule}
           duration={duration}
           onNameChange={setName}
           onDescriptionChange={setDescription}
@@ -138,6 +144,7 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
           onIconChange={setIcon}
           onCategoryChange={setCategory}
           onVisibilityTagsChange={setVisibilityTags}
+          onVisibilityRuleChange={setVisibilityRule}
           onDurationChange={setDuration}
         />
       )}

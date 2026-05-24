@@ -16,6 +16,7 @@ const emptyTest: ContentTest = {
   category: { en: "", ru: "", kz: "" },
   format: "test-only",
   visibilityTags: [],
+  visibilityRule: { combinator: "all", items: [] },
   duration: 15,
   status: "draft",
   createdAt: new Date().toISOString().split("T")[0],

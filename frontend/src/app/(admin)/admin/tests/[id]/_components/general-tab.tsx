@@ -18,7 +18,9 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { Localized } from "@/lib/localized";
 import type { TestIconKey } from "../../../_components/mock-data";
+import type { VisibilityRule } from "@/lib/visibility-rule";
 import { VisibilityTagsField } from "./visibility-tags-field";
+import { VisibilityRuleBuilder } from "./visibility-rule-builder";
 
 const COLOR_SWATCHES = [
   "#4f46e5", "#059669", "#7c3aed", "#ea580c",
@@ -43,6 +45,7 @@ interface Props {
   icon: TestIconKey;
   category: Localized;
   visibilityTags: string[];
+  visibilityRule: VisibilityRule;
   duration: number;
   onNameChange: (v: Localized) => void;
   onDescriptionChange: (v: Localized) => void;
@@ -50,6 +53,7 @@ interface Props {
   onIconChange: (v: TestIconKey) => void;
   onCategoryChange: (v: Localized) => void;
   onVisibilityTagsChange: (v: string[]) => void;
+  onVisibilityRuleChange: (v: VisibilityRule) => void;
   onDurationChange: (v: number) => void;
 }
 
@@ -60,6 +64,7 @@ export function GeneralTab({
   icon,
   category,
   visibilityTags,
+  visibilityRule,
   duration,
   onNameChange,
   onDescriptionChange,
@@ -67,6 +72,7 @@ export function GeneralTab({
   onIconChange,
   onCategoryChange,
   onVisibilityTagsChange,
+  onVisibilityRuleChange,
   onDurationChange,
 }: Props) {
   const { t } = useLocale();
@@ -189,6 +195,17 @@ export function GeneralTab({
         <VisibilityTagsField value={visibilityTags} onChange={onVisibilityTagsChange} />
         <p className="mt-1.5 text-[0.72rem] text-muted-foreground">
           {t("cm.general.visibilityTagsHint")}
+        </p>
+      </div>
+
+      {/* Parameter-based visibility rule */}
+      <div>
+        <label className="block text-[0.75rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+          {t("cm.general.visibilityRuleLabel")}
+        </label>
+        <VisibilityRuleBuilder value={visibilityRule} onChange={onVisibilityRuleChange} />
+        <p className="mt-1.5 text-[0.72rem] text-muted-foreground">
+          {t("cm.general.visibilityRuleHint")}
         </p>
       </div>
     </div>

@@ -13,6 +13,7 @@ export const hollandTest: ContentTest = {
   category: l("Interest", "Интерес"),
   format: "test-only",
   visibilityTags: [],
+  visibilityRule: { combinator: "all", items: [] },
   duration: 15,
   status: "published",
   createdAt: "2025-09-15",

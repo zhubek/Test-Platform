@@ -6,6 +6,7 @@ import { TestEditorShell } from "./_components/test-editor-shell";
 import { useLocale } from "@/lib/locale-context";
 import { fetchTest, updateTest, type TestRow } from "@/lib/api";
 import type { ContentTest } from "../../_components/mock-data";
+import type { VisibilityRule } from "@/lib/visibility-rule";
 
 function apiTestToContentTest(t: TestRow): ContentTest {
   const vars = t.vars?.variables ?? [];
@@ -26,6 +27,10 @@ function apiTestToContentTest(t: TestRow): ContentTest {
     visibilityTags: Array.isArray((t as { visibilityTags?: string[] }).visibilityTags)
       ? (t as { visibilityTags?: string[] }).visibilityTags!
       : [],
+    visibilityRule: (t as { visibilityRule?: VisibilityRule }).visibilityRule ?? {
+      combinator: "all",
+      items: [],
+    },
     duration: t.duration ?? 0,
     status: t.state === "published" ? "published" : "draft",
     createdAt: t.createdAt?.slice(0, 10) ?? "",

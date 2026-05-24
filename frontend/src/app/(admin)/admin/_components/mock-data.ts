@@ -1,4 +1,5 @@
 import { type Localized, l } from "@/lib/localized";
+import type { VisibilityRule } from "@/lib/visibility-rule";
 
 // ── Shared types ─────────────────────────────────────────────────
 
@@ -137,6 +138,7 @@ export interface ContentTest {
   category: Localized;
   format: TestFormat;
   visibilityTags: string[];
+  visibilityRule: VisibilityRule;
   duration: number; // minutes
   status: "draft" | "published";
   createdAt: string;
