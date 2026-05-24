@@ -103,11 +103,11 @@ export function ProfessionCard({ profession: p, onToggleLike, mode, index }: Pro
         <div className="clear-both" />
       </div>
 
-      {/* Actions: prep-level dots + details button */}
-      <div className="mt-auto flex items-center gap-3 pt-1.5">
-        <ButtonLink href={detailHref} variant="outline" size="sm">
-          {t("professions.card.details")}
-        </ButtonLink>
+      {/* Actions: difficulty (left) + details button (right) */}
+      <div className="mt-auto flex items-center gap-2 pt-1.5">
+        <span className="text-[0.72rem] font-medium text-muted-foreground">
+          {t("professions.card.difficulty")}
+        </span>
         <div
           className="flex items-center gap-1"
           title={localize(prepLevelLabels[p.prepLevel], locale)}
@@ -122,6 +122,9 @@ export function ProfessionCard({ profession: p, onToggleLike, mode, index }: Pro
             />
           ))}
         </div>
+        <ButtonLink href={detailHref} variant="outline" size="sm" className="ml-auto">
+          {t("professions.card.details")}
+        </ButtonLink>
       </div>
     </div>
   );

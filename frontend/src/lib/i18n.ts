@@ -120,6 +120,7 @@ const translations: Record<Locale, Record<string, string>> = {
     // Profession card
     "professions.card.popular": "Popular",
     "professions.card.details": "Details",
+    "professions.card.difficulty": "Difficulty",
 
     // Profession detail
     "professionDetail.notFound": "Profession not found",
@@ -811,6 +812,7 @@ const translations: Record<Locale, Record<string, string>> = {
     // Profession card
     "professions.card.popular": "Популярная",
     "professions.card.details": "Подробнее",
+    "professions.card.difficulty": "Сложность",
 
     // Profession detail
     "professionDetail.notFound": "Профессия не найдена",
