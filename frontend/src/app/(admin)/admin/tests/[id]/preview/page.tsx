@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { fetchTest, type TestRow } from "@/lib/api";
-import type { Section, QuestionType } from "../../../_components/mock-data";
+import type { Section, QuestionType, SurveyLogic } from "../../../_components/mock-data";
 import { Breadcrumb } from "../../../_components/breadcrumb";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
@@ -43,6 +43,7 @@ export default function TestPreviewPage({
   const { t, locale } = useLocale();
 
   const [sections, setSections] = useState<Section[] | null>(null);
+  const [surveyLogic, setSurveyLogic] = useState<SurveyLogic>({});
   const [testName, setTestName] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
@@ -51,6 +52,7 @@ export default function TestPreviewPage({
       .then((test) => {
         setTestName(localize(test.name, locale) || "—");
         setSections(testToSections(test));
+        setSurveyLogic((test.surveyLogic as SurveyLogic) ?? {});
       })
       .catch((err) => console.error("Failed to load test for preview:", err))
       .finally(() => setLoading(false));
@@ -84,7 +86,7 @@ export default function TestPreviewPage({
           ← Back to editor
         </ButtonLink>
       </div>
-      <FullSurveyPreview sections={sections} />
+      <FullSurveyPreview sections={sections} surveyLogic={surveyLogic} />
     </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Save, Eye } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
@@ -52,22 +52,6 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
   const [sections, setSections] = useState<Section[]>(initialData.sections);
   const [variables, setVariables] = useState<Variable[]>(initialData.variables);
   const [surveyLogic, setSurveyLogic] = useState<SurveyLogic>({});
-
-  // Mirror unsaved logic (survey-level + per-question) to sessionStorage so
-  // the Preview route can read it until backend persistence is wired up.
-  useEffect(() => {
-    if (!testId) return;
-    const key = `profwise-test-logic-${testId}`;
-    const payload = {
-      surveyLogic,
-      perQuestion: sections.flatMap((s) =>
-        s.questions
-          .filter((q) => q.logic && (q.logic.visibleIf || q.logic.enableIf || q.logic.requiredIf))
-          .map((q) => ({ id: q.id, logic: q.logic })),
-      ),
-    };
-    localStorage.setItem(key, JSON.stringify(payload));
-  }, [testId, sections, surveyLogic]);
   const [resultWidgets, setResultWidgets] = useState<Widget[]>(initialData.resultWidgets);
   // Dashboard widgets are no longer edited here (no Dashboard tab), but the
   // value is preserved on save.

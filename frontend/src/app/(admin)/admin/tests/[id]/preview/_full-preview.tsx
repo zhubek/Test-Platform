@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Model } from "survey-core";
+import { Model, settings } from "survey-core";
+
+// In a designer preview we want `complete` triggers to fire as soon as the
+// matching answer is given (not deferred to page navigation), so the preview
+// reflects the rule immediately. Skip triggers already run on value change.
+settings.triggers.executeCompleteOnValueChanged = true;
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
@@ -10,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { sectionsToSurveyJson } from "@/lib/surveyjs";
 import { effectiveQuestionName, effectiveChoiceValue } from "@/lib/surveyjs";
 import { QuestionPreview } from "../_components/preview/question-preview";
-import type { Section, Question } from "../../../_components/mock-data";
+import type { Section, Question, SurveyLogic } from "../../../_components/mock-data";
 
 function isAnswered(v: unknown): boolean {
   if (v == null) return false;
@@ -19,22 +24,36 @@ function isAnswered(v: unknown): boolean {
 }
 
 // Full-width respondent preview. Renders with custom components, but uses a
-// headless survey-core Model to evaluate logic (visibleIf, calculatedValues)
-// exactly as the real engine would.
-export function FullSurveyPreview({ sections }: { sections: Section[] }) {
+// headless survey-core Model to evaluate logic (visibleIf, calculatedValues,
+// triggers, completedHtmlOnCondition) exactly as the real engine would.
+export function FullSurveyPreview({
+  sections,
+  surveyLogic = {},
+}: {
+  sections: Section[];
+  surveyLogic?: SurveyLogic;
+}) {
   const { locale } = useLocale();
   const [idx, setIdx] = useState(0);
   // UI answers keyed by question id, values are choice ids (what the custom
   // QuestionPreview components emit/compare).
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
+  // Whether a `complete` trigger / manual finish has ended the survey.
+  const [completed, setCompleted] = useState(false);
 
-  // Build the headless engine once from the schema.
+  // Build the headless engine once from the schema, including survey-level
+  // triggers / calculatedValues / completedHtmlOnCondition.
   const survey = useMemo(() => {
-    const schema = sectionsToSurveyJson(sections);
+    const schema = sectionsToSurveyJson(sections, {
+      triggers: surveyLogic.triggers,
+      calculatedValues: surveyLogic.calculatedValues,
+      completedHtmlOnCondition: surveyLogic.completedHtmlOnCondition,
+    });
     const m = new Model(schema);
     m.showInvisibleElements = false;
     return m;
-  }, [sections]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sections, surveyLogic]);
 
   // Map each question's id -> its effective SurveyJS name (global index based).
   const nameById = useMemo(() => {
@@ -66,21 +85,65 @@ export function FullSurveyPreview({ sections }: { sections: Section[] }) {
     return data;
   }, [answers, sections, nameById]);
 
-  // Push translated answers into the engine so it recomputes visibility.
-  survey.data = engineData;
-  const allQ = survey.getAllQuestions();
-  const visibleNames = new Set(allQ.filter((q) => q.isVisible).map((q) => q.name));
-  const disabledNames = new Set(allQ.filter((q) => q.isReadOnly).map((q) => q.name));
-  const requiredNames = new Set(allQ.filter((q) => q.isRequired).map((q) => q.name));
-  // Per-question set of currently-visible choice VALUES (engine space).
-  const visibleChoiceValuesByName = new Map<string, Set<string>>();
-  for (const q of allQ) {
-    const choices = (q as unknown as { visibleChoices?: { value: unknown }[] }).visibleChoices;
-    if (choices) {
-      visibleChoiceValuesByName.set(q.name, new Set(choices.map((c) => String(c.value))));
+  // Single source of truth: feed answers into the engine via setValue (which
+  // runs the trigger pipeline — bulk `survey.data =` does not fire complete/
+  // skip the same way), then read back everything we render from. Recomputed
+  // only when answers change.
+  const derived = useMemo(() => {
+    // Clear keys no longer answered (skip engine-owned calculated values).
+    const incoming = new Set(Object.keys(engineData));
+    for (const k of Object.keys(survey.data)) {
+      if (!incoming.has(k) && !survey.calculatedValues.some((cv) => cv.name === k)) {
+        survey.clearValue(k);
+      }
     }
-  }
-  const visiblePageIds = new Set(survey.pages.filter((p) => p.isVisible).map((p) => p.name));
+    for (const [k, v] of Object.entries(engineData)) survey.setValue(k, v);
+
+    const allQ = survey.getAllQuestions();
+    const visibleChoiceValuesByName = new Map<string, Set<string>>();
+    for (const q of allQ) {
+      const choices = (q as unknown as { visibleChoices?: { value: unknown }[] }).visibleChoices;
+      if (choices) visibleChoiceValuesByName.set(q.name, new Set(choices.map((c) => String(c.value))));
+    }
+    // Engine values written by setvalue/copyvalue triggers, translated back to UI ids.
+    const engineWrites: Record<string, unknown> = {};
+    for (const s of sections) {
+      for (const q of s.questions) {
+        const name = nameById.get(q.id);
+        if (!name) continue;
+        const ev = survey.getValue(name);
+        if (ev == null) continue;
+        const toId = (val: unknown) => {
+          const ci = q.choices.findIndex((c, i) => effectiveChoiceValue(c, i) === String(val));
+          return ci >= 0 ? q.choices[ci].id : val;
+        };
+        engineWrites[q.id] = Array.isArray(ev) ? ev.map(toId) : q.choices.length ? toId(ev) : ev;
+      }
+    }
+    return {
+      completed: survey.state === "completed",
+      calcValues: survey.calculatedValues.map((cv) => ({
+        name: cv.name,
+        value: survey.getVariable(cv.name) ?? cv.value,
+      })),
+      visibleNames: new Set(allQ.filter((q) => q.isVisible).map((q) => q.name)),
+      disabledNames: new Set(allQ.filter((q) => q.isReadOnly).map((q) => q.name)),
+      requiredNames: new Set(allQ.filter((q) => q.isRequired).map((q) => q.name)),
+      visibleChoiceValuesByName,
+      visiblePageIds: new Set(survey.pages.filter((p) => p.isVisible).map((p) => p.name)),
+      engineWrites,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engineData, survey, sections, nameById]);
+
+  const {
+    calcValues,
+    visibleNames,
+    disabledNames,
+    requiredNames,
+    visibleChoiceValuesByName,
+    visiblePageIds,
+  } = derived;
 
   // Map a question's visible choice VALUES back to UI choice IDS for rendering.
   const visibleChoiceIdsFor = (q: Question): Set<string> | undefined => {
@@ -97,6 +160,90 @@ export function FullSurveyPreview({ sections }: { sections: Section[] }) {
   // Only sections whose page is visible.
   const visibleSections = sections.filter((s) => visiblePageIds.has(s.id) || visiblePageIds.size === 0);
 
+  const visibleQs = (s: Section) =>
+    s.questions.filter((q) => {
+      const n = nameById.get(q.id);
+      return n ? visibleNames.has(n) : true;
+    });
+
+  const setAnswer = (q: Question, v: unknown) => {
+    setAnswers((prev) => ({ ...prev, [q.id]: v }));
+  };
+
+  // React to engine outcomes: completion + trigger write-backs (setvalue/copyvalue).
+  useEffect(() => {
+    if (derived.completed) {
+      setCompleted(true);
+      return;
+    }
+    setAnswers((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const [id, val] of Object.entries(derived.engineWrites)) {
+        if (JSON.stringify(prev[id]) !== JSON.stringify(val)) {
+          next[id] = val;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [derived]);
+
+  // If answers hid the page we're on (or shifted the visible count), snap the
+  // stored index back into range so we never strand the user on a hidden page.
+  useEffect(() => {
+    if (idx > visibleSections.length - 1) {
+      setIdx(Math.max(0, visibleSections.length - 1));
+    }
+  }, [idx, visibleSections.length]);
+
+  // ── Completion screen (complete trigger / completedHtmlOnCondition) ──────
+  if (completed) {
+    const html = survey.renderedCompletedHtml;
+    return (
+      <div className="mx-auto max-w-2xl rounded-2xl border bg-card p-10 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+          <Check className="h-6 w-6" />
+        </div>
+        <h2 className="text-xl font-bold tracking-tight">Survey completed</h2>
+        {html ? (
+          <div
+            className="mt-3 text-sm text-muted-foreground [&_*]:!text-current"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">
+            A completion trigger fired for the current answers.
+          </p>
+        )}
+        {calcValues.length > 0 && (
+          <div className="mt-5 inline-flex flex-wrap justify-center gap-2">
+            {calcValues.map((cv) => (
+              <span key={cv.name} className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
+                {cv.name}: {String(cv.value ?? "—")}
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="mt-6">
+          <Button
+            variant="outline"
+            onClick={() => {
+              // Reset the engine out of its completed state, not just our flags.
+              survey.clear(true, true);
+              survey.start();
+              setCompleted(false);
+              setAnswers({});
+              setIdx(0);
+            }}
+          >
+            Restart preview
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (visibleSections.length === 0) {
     return (
       <div className="rounded-2xl border bg-card py-20 text-center text-sm text-muted-foreground">
@@ -107,11 +254,6 @@ export function FullSurveyPreview({ sections }: { sections: Section[] }) {
 
   const active = Math.min(idx, Math.max(0, visibleSections.length - 1));
   const section = visibleSections[active];
-  const visibleQs = (s: Section) =>
-    s.questions.filter((q) => {
-      const n = nameById.get(q.id);
-      return n ? visibleNames.has(n) : true;
-    });
 
   const answeredCounts = visibleSections.map(
     (s) => visibleQs(s).filter((q) => isAnswered(answers[q.id])).length,
@@ -119,18 +261,6 @@ export function FullSurveyPreview({ sections }: { sections: Section[] }) {
   const totalQuestions = visibleSections.reduce((n, s) => n + visibleQs(s).length, 0);
   const totalAnswered = answeredCounts.reduce((a, b) => a + b, 0);
   const pct = totalQuestions ? Math.round((totalAnswered / totalQuestions) * 100) : 0;
-
-  const setAnswer = (q: Question, v: unknown) => {
-    setAnswers((prev) => ({ ...prev, [q.id]: v }));
-  };
-
-  // If answers hid the page we're on (or shifted the visible count), snap the
-  // stored index back into range so we never strand the user on a hidden page.
-  useEffect(() => {
-    if (idx > visibleSections.length - 1) {
-      setIdx(Math.max(0, visibleSections.length - 1));
-    }
-  }, [idx, visibleSections.length]);
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -147,6 +277,23 @@ export function FullSurveyPreview({ sections }: { sections: Section[] }) {
           />
         </div>
       </div>
+
+      {/* Live calculated values (survey-level), so the designer can watch them. */}
+      {calcValues.length > 0 && (
+        <div className="mb-6 flex flex-wrap items-center gap-2">
+          <span className="text-[0.68rem] font-bold uppercase tracking-wider text-muted-foreground">
+            Calculated
+          </span>
+          {calcValues.map((cv) => (
+            <span
+              key={cv.name}
+              className="rounded-full border bg-muted px-3 py-1 text-xs font-medium"
+            >
+              {cv.name}: <span className="font-bold">{String(cv.value ?? "—")}</span>
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="flex gap-8">
         {/* Vertical stepper sidebar */}
@@ -243,13 +390,13 @@ export function FullSurveyPreview({ sections }: { sections: Section[] }) {
             <span className="text-sm text-muted-foreground">
               {active + 1} / {visibleSections.length}
             </span>
-            <Button
-              variant="outline"
-              disabled={active === visibleSections.length - 1}
-              onClick={() => setIdx(active + 1)}
-            >
-              Next <ChevronRight className="ml-1 h-4 w-4" />
-            </Button>
+            {active === visibleSections.length - 1 ? (
+              <Button onClick={() => setCompleted(true)}>Finish</Button>
+            ) : (
+              <Button variant="outline" onClick={() => setIdx(active + 1)}>
+                Next <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </div>

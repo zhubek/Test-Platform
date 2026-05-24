@@ -62,6 +62,7 @@ export interface TestRow {
   state: string;
   vars: any;
   calcLogic: any;
+  surveyLogic?: any;
   resultViewLogic: any;
   dashboardViewLogic: any;
   sections?: SectionRow[];
@@ -239,6 +240,27 @@ const tests: TestRow[] = [
       duration: 12,
       category: "Career",
       vars: { variables: hollandVars },
+      // Survey-level logic demo (evaluated in the preview):
+      surveyLogic: {
+        calculatedValues: [
+          // {engagement} — derived from q2, referenceable in any expression.
+          {
+            name: "engagement",
+            expression: "iif({q2} = 'opt4' or {q2} = 'opt5', 'high', 'low')",
+            includeIntoResult: true,
+          },
+        ],
+        triggers: [
+          // Auto-complete the survey if q1 is "Strongly disagree" (opt1).
+          { type: "complete", expression: "{q1} = 'opt1'" },
+          // copyvalue: when q2 is "Strongly agree" (opt5), copy it into q6.
+          { type: "copyvalue", expression: "{q2} = 'opt5'", setToName: "q6", fromName: "q2" },
+        ],
+        completedHtmlOnCondition: [
+          { expression: "{engagement} = 'high'", html: "<b>High engagement</b> — you showed strong interest." },
+          { expression: "{engagement} = 'low'", html: "<b>Low engagement</b> — interest was modest." },
+        ],
+      },
       resultViewLogic: {
         widgets: [
           { id: "w1", componentType: "bar_chart", title: L("Your RIASEC profile", "Ваш профиль RIASEC"), bind: "characteristics" },
