@@ -24,8 +24,8 @@ interface Props {
 
 const SAMPLE_LABELS = ["Realistic", "Investigative", "Artistic", "Social", "Enterprising"];
 
-function generateMockRows(sql: string): Record<string, string | number>[] {
-  if (!sql.match(/SELECT\s+.+\s+FROM/i)) return [];
+function generateMockRows(sql: string | undefined): Record<string, string | number>[] {
+  if (!sql || !sql.match(/SELECT\s+.+\s+FROM/i)) return [];
 
   return Array.from({ length: 5 }, (_, i) => ({
     label: SAMPLE_LABELS[i],
