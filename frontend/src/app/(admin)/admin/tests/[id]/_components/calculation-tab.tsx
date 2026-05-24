@@ -73,6 +73,7 @@ export function CalculationTab({
   // Three displayed groups: formula vars (characteristic + custom),
   // multiple-choice vars (bound to checkbox questions), and derived catalog vars.
   const formulaVars = variables.filter((v) => v.kind === "characteristic" || v.kind === "custom");
+  const scVars = variables.filter((v) => v.kind === "singlechoice");
   const mcVars = variables.filter((v) => v.kind === "multiplechoice");
   const updateVar = (id: string, partial: Partial<Variable>) =>
     onVariablesChange(variables.map((v) => (v.id === id ? { ...v, ...partial } : v)));
@@ -108,6 +109,32 @@ export function CalculationTab({
         name: q.name?.trim() || `mc_${mcVars.length + 1}`,
         label: q.text,
         kind: "multiplechoice",
+        scope: "both",
+        questionId,
+        valueTranslations: q.choices.map((c, i) => ({
+          value: effectiveChoiceValue(c, i),
+          label: c.text,
+        })),
+      },
+    ]);
+  };
+
+  // The test's single-choice questions, available to add as single-choice vars.
+  const scQuestions = questionSections
+    .flatMap((s) => s.questions)
+    .filter((q) => q.type === "single");
+  const addedScQuestionIds = new Set(scVars.map((v) => v.questionId));
+
+  const addScVar = (questionId: string) => {
+    const q = scQuestions.find((x) => x.id === questionId);
+    if (!q) return;
+    onVariablesChange([
+      ...variables,
+      {
+        id: `sc_${Date.now()}`,
+        name: q.name?.trim() || `sc_${scVars.length + 1}`,
+        label: q.text,
+        kind: "singlechoice",
         scope: "both",
         questionId,
         valueTranslations: q.choices.map((c, i) => ({
@@ -309,6 +336,60 @@ export function CalculationTab({
         )}
 
         <FormulaReference open={refOpen} onToggle={() => setRefOpen(!refOpen)} />
+      </section>
+
+      {/* ── Single Choice Variables ──────────────────────────────── */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-[0.88rem] font-semibold text-foreground">
+              {t("cm.calculation.scHeading")}
+            </h3>
+            <p className="mt-0.5 text-[0.75rem] text-muted-foreground">
+              {t("cm.calculation.scSub")}
+            </p>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={<Button variant="ghost" size="sm" className="text-primary hover:text-teal-700" />}
+              disabled={scQuestions.every((q) => addedScQuestionIds.has(q.id))}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t("cm.calculation.addScVar")}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              {scQuestions.filter((q) => !addedScQuestionIds.has(q.id)).length === 0 ? (
+                <DropdownMenuItem disabled>{t("cm.calculation.noScQuestions")}</DropdownMenuItem>
+              ) : (
+                scQuestions
+                  .filter((q) => !addedScQuestionIds.has(q.id))
+                  .map((q) => (
+                    <DropdownMenuItem key={q.id} onClick={() => addScVar(q.id)}>
+                      {localize(q.text, locale) || q.name || q.id}
+                    </DropdownMenuItem>
+                  ))
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {scVars.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {scVars.map((v) => (
+              <VariableCard
+                key={v.id}
+                variable={v}
+                onChange={(partial) => updateVar(v.id, partial)}
+                onDelete={() => deleteVar(v.id)}
+                noFormula
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed py-6 text-center text-[0.78rem] text-muted-foreground">
+            {t("cm.calculation.noScVars")}
+          </div>
+        )}
       </section>
 
       {/* ── Multiple Choice Variables ────────────────────────────── */}

@@ -196,13 +196,20 @@ function section(
 }
 
 // ── Holland (RIASEC) — full weighted test ────────────────────────────────
+const charVar = (id: string, label: ReturnType<typeof L>) => ({
+  id,
+  name: id,
+  label,
+  kind: "characteristic" as const,
+  scope: "both" as const,
+});
 const hollandVars = [
-  { id: "realistic", name: "realistic", description: L("Realistic", "Реалистичный", "Реалистік") },
-  { id: "investigative", name: "investigative", description: L("Investigative", "Исследовательский", "Зерттеушілік") },
-  { id: "artistic", name: "artistic", description: L("Artistic", "Артистичный", "Көркемдік") },
-  { id: "social", name: "social", description: L("Social", "Социальный", "Әлеуметтік") },
-  { id: "enterprising", name: "enterprising", description: L("Enterprising", "Предприимчивый", "Кәсіпкерлік") },
-  { id: "conventional", name: "conventional", description: L("Conventional", "Традиционный", "Дәстүрлі") },
+  charVar("realistic", L("Realistic", "Реалистичный", "Реалистік")),
+  charVar("investigative", L("Investigative", "Исследовательский", "Зерттеушілік")),
+  charVar("artistic", L("Artistic", "Артистичный", "Көркемдік")),
+  charVar("social", L("Social", "Социальный", "Әлеуметтік")),
+  charVar("enterprising", L("Enterprising", "Предприимчивый", "Кәсіпкерлік")),
+  charVar("conventional", L("Conventional", "Традиционный", "Дәстүрлі")),
 ];
 
 const tests: TestRow[] = [
@@ -298,10 +305,10 @@ const tests: TestRow[] = [
       category: "Personality",
       vars: {
         variables: [
-          { id: "openness", name: "openness", description: L("Openness", "Открытость") },
-          { id: "conscientiousness", name: "conscientiousness", description: L("Conscientiousness", "Сознательность") },
-          { id: "extraversion", name: "extraversion", description: L("Extraversion", "Экстраверсия") },
-          { id: "agreeableness", name: "agreeableness", description: L("Agreeableness", "Доброжелательность") },
+          charVar("openness", L("Openness", "Открытость")),
+          charVar("conscientiousness", L("Conscientiousness", "Сознательность")),
+          charVar("extraversion", L("Extraversion", "Экстраверсия")),
+          charVar("agreeableness", L("Agreeableness", "Доброжелательность")),
         ],
       },
       resultViewLogic: {
@@ -327,8 +334,8 @@ const tests: TestRow[] = [
       category: "Soft skills",
       vars: {
         variables: [
-          { id: "awareness", name: "awareness", description: L("Self-awareness", "Самосознание") },
-          { id: "regulation", name: "regulation", description: L("Self-regulation", "Саморегуляция") },
+          charVar("awareness", L("Self-awareness", "Самосознание")),
+          charVar("regulation", L("Self-regulation", "Саморегуляция")),
         ],
       },
     },

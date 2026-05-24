@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Trash2, Languages, ChevronDown } from "lucide-react";
+import { Trash2, Languages, ChevronDown, Plus, X } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
 import { LocalizedInput } from "@/components/localized-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { Variable } from "../../../_components/mock-data";
+import type { Variable, ValueTranslation } from "../../../_components/mock-data";
 
 interface Props {
   variable: Variable;
@@ -19,19 +19,33 @@ interface Props {
 const KIND_BADGE: Record<Variable["kind"], string> = {
   characteristic: "cm.calculation.kindCharacteristic",
   custom: "cm.calculation.kindCustom",
+  singlechoice: "cm.calculation.kindSinglechoice",
   multiplechoice: "cm.calculation.kindMultiplechoice",
   profession: "cm.calculation.kindProfession",
 };
 
 export function VariableCard({ variable, onChange, onDelete, readOnlyValue, noFormula }: Props) {
   const { t, locale } = useLocale();
-  const [trOpen, setTrOpen] = useState(false);
   const translations = variable.valueTranslations ?? [];
+  // Characteristic vars are pure numeric dimensions — no value→label table.
+  const showTranslations = variable.kind !== "characteristic";
+  // Editable for everything except catalog-derived (profession) vars.
+  const editableTr = !readOnlyValue;
+  const [trOpen, setTrOpen] = useState(translations.length === 0 ? false : !editableTr ? false : true);
 
-  const updateTranslation = (i: number, partial: Partial<{ value: number; label: typeof variable.label }>) =>
+  const updateTranslation = (i: number, partial: Partial<ValueTranslation>) =>
     onChange({
       valueTranslations: translations.map((tr, idx) => (idx === i ? { ...tr, ...partial } : tr)),
     });
+  const addTranslation = () => {
+    const nextValue = translations.reduce((m, tr) => Math.max(m, tr.value), 0) + 1;
+    onChange({
+      valueTranslations: [...translations, { value: nextValue, label: { en: "", ru: "", kz: "" } }],
+    });
+    setTrOpen(true);
+  };
+  const deleteTranslation = (i: number) =>
+    onChange({ valueTranslations: translations.filter((_, idx) => idx !== i) });
 
   return (
     <div className="space-y-2 rounded-lg border bg-card p-3 shadow-sm">
@@ -95,8 +109,9 @@ export function VariableCard({ variable, onChange, onDelete, readOnlyValue, noFo
         </div>
       )}
 
-      {/* Value → label translation table (for coded outputs) */}
-      {translations.length > 0 && (
+      {/* Value → label translation table. Hidden entirely for characteristic
+          vars (numeric dimensions). Editable for all but catalog-derived vars. */}
+      {showTranslations && (editableTr || translations.length > 0) && (
         <div className="rounded-lg border">
           <button
             onClick={() => setTrOpen(!trOpen)}
@@ -109,18 +124,47 @@ export function VariableCard({ variable, onChange, onDelete, readOnlyValue, noFo
           {trOpen && (
             <div className="space-y-1.5 border-t px-2.5 py-2">
               {translations.map((tr, i) => (
-                <div key={tr.value} className="flex items-center gap-2">
-                  <span className="w-10 shrink-0 font-mono text-[0.7rem] text-muted-foreground">
-                    {tr.value}
-                  </span>
+                <div key={i} className="flex items-center gap-2">
+                  {editableTr ? (
+                    <Input
+                      type="number"
+                      value={tr.value}
+                      onChange={(e) => updateTranslation(i, { value: Number(e.target.value) })}
+                      className="h-7 w-14 shrink-0 font-mono text-[0.72rem]"
+                    />
+                  ) : (
+                    <span className="w-10 shrink-0 font-mono text-[0.7rem] text-muted-foreground">
+                      {tr.value}
+                    </span>
+                  )}
                   <LocalizedInput
                     value={tr.label}
                     onChange={(v) => updateTranslation(i, { label: v })}
                     placeholder={localize(tr.label, locale)}
                     className="flex-1"
                   />
+                  {editableTr && (
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => deleteTranslation(i)}
+                      className="shrink-0 text-muted-foreground hover:text-red-500 hover:bg-red-50"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </div>
               ))}
+              {editableTr && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={addTranslation}
+                  className="text-primary hover:text-teal-700"
+                >
+                  <Plus className="h-3.5 w-3.5" /> {t("cm.calculation.addTranslation")}
+                </Button>
+              )}
             </div>
           )}
         </div>

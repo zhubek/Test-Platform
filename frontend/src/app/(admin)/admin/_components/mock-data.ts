@@ -28,11 +28,17 @@ export type VariableScope = "result" | "dashboard" | "both";
 // parts of its editor row are shown.
 //  - characteristic: a matching dimension (e.g. RIASEC realistic), value from a formula
 //  - custom: free-form variable, value from a formula
+//  - singlechoice: bound to a single-choice question; name + option translations, no formula
 //  - multiplechoice: bound to a checkbox question; name + option translations,
 //    no formula (stored as one row per selected option)
 //  - profession: a top-N match result of a catalog mapping; value is a numeric
 //    catalog item code (read-only — produced by the distance computation)
-export type VariableKind = "characteristic" | "custom" | "multiplechoice" | "profession";
+export type VariableKind =
+  | "characteristic"
+  | "custom"
+  | "singlechoice"
+  | "multiplechoice"
+  | "profession";
 
 // One entry in a value→label translation table (e.g. code 101 → "Doctor").
 export interface ValueTranslation {
