@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 import type { Localized } from "@/lib/localized";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -13,19 +12,33 @@ interface Props {
   autoFocus?: boolean;
 }
 
+const LANGS = ["kz", "ru", "en"] as const;
+
+// Localized text field with the language switch ABOVE the field (so it
+// doesn't eat input space) and an auto-growing textarea (expandable).
 export function LocalizedInput({ value, onChange, placeholder, className, autoFocus }: Props) {
   const [activeLang, setActiveLang] = useState<"kz" | "ru" | "en">("kz");
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-grow to fit content.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value, activeLang]);
 
   return (
-    <div className="relative">
-      <div className="absolute right-2 top-1/2 z-10 flex -translate-y-1/2 gap-0.5">
-        {(["kz", "ru", "en"] as const).map((lang) => (
+    <div className={cn("flex flex-col gap-1", className)}>
+      {/* Language switch — above the field, right-aligned */}
+      <div className="flex items-center justify-end gap-0.5">
+        {LANGS.map((lang) => (
           <button
             key={lang}
             type="button"
             onClick={() => setActiveLang(lang)}
             className={cn(
-              "rounded px-1.5 py-0.5 text-[0.62rem] font-bold uppercase transition-colors",
+              "rounded px-1.5 py-0.5 text-[0.6rem] font-bold uppercase transition-colors",
               activeLang === lang
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground/40 hover:text-muted-foreground",
@@ -38,13 +51,15 @@ export function LocalizedInput({ value, onChange, placeholder, className, autoFo
           </button>
         ))}
       </div>
-      <Input
-        type="text"
+
+      <textarea
+        ref={ref}
+        rows={1}
         value={value[activeLang]}
         onChange={(e) => onChange({ ...value, [activeLang]: e.target.value })}
         placeholder={placeholder}
-        className={cn("pr-26", className)}
         autoFocus={autoFocus}
+        className="w-full resize-none overflow-hidden rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
       />
     </div>
   );

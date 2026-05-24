@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 import type { Localized } from "@/lib/localized";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -14,19 +13,38 @@ interface Props {
   spellCheck?: boolean;
 }
 
-export function LocalizedTextarea({ value, onChange, placeholder, className, rows = 3, spellCheck }: Props) {
+const LANGS = ["kz", "ru", "en"] as const;
+
+// Localized multi-line field with the language switch ABOVE the field and
+// an auto-growing textarea (expandable).
+export function LocalizedTextarea({
+  value,
+  onChange,
+  placeholder,
+  className,
+  rows = 2,
+  spellCheck,
+}: Props) {
   const [activeLang, setActiveLang] = useState<"kz" | "ru" | "en">("kz");
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value, activeLang]);
 
   return (
-    <div className="relative">
-      <div className="absolute right-2 top-2 z-10 flex gap-0.5">
-        {(["kz", "ru", "en"] as const).map((lang) => (
+    <div className={cn("flex flex-col gap-1", className)}>
+      <div className="flex items-center justify-end gap-0.5">
+        {LANGS.map((lang) => (
           <button
             key={lang}
             type="button"
             onClick={() => setActiveLang(lang)}
             className={cn(
-              "rounded px-1.5 py-0.5 text-[0.62rem] font-bold uppercase transition-colors",
+              "rounded px-1.5 py-0.5 text-[0.6rem] font-bold uppercase transition-colors",
               activeLang === lang
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground/40 hover:text-muted-foreground",
@@ -39,13 +57,15 @@ export function LocalizedTextarea({ value, onChange, placeholder, className, row
           </button>
         ))}
       </div>
-      <Textarea
+
+      <textarea
+        ref={ref}
+        rows={rows}
         value={value[activeLang]}
         onChange={(e) => onChange({ ...value, [activeLang]: e.target.value })}
         placeholder={placeholder}
-        rows={rows}
-        className={cn("pr-26", className)}
         spellCheck={spellCheck}
+        className="w-full resize-none overflow-hidden rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
       />
     </div>
   );
