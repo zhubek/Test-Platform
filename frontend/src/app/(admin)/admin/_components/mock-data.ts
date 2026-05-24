@@ -27,6 +27,7 @@ export interface AnswerChoice {
   id: string;
   value?: string; // stable key referenced in formulas/logic (e.g. "agree"); defaults to id
   text: Localized;
+  visibleIf?: string; // show this option only if the expression holds
   variables: VariableAssignment[];
 }
 
@@ -56,6 +57,7 @@ export interface Section {
   title: Localized;
   description: Localized;
   questions: Question[];
+  visibleIf?: string; // show this page only if the expression holds
 }
 
 // ── Characteristics ──────────────────────────────────────────────

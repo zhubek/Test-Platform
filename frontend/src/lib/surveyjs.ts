@@ -11,6 +11,7 @@ export interface SurveyJsLocalized {
 export interface SurveyJsChoice {
   value: string;
   text: SurveyJsLocalized;
+  visibleIf?: string;
 }
 
 export interface SurveyJsQuestion {
@@ -31,6 +32,7 @@ export interface SurveyJsPage {
   title?: SurveyJsLocalized;
   description?: SurveyJsLocalized;
   elements: SurveyJsQuestion[];
+  visibleIf?: string;
 }
 
 export interface SurveyJsSchema {
@@ -86,10 +88,14 @@ function buildQuestion(q: Question, globalIndex: number): SurveyJsQuestion {
     return base;
   }
 
-  base.choices = q.choices.map((c, ci) => ({
-    value: effectiveChoiceValue(c, ci),
-    text: toLocalized(c.text),
-  }));
+  base.choices = q.choices.map((c, ci) => {
+    const choice: SurveyJsChoice = {
+      value: effectiveChoiceValue(c, ci),
+      text: toLocalized(c.text),
+    };
+    if (c.visibleIf?.trim()) choice.visibleIf = c.visibleIf;
+    return choice;
+  });
   return base;
 }
 
@@ -111,12 +117,16 @@ export function sectionsToSurveyJson(
     showProgressBar: "top",
     pages: (() => {
       let gi = 0; // running global question index across all pages
-      return sections.map((s) => ({
-        name: s.id,
-        title: toLocalized(s.title),
-        description: toLocalized(s.description),
-        elements: s.questions.map((q) => buildQuestion(q, gi++)),
-      }));
+      return sections.map((s) => {
+        const page: SurveyJsPage = {
+          name: s.id,
+          title: toLocalized(s.title),
+          description: toLocalized(s.description),
+          elements: s.questions.map((q) => buildQuestion(q, gi++)),
+        };
+        if (s.visibleIf?.trim()) page.visibleIf = s.visibleIf;
+        return page;
+      });
     })(),
   };
   if (meta?.triggers?.length) schema.triggers = meta.triggers;

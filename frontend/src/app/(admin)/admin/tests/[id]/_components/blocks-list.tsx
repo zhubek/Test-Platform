@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Trash2, Pencil, GripVertical } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Trash2, Pencil, GripVertical, GitBranch } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
 import { LocalizedInput } from "@/components/localized-input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -13,7 +14,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { localize as loc } from "@/lib/localized";
 import type { Section, QuestionType } from "../../../_components/mock-data";
 
 const QUESTION_TYPES: { value: QuestionType; key: string }[] = [
@@ -50,6 +59,7 @@ export function BlocksList({
   const { t, locale } = useLocale();
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [editingTitle, setEditingTitle] = useState<number | null>(null);
+  const [logicPage, setLogicPage] = useState<number | null>(null);
 
   const toggle = (si: number) =>
     setCollapsed((prev) => {
@@ -101,6 +111,15 @@ export function BlocksList({
                 title="Rename page"
               >
                 <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => setLogicPage(si)}
+                className={cn(section.visibleIf?.trim() && "text-primary")}
+                title="Page logic (visible if)"
+              >
+                <GitBranch className="h-3.5 w-3.5" />
               </Button>
               <Button
                 variant="ghost"
@@ -181,6 +200,39 @@ export function BlocksList({
       >
         <Plus className="h-4 w-4" /> {t("cm.questions.addSection")}
       </Button>
+
+      {/* Page logic dialog */}
+      <Dialog open={logicPage !== null} onOpenChange={(o) => !o && setLogicPage(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Page logic</DialogTitle>
+            <DialogDescription>
+              {logicPage !== null &&
+                `Show "${loc(sections[logicPage].title, locale) || `Page ${logicPage + 1}`}" only when this condition is true. Leave empty to always show.`}
+            </DialogDescription>
+          </DialogHeader>
+          {logicPage !== null && (
+            <div className="space-y-1.5">
+              <label className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                Visible if
+              </label>
+              <Input
+                autoFocus
+                value={sections[logicPage].visibleIf ?? ""}
+                onChange={(e) =>
+                  onSectionUpdate(logicPage, { visibleIf: e.target.value || undefined })
+                }
+                placeholder="{q1} = 'yes'"
+                className="font-mono"
+              />
+              <p className="text-[0.7rem] text-muted-foreground">
+                e.g. <code className="font-mono">{"{age} >= 18"}</code> or{" "}
+                <code className="font-mono">{"{q1} contains 'a'"}</code>
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

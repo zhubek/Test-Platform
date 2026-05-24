@@ -50,7 +50,7 @@ export function QuestionEditor({
   onChoiceDelete,
 }: Props) {
   const { t, locale } = useLocale();
-  const [tab, setTab] = useState<"content" | "logic">("content");
+  const [tab, setTab] = useState<"content" | "advanced">("content");
   const isLikert = question.type === "likert";
   // What the question is actually referenced as (auto-numbered if blank).
   const effectiveName = question.name?.trim() || `q${globalIndex + 1}`;
@@ -89,9 +89,9 @@ export function QuestionEditor({
         </div>
       </div>
 
-      {/* Content | Logic tabs */}
+      {/* Content | Advanced tabs */}
       <div className="flex items-center gap-1 border-b px-3 py-1.5">
-        {(["content", "logic"] as const).map((m) => (
+        {(["content", "advanced"] as const).map((m) => (
           <button
             key={m}
             onClick={() => setTab(m)}
@@ -117,73 +117,34 @@ export function QuestionEditor({
               className="w-full"
             />
 
-            {/* Name key */}
-            <div>
-              <label className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                Name (for formulas / logic)
-              </label>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={question.name ?? ""}
-                  onChange={(e) => onQuestionUpdate({ name: e.target.value })}
-                  placeholder={effectiveName}
-                  className="w-48 font-mono"
-                />
-                <span className="text-[0.7rem] text-muted-foreground">
-                  reference as <code className="font-mono">{`{${effectiveName}}`}</code>
-                  {!question.name?.trim() && " (auto)"}
-                </span>
-              </div>
-            </div>
-
-            {/* Choices */}
+            {/* Choices — text only */}
             {!isLikert ? (
               <div>
                 <label className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
                   Choices
                 </label>
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   {question.choices.map((choice, ci) => (
-                    <div
-                      key={choice.id}
-                      className="group rounded-lg border bg-background p-2.5"
-                    >
-                      {/* Row 1: choice number + answer text + delete */}
-                      <div className="flex items-start gap-2">
-                        <span className="mt-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[0.65rem] font-semibold text-muted-foreground">
-                          {ci + 1}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <LocalizedInput
-                            value={choice.text}
-                            onChange={(v) => onChoiceUpdate(ci, { text: v })}
-                            placeholder={t("cm.question.answerPlaceholder")}
-                            className="w-full"
-                          />
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon-xs"
-                          onClick={() => onChoiceDelete(ci)}
-                          className="mt-1 text-muted-foreground opacity-0 hover:text-red-500 group-hover:opacity-100"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-
-                      {/* Row 2: value key (for formulas), below the text */}
-                      <div className="mt-2 flex items-center gap-2 pl-7">
-                        <span className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                          value
-                        </span>
-                        <Input
-                          value={choice.value ?? ""}
-                          onChange={(e) => onChoiceUpdate(ci, { value: e.target.value })}
-                          placeholder={`opt${ci + 1}`}
-                          className="h-7 w-32 font-mono text-[0.72rem]"
-                          title="Value key referenced in formulas/logic"
+                    <div key={choice.id} className="group flex items-start gap-2">
+                      <span className="mt-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[0.65rem] font-semibold text-muted-foreground">
+                        {ci + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <LocalizedInput
+                          value={choice.text}
+                          onChange={(v) => onChoiceUpdate(ci, { text: v })}
+                          placeholder={t("cm.question.answerPlaceholder")}
+                          className="w-full"
                         />
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => onChoiceDelete(ci)}
+                        className="mt-1 text-muted-foreground opacity-0 hover:text-red-500 group-hover:opacity-100"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   ))}
                   <Button
@@ -198,18 +159,111 @@ export function QuestionEditor({
               </div>
             ) : (
               <p className="text-[0.78rem] text-muted-foreground">
-                Likert scale (1–5). Reference its value as{" "}
-                <code className="font-mono">{`{${effectiveName}}`}</code>.
+                Likert scale (1–5).
               </p>
             )}
           </>
         ) : (
-          <LogicEditor
-            logic={question.logic}
-            onChange={(next) => onQuestionUpdate({ logic: next })}
+          <AdvancedEditor
+            question={question}
+            effectiveName={effectiveName}
+            isLikert={isLikert}
+            onQuestionUpdate={onQuestionUpdate}
+            onChoiceUpdate={onChoiceUpdate}
           />
         )}
       </div>
+    </div>
+  );
+}
+
+function AdvancedEditor({
+  question,
+  effectiveName,
+  isLikert,
+  onQuestionUpdate,
+  onChoiceUpdate,
+}: {
+  question: Question;
+  effectiveName: string;
+  isLikert: boolean;
+  onQuestionUpdate: (partial: Partial<Question>) => void;
+  onChoiceUpdate: (cIdx: number, partial: Partial<AnswerChoice>) => void;
+}) {
+  const { locale } = useLocale();
+  return (
+    <div className="space-y-5">
+      {/* Question name */}
+      <div>
+        <label className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
+          Name (for formulas / logic)
+        </label>
+        <div className="flex items-center gap-2">
+          <Input
+            value={question.name ?? ""}
+            onChange={(e) => onQuestionUpdate({ name: e.target.value })}
+            placeholder={effectiveName}
+            className="w-48 font-mono"
+          />
+          <span className="text-[0.7rem] text-muted-foreground">
+            reference as <code className="font-mono">{`{${effectiveName}}`}</code>
+            {!question.name?.trim() && " (auto)"}
+          </span>
+        </div>
+      </div>
+
+      {/* Question visibility/enable/required */}
+      <div>
+        <label className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
+          Question logic
+        </label>
+        <LogicEditor
+          logic={question.logic}
+          onChange={(next) => onQuestionUpdate({ logic: next })}
+        />
+      </div>
+
+      {/* Per-choice value + visibleIf */}
+      {!isLikert && question.choices.length > 0 && (
+        <div>
+          <label className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
+            Options
+          </label>
+          <div className="space-y-2">
+            {question.choices.map((choice, ci) => (
+              <div key={choice.id} className="rounded-lg border bg-background p-2.5">
+                <div className="mb-2 text-[0.78rem] font-medium text-foreground">
+                  {ci + 1}. {localize(choice.text, locale) || (
+                    <span className="italic text-muted-foreground">Untitled</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1.5">
+                  <span className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                    value
+                  </span>
+                  <Input
+                    value={choice.value ?? ""}
+                    onChange={(e) => onChoiceUpdate(ci, { value: e.target.value })}
+                    placeholder={`opt${ci + 1}`}
+                    className="h-7 w-40 font-mono text-[0.72rem]"
+                  />
+                  <span className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                    visible if
+                  </span>
+                  <Input
+                    value={choice.visibleIf ?? ""}
+                    onChange={(e) =>
+                      onChoiceUpdate(ci, { visibleIf: e.target.value || undefined })
+                    }
+                    placeholder="{q1} = 'yes'"
+                    className="h-7 font-mono text-[0.72rem]"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
