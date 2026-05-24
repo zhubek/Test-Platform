@@ -168,8 +168,11 @@ export function QuestionEditor({
             question={question}
             effectiveName={effectiveName}
             isLikert={isLikert}
+            t={t}
             onQuestionUpdate={onQuestionUpdate}
+            onChoiceAdd={onChoiceAdd}
             onChoiceUpdate={onChoiceUpdate}
+            onChoiceDelete={onChoiceDelete}
           />
         )}
       </div>
@@ -181,18 +184,32 @@ function AdvancedEditor({
   question,
   effectiveName,
   isLikert,
+  t,
   onQuestionUpdate,
+  onChoiceAdd,
   onChoiceUpdate,
+  onChoiceDelete,
 }: {
   question: Question;
   effectiveName: string;
   isLikert: boolean;
+  t: (key: string) => string;
   onQuestionUpdate: (partial: Partial<Question>) => void;
+  onChoiceAdd: () => void;
   onChoiceUpdate: (cIdx: number, partial: Partial<AnswerChoice>) => void;
+  onChoiceDelete: (cIdx: number) => void;
 }) {
-  const { locale } = useLocale();
   return (
     <div className="space-y-5">
+      {/* Question text (editable here too) */}
+      <LocalizedInput
+        label="Question text"
+        value={question.text}
+        onChange={(v) => onQuestionUpdate({ text: v })}
+        placeholder={t("cm.question.textPlaceholder")}
+        className="w-full"
+      />
+
       {/* Question name */}
       <div>
         <label className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -223,21 +240,39 @@ function AdvancedEditor({
         />
       </div>
 
-      {/* Per-choice value + visibleIf */}
-      {!isLikert && question.choices.length > 0 && (
+      {/* Options — editable text + value + visibleIf */}
+      {!isLikert ? (
         <div>
           <label className="mb-1.5 block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
             Options
           </label>
           <div className="space-y-2">
             {question.choices.map((choice, ci) => (
-              <div key={choice.id} className="rounded-lg border bg-background p-2.5">
-                <div className="mb-2 text-[0.78rem] font-medium text-foreground">
-                  {ci + 1}. {localize(choice.text, locale) || (
-                    <span className="italic text-muted-foreground">Untitled</span>
-                  )}
+              <div key={choice.id} className="group rounded-lg border bg-background p-2.5">
+                {/* text + delete */}
+                <div className="flex items-start gap-2">
+                  <span className="mt-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[0.65rem] font-semibold text-muted-foreground">
+                    {ci + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <LocalizedInput
+                      value={choice.text}
+                      onChange={(v) => onChoiceUpdate(ci, { text: v })}
+                      placeholder={t("cm.question.answerPlaceholder")}
+                      className="w-full"
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => onChoiceDelete(ci)}
+                    className="mt-1 text-muted-foreground opacity-0 hover:text-red-500 group-hover:opacity-100"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
-                <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1.5">
+                {/* value + visibleIf */}
+                <div className="mt-2 grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1.5 pl-7">
                   <span className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
                     value
                   </span>
@@ -261,8 +296,21 @@ function AdvancedEditor({
                 </div>
               </div>
             ))}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onChoiceAdd}
+              className="text-muted-foreground hover:text-primary"
+            >
+              <Plus className="h-3.5 w-3.5" /> {t("cm.question.addChoice")}
+            </Button>
           </div>
         </div>
+      ) : (
+        <p className="text-[0.78rem] text-muted-foreground">
+          Likert scale (1–5). Reference its value as{" "}
+          <code className="font-mono">{`{${effectiveName}}`}</code>.
+        </p>
       )}
     </div>
   );
