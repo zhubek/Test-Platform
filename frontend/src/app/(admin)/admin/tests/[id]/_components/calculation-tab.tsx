@@ -1,128 +1,239 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { Plus, Trash2, ChevronDown, BookOpen, X, Copy, Check, Download } from "lucide-react";
+import { useState } from "react";
+import { Plus, Trash2, ChevronDown, BookOpen, Compass } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { CATALOGS } from "@/lib/catalog-characteristics";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { VariableCard } from "./variable-card";
+import { CATALOGS, DISTANCE_METHODS, findGroup } from "@/lib/catalog-characteristics";
 import type {
+  CatalogMapping,
   CharacteristicSection,
-  CharacteristicMapping,
   Variable,
 } from "../../../_components/mock-data";
-import { characteristicGroups } from "../../../_components/mock-data";
 
 interface Props {
+  mappings: CatalogMapping[];
   sections: CharacteristicSection[];
   variables: Variable[];
+  onMappingsChange: (mappings: CatalogMapping[]) => void;
   onSectionsChange: (sections: CharacteristicSection[]) => void;
   onVariablesChange: (variables: Variable[]) => void;
 }
 
 export function CalculationTab({
-  sections,
+  mappings,
   variables,
-  onSectionsChange,
+  onMappingsChange,
   onVariablesChange,
 }: Props) {
   const { t, locale } = useLocale();
   const [refOpen, setRefOpen] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
-  const [seq, setSeq] = useState(0);
 
-  // ── Variable handlers ───────────────────────────────────────────
-  const handleVarUpdate = (idx: number, partial: Partial<Variable>) =>
-    onVariablesChange(variables.map((v, i) => (i === idx ? { ...v, ...partial } : v)));
+  // ── Mapping handlers ────────────────────────────────────────────
+  const addMapping = () => {
+    const cat = CATALOGS[0];
+    onMappingsChange([
+      ...mappings,
+      {
+        id: `map_${Date.now()}`,
+        catalogId: cat.id,
+        groupId: cat.groups[0].id,
+        method: "euclidean",
+        topN: 5,
+      },
+    ]);
+  };
+  const updateMapping = (id: string, partial: Partial<CatalogMapping>) =>
+    onMappingsChange(mappings.map((m) => (m.id === id ? { ...m, ...partial } : m)));
+  const deleteMapping = (id: string) => onMappingsChange(mappings.filter((m) => m.id !== id));
 
-  const handleVarDelete = (idx: number) =>
-    onVariablesChange(variables.filter((_, i) => i !== idx));
-
-  const handleVarAdd = () =>
+  // ── Variable handlers (characteristic + custom only; profession is derived) ──
+  const ownVars = variables.filter((v) => v.kind !== "profession");
+  const updateVar = (id: string, partial: Partial<Variable>) =>
+    onVariablesChange(variables.map((v) => (v.id === id ? { ...v, ...partial } : v)));
+  const deleteVar = (id: string) => onVariablesChange(variables.filter((v) => v.id !== id));
+  const addCustomVar = () =>
     onVariablesChange([
       ...variables,
-      { id: `var_${Date.now()}_${seq}`, name: "", description: "", formula: "", scope: "both" },
-    ]);
-
-  // Import a catalog group's keys as variables, skipping ones already present.
-  const importGroup = (catalogId: string, groupId: string) => {
-    const catalog = CATALOGS.find((c) => c.id === catalogId);
-    const group = catalog?.groups.find((g) => g.id === groupId);
-    if (!group) return;
-    const existingNames = new Set(variables.map((v) => v.name));
-    let n = seq;
-    const additions: Variable[] = group.keys
-      .filter((k) => !existingNames.has(k.key))
-      .map((k) => ({
-        id: `var_${Date.now()}_${++n}`,
-        name: k.key,
-        description: k.label,
+      {
+        id: `var_${Date.now()}`,
+        name: "",
+        label: { en: "", ru: "", kz: "" },
+        kind: "custom",
         formula: "",
         scope: "both",
-        source: { catalogId, groupId },
+      },
+    ]);
+
+  // Import a mapping group's characteristic keys as characteristic variables.
+  const importCharacteristics = (m: CatalogMapping) => {
+    const group = findGroup(m.catalogId, m.groupId);
+    if (!group) return;
+    const existing = new Set(variables.map((v) => v.name));
+    const additions: Variable[] = group.keys
+      .filter((k) => !existing.has(k.key))
+      .map((k, i) => ({
+        id: `var_${Date.now()}_${i}`,
+        name: k.key,
+        label: k.label,
+        kind: "characteristic" as const,
+        formula: "",
+        scope: "both" as const,
+        source: { catalogId: m.catalogId, groupId: m.groupId },
       }));
-    setSeq(n);
     if (additions.length) onVariablesChange([...variables, ...additions]);
   };
 
-  const usedGroupIds = new Set(sections.map((s) => s.groupId));
-
-  const availableGroups = characteristicGroups.filter(
-    (g) => !usedGroupIds.has(g.id)
-  );
-
-  const handleAddGroup = (groupId: string) => {
-    const group = characteristicGroups.find((g) => g.id === groupId);
-    if (!group) return;
-    const newSection: CharacteristicSection = {
-      groupId: group.id,
-      mappings: group.characteristics.map((c) => ({
-        characteristicId: c.id,
-        formula: "",
-      })),
-    };
-    onSectionsChange([...sections, newSection]);
-    setAddOpen(false);
-  };
-
-  const handleDeleteSection = (index: number) => {
-    onSectionsChange(sections.filter((_, i) => i !== index));
-    setDeleteTarget(null);
-  };
-
-  const handleMappingUpdate = (
-    sectionIdx: number,
-    mappingIdx: number,
-    formula: string
-  ) => {
-    onSectionsChange(
-      sections.map((sec, si) =>
-        si === sectionIdx
-          ? {
-              ...sec,
-              mappings: sec.mappings.map((m, mi) =>
-                mi === mappingIdx ? { ...m, formula } : m
-              ),
-            }
-          : sec
-      )
-    );
-  };
+  // Derived profession variables: topN per mapping, value→label = catalog items.
+  const professionVars: Variable[] = mappings.flatMap((m) => {
+    const group = findGroup(m.catalogId, m.groupId);
+    const valueTranslations = (group?.items ?? []).map((it) => ({ value: it.code, label: it.name }));
+    return Array.from({ length: m.topN }, (_, i) => ({
+      id: `${m.id}_prof_${i + 1}`,
+      name: `${m.groupId}_match_${i + 1}`,
+      label: { en: `Match #${i + 1}`, ru: `Совпадение №${i + 1}`, kz: `Сәйкестік №${i + 1}` },
+      kind: "profession" as const,
+      scope: "both" as const,
+      mappingId: m.id,
+      rank: i + 1,
+      valueTranslations,
+    }));
+  });
 
   return (
     <div className="space-y-8">
-      {/* ── My variables ─────────────────────────────────────────── */}
-      <div className="space-y-3">
+      {/* ── Catalog mappings ─────────────────────────────────────── */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-[0.88rem] font-semibold text-foreground">
+              {t("cm.calculation.mappingsHeading")}
+            </h3>
+            <p className="mt-0.5 text-[0.75rem] text-muted-foreground">
+              {t("cm.calculation.mappingsSub")}
+            </p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={addMapping} className="text-primary hover:text-teal-700">
+            <Plus className="h-3.5 w-3.5" />
+            {t("cm.calculation.addMapping")}
+          </Button>
+        </div>
+
+        {mappings.length > 0 ? (
+          <div className="space-y-2">
+            {mappings.map((m) => {
+              const catalog = CATALOGS.find((c) => c.id === m.catalogId);
+              const groups = catalog?.groups ?? [];
+              return (
+                <div key={m.id} className="rounded-xl border bg-card p-3 shadow-sm">
+                  <div className="flex flex-wrap items-end gap-3">
+                    {/* Catalog */}
+                    <Field label={t("cm.calculation.catalog")}>
+                      <Select
+                        value={m.catalogId}
+                        onValueChange={(v) => {
+                          const c = CATALOGS.find((x) => x.id === v);
+                          updateMapping(m.id, { catalogId: v ?? m.catalogId, groupId: c?.groups[0].id ?? m.groupId });
+                        }}
+                      >
+                        <SelectTrigger size="sm" className="w-44">
+                          <SelectValue>{() => localize(catalog?.name ?? { en: "", ru: "", kz: "" }, locale)}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CATALOGS.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>{localize(c.name, locale)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+
+                    {/* Characteristic group (match-by) */}
+                    <Field label={t("cm.calculation.matchBy")}>
+                      <Select value={m.groupId} onValueChange={(v) => updateMapping(m.id, { groupId: v ?? m.groupId })}>
+                        <SelectTrigger size="sm" className="w-48">
+                          <SelectValue>
+                            {() => localize(groups.find((g) => g.id === m.groupId)?.name ?? { en: "", ru: "", kz: "" }, locale)}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {groups.map((g) => (
+                            <SelectItem key={g.id} value={g.id}>{localize(g.name, locale)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+
+                    {/* Distance method */}
+                    <Field label={t("cm.calculation.method")}>
+                      <Select value={m.method} onValueChange={(v) => updateMapping(m.id, { method: (v as CatalogMapping["method"]) ?? m.method })}>
+                        <SelectTrigger size="sm" className="w-40">
+                          <SelectValue>
+                            {() => localize(DISTANCE_METHODS.find((d) => d.id === m.method)?.label ?? { en: "", ru: "", kz: "" }, locale)}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DISTANCE_METHODS.map((d) => (
+                            <SelectItem key={d.id} value={d.id}>{localize(d.label, locale)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+
+                    {/* Top N */}
+                    <Field label={t("cm.calculation.topN")}>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={m.topN}
+                        onChange={(e) => updateMapping(m.id, { topN: Math.max(1, Math.min(50, parseInt(e.target.value) || 1)) })}
+                        className="h-8 w-20"
+                      />
+                    </Field>
+
+                    <div className="ml-auto flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => importCharacteristics(m)}
+                        className="text-[0.72rem] text-primary hover:text-teal-700"
+                      >
+                        {t("cm.calculation.importChars")}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => deleteMapping(m.id)}
+                        className="text-muted-foreground hover:text-red-500 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed py-6 text-center text-[0.78rem] text-muted-foreground">
+            {t("cm.calculation.noMappings")}
+          </div>
+        )}
+      </section>
+
+      {/* ── Variables ────────────────────────────────────────────── */}
+      <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-[0.88rem] font-semibold text-foreground">
@@ -132,56 +243,25 @@ export function CalculationTab({
               {t("cm.calculation.variablesSub")}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
-                <Download className="mr-1 h-3.5 w-3.5" />
-                {t("cm.calculation.importCatalog")}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-60">
-                {CATALOGS.map((catalog) => (
-                  <div key={catalog.id}>
-                    <div className="px-2 py-1.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                      {catalog.name}
-                    </div>
-                    {catalog.groups.map((group) => (
-                      <DropdownMenuItem
-                        key={group.id}
-                        onClick={() => importGroup(catalog.id, group.id)}
-                      >
-                        <span className="flex flex-col">
-                          <span className="text-sm">{group.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {group.keys.length} {t("cm.calculation.characteristics")}
-                          </span>
-                        </span>
-                      </DropdownMenuItem>
-                    ))}
-                  </div>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleVarAdd}
-              className="text-primary hover:text-teal-700"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              {t("cm.calculation.addVariable")}
-            </Button>
-          </div>
+          <Button variant="ghost" size="sm" onClick={addCustomVar} className="text-primary hover:text-teal-700">
+            <Plus className="h-3.5 w-3.5" />
+            {t("cm.calculation.addVariable")}
+          </Button>
         </div>
 
-        {variables.length > 0 ? (
+        {ownVars.length > 0 || professionVars.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2">
-            {variables.map((v, i) => (
+            {ownVars.map((v) => (
               <VariableCard
                 key={v.id}
                 variable={v}
-                onChange={(partial) => handleVarUpdate(i, partial)}
-                onDelete={() => handleVarDelete(i)}
+                onChange={(partial) => updateVar(v.id, partial)}
+                onDelete={() => deleteVar(v.id)}
               />
+            ))}
+            {/* Derived profession variables (read-only; produced by a mapping) */}
+            {professionVars.map((v) => (
+              <VariableCard key={v.id} variable={v} onChange={() => {}} readOnlyValue />
             ))}
           </div>
         ) : (
@@ -190,360 +270,82 @@ export function CalculationTab({
           </div>
         )}
 
-        {/* Formula reference (applies to variable formulas and mappings). */}
-        <FormulaReference open={refOpen} onToggle={() => setRefOpen(!refOpen)} />
-      </div>
-
-      {/* ── Characteristic mappings ──────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-[0.88rem] font-semibold text-foreground">
-            {t("cm.calculation.logicHeading")}
-          </h3>
-          <p className="text-[0.75rem] text-muted-foreground mt-0.5">
-            {t("cm.calculation.logicSub")}
+        {professionVars.length > 0 && (
+          <p className="flex items-center gap-1.5 text-[0.7rem] text-muted-foreground">
+            <Compass className="h-3.5 w-3.5" />
+            {t("cm.calculation.professionNote")}
           </p>
-        </div>
-        <div className="relative">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setAddOpen(!addOpen)}
-            disabled={availableGroups.length === 0}
-            className="text-primary hover:text-teal-700"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            {t("cm.calculation.addGroup")}
-          </Button>
-          {addOpen && availableGroups.length > 0 && (
-            <div className="absolute z-10 top-full right-0 mt-1 w-64 bg-popover border rounded-lg shadow-lg py-1">
-              {availableGroups.map((g) => (
-                <button
-                  key={g.id}
-                  onClick={() => handleAddGroup(g.id)}
-                  className="w-full text-left px-3 py-2 text-[0.78rem] text-foreground hover:bg-muted transition-colors"
-                >
-                  <span className="font-medium">
-                    {localize(g.name, locale)}
-                  </span>
-                  <span className="text-muted-foreground ml-1.5">
-                    ({g.characteristics.length})
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+        )}
 
-      {/* Available variables — click to copy */}
-      {variables.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 text-[0.72rem] text-muted-foreground">
-          <span>{t("cm.calculation.availableVars")}</span>
-          {variables.map((v) => (
-            <CopyChip key={v.id} text={v.name} />
-          ))}
-        </div>
-      )}
-
-      {/* Sections */}
-      {sections.length > 0 ? (
-        <div className="space-y-4">
-          {sections.map((section, si) => {
-            const group = characteristicGroups.find(
-              (g) => g.id === section.groupId
-            );
-            if (!group) return null;
-
-            return (
-              <div
-                key={section.groupId}
-                className="bg-card rounded-xl border shadow-sm overflow-hidden"
-              >
-                {/* Section header */}
-                <div className="flex items-center justify-between px-4 py-3 bg-muted/80 border-b">
-                  <h4 className="text-[0.82rem] font-semibold text-foreground">
-                    {localize(group.name, locale)}
-                  </h4>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => setDeleteTarget(si)}
-                    className="text-muted-foreground hover:text-red-500 hover:bg-red-50"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-
-                {/* Mapping rows */}
-                <div className="divide-y divide-border">
-                  {section.mappings.map((mapping, mi) => {
-                    const chr = group.characteristics.find(
-                      (c) => c.id === mapping.characteristicId
-                    );
-                    return (
-                      <div
-                        key={mapping.characteristicId}
-                        className="flex items-center gap-3 px-4 py-2.5"
-                      >
-                        <span className="shrink-0 w-40 text-[0.78rem] font-medium text-foreground truncate">
-                          {chr
-                            ? localize(chr.name, locale)
-                            : mapping.characteristicId}
-                        </span>
-                        <span className="text-[0.75rem] text-muted-foreground">=</span>
-                        <div className="flex-1 relative">
-                          <Input
-                            type="text"
-                            value={mapping.formula}
-                            onChange={(e) =>
-                              handleMappingUpdate(si, mi, e.target.value)
-                            }
-                            placeholder={t("cm.calculation.formulaPlaceholder")}
-                            className="w-full font-mono"
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="text-center py-8 text-[0.78rem] text-muted-foreground border border-dashed rounded-xl">
-          {t("cm.calculation.noSections")}
-        </div>
-      )}
-
-      {/* Delete confirmation modal */}
-      {deleteTarget !== null && (
-        <ConfirmDeleteModal
-          groupName={
-            localize(
-              characteristicGroups.find(
-                (g) => g.id === sections[deleteTarget]?.groupId
-              )?.name ?? { en: "", ru: "", kz: "" },
-              locale
-            )
-          }
-          onConfirm={() => handleDeleteSection(deleteTarget)}
-          onCancel={() => setDeleteTarget(null)}
-        />
-      )}
+        <FormulaReference open={refOpen} onToggle={() => setRefOpen(!refOpen)} />
+      </section>
     </div>
   );
 }
 
-// ── Copy Chip ───────────────────────────────────────────────────
-
-function CopyChip({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  }, [text]);
-
+// ── Small labeled field wrapper ─────────────────────────────────
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <button
-      onClick={handleCopy}
-      className={cn(
-        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-mono text-[0.7rem] transition-colors cursor-pointer",
-        copied
-          ? "bg-teal-100 text-teal-700"
-          : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary",
-      )}
-    >
-      {text}
-      {copied ? (
-        <Check className="w-2.5 h-2.5" />
-      ) : (
-        <Copy className="w-2.5 h-2.5 opacity-40" />
-      )}
-    </button>
-  );
-}
-
-// ── Confirm Delete Modal ────────────────────────────────────────
-
-function ConfirmDeleteModal({
-  groupName,
-  onConfirm,
-  onCancel,
-}: {
-  groupName: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  const { t } = useLocale();
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/30"
-        onClick={onCancel}
-      />
-      <div className="relative bg-card rounded-xl shadow-xl max-w-sm w-full mx-4 p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-[0.88rem] font-semibold text-foreground">
-            {t("cm.calculation.deleteTitle")}
-          </h3>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={onCancel}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
-        <p className="text-[0.82rem] text-muted-foreground">
-          {t("cm.calculation.deleteMessage")} <span className="font-semibold">{groupName}</span>?
-          {" "}{t("cm.calculation.deleteWarning")}
-        </p>
-        <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={onCancel}>
-            {t("common.cancel")}
-          </Button>
-          <Button
-            onClick={onConfirm}
-            className="bg-red-600 text-white hover:bg-red-700"
-          >
-            {t("common.delete")}
-          </Button>
-        </div>
-      </div>
+    <div className="flex flex-col gap-1">
+      <label className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </label>
+      {children}
     </div>
   );
 }
 
-// ── Formula Reference ────────────────────────────────────────────
-
+// ── Formula Reference (collapsible) ─────────────────────────────
 const refSections: { heading: string; rows: { syntax: string; desc: string; example: string }[] }[] = [
   {
     heading: "Arithmetic",
     rows: [
-      { syntax: "+", desc: "Addition", example: "realistic + investigative" },
-      { syntax: "-", desc: "Subtraction", example: "openness - neuroticism" },
-      { syntax: "*", desc: "Multiplication", example: "social * 0.6" },
-      { syntax: "/", desc: "Division", example: "(realistic + artistic) / 2" },
-      { syntax: "%", desc: "Remainder", example: "score % 10" },
-      { syntax: "^", desc: "Power", example: "x ^ 2" },
-      { syntax: "( )", desc: "Grouping", example: "(a + b) * (c + d)" },
+      { syntax: "+ - * / ^", desc: "Basic math", example: "realistic * 0.6 + artistic * 0.4" },
+      { syntax: "( )", desc: "Grouping", example: "(a + b) / 2" },
     ],
   },
   {
-    heading: "Rounding",
+    heading: "Functions",
     rows: [
-      { syntax: "round(x)", desc: "Round to nearest integer", example: "round(realistic / 3)" },
-      { syntax: "floor(x)", desc: "Round down", example: "floor(score / 10)" },
-      { syntax: "ceil(x)", desc: "Round up", example: "ceil(total / 4)" },
-    ],
-  },
-  {
-    heading: "Math Functions",
-    rows: [
-      { syntax: "abs(x)", desc: "Absolute value", example: "abs(a - b)" },
-      { syntax: "sqrt(x)", desc: "Square root", example: "sqrt(x ^ 2 + y ^ 2)" },
-      { syntax: "min(a, b, …)", desc: "Smallest value", example: "min(realistic, social, artistic)" },
-      { syntax: "max(a, b, …)", desc: "Largest value", example: "max(openness, extraversion)" },
-      { syntax: "avg(a, b, …)", desc: "Average of values", example: "avg(a, b, c)" },
-    ],
-  },
-  {
-    heading: "Conditional",
-    rows: [
-      { syntax: "if(cond, then, else)", desc: "If condition is true, return then; otherwise else", example: "if(realistic > 50, 1, 0)" },
+      { syntax: "round/floor/ceil", desc: "Rounding", example: "round(score / 3)" },
+      { syntax: "min/max/avg", desc: "Aggregate", example: "max(realistic, social)" },
+      { syntax: "if(cond, a, b)", desc: "Conditional", example: "if(social > 50, 1, 0)" },
     ],
   },
 ];
 
 function FormulaReference({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   const { t } = useLocale();
-
   return (
-    <div className="border rounded-xl overflow-hidden">
+    <div className="overflow-hidden rounded-xl border">
       <button
         onClick={onToggle}
-        className="w-full flex items-center gap-2 px-4 py-2.5 text-[0.78rem] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        className="flex w-full items-center gap-2 px-4 py-2.5 text-[0.78rem] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
-        <BookOpen className="w-3.5 h-3.5" />
+        <BookOpen className="h-3.5 w-3.5" />
         {t("cm.calculation.formulaRef")}
-        <ChevronDown
-          className={cn(
-            "w-3.5 h-3.5 ml-auto text-muted-foreground transition-transform",
-            open ? "rotate-180" : "",
-          )}
-        />
+        <ChevronDown className={cn("ml-auto h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
       </button>
-
       {open && (
-        <div className="border-t px-4 py-3 space-y-4 bg-muted/50">
+        <div className="space-y-4 border-t bg-muted/50 px-4 py-3">
           {refSections.map((section) => (
             <div key={section.heading}>
-              <h4 className="text-[0.72rem] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              <h4 className="mb-2 text-[0.72rem] font-semibold uppercase tracking-wider text-muted-foreground">
                 {section.heading}
               </h4>
               <div className="space-y-1">
                 {section.rows.map((row) => (
-                  <div
-                    key={row.syntax}
-                    className="grid grid-cols-[7rem_1fr_1fr] gap-2 items-baseline text-[0.75rem]"
-                  >
-                    <code className="font-mono font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded text-[0.7rem]">
+                  <div key={row.syntax} className="grid grid-cols-[8rem_1fr_1fr] items-baseline gap-2 text-[0.75rem]">
+                    <code className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[0.7rem] font-medium text-primary">
                       {row.syntax}
                     </code>
                     <span className="text-muted-foreground">{row.desc}</span>
-                    <code className="font-mono text-muted-foreground text-[0.68rem]">
-                      {row.example}
-                    </code>
+                    <code className="font-mono text-[0.68rem] text-muted-foreground">{row.example}</code>
                   </div>
                 ))}
               </div>
             </div>
           ))}
-
-          <div className="pt-2 border-t">
-            <h4 className="text-[0.72rem] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              {t("cm.calculation.refExamples")}
-            </h4>
-            <div className="space-y-1.5 text-[0.75rem]">
-              <div className="flex items-baseline gap-2">
-                <span className="text-muted-foreground shrink-0">{t("cm.calculation.refDirectMap")}</span>
-                <code className="font-mono text-foreground bg-card border px-2 py-0.5 rounded text-[0.7rem]">
-                  realistic
-                </code>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-muted-foreground shrink-0">{t("cm.calculation.refWeighted")}</span>
-                <code className="font-mono text-foreground bg-card border px-2 py-0.5 rounded text-[0.7rem]">
-                  realistic * 0.6 + artistic * 0.4
-                </code>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-muted-foreground shrink-0">{t("cm.calculation.refAverage")}</span>
-                <code className="font-mono text-foreground bg-card border px-2 py-0.5 rounded text-[0.7rem]">
-                  avg(realistic, investigative, artistic)
-                </code>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-muted-foreground shrink-0">{t("cm.calculation.refNormalized")}</span>
-                <code className="font-mono text-foreground bg-card border px-2 py-0.5 rounded text-[0.7rem]">
-                  round(realistic / max(realistic, investigative, artistic) * 100)
-                </code>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-muted-foreground shrink-0">{t("cm.calculation.refThreshold")}</span>
-                <code className="font-mono text-foreground bg-card border px-2 py-0.5 rounded text-[0.7rem]">
-                  if(social &gt; 20, social * 1.5, social)
-                </code>
-              </div>
-            </div>
-          </div>
         </div>
       )}
     </div>

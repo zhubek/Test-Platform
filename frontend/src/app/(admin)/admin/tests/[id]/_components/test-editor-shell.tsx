@@ -16,6 +16,7 @@ import type {
   ContentTest,
   Section,
   Variable,
+  CatalogMapping,
   CharacteristicSection,
   Widget,
   TestIconKey,
@@ -49,6 +50,7 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
     initialData.characteristicSections
   );
   const [sections, setSections] = useState<Section[]>(initialData.sections);
+  const [mappings, setMappings] = useState<CatalogMapping[]>(initialData.mappings);
   const [variables, setVariables] = useState<Variable[]>(initialData.variables);
   const [surveyLogic, setSurveyLogic] = useState<SurveyLogic>({});
   const [resultWidgets, setResultWidgets] = useState<Widget[]>(initialData.resultWidgets);
@@ -98,7 +100,7 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
                 duration,
                 state: status,
                 vars: { variables },
-                calcLogic: { characteristicSections },
+                calcLogic: { characteristicSections, mappings },
                 resultViewLogic: { widgets: resultWidgets },
                 dashboardViewLogic: { widgets: dashboardWidgets },
               });
@@ -146,8 +148,10 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
 
       {tab === "calculation" && (
         <CalculationTab
+          mappings={mappings}
           sections={characteristicSections}
           variables={variables}
+          onMappingsChange={setMappings}
           onSectionsChange={setCharacteristicSections}
           onVariablesChange={setVariables}
         />

@@ -22,6 +22,7 @@ const emptyTest: ContentTest = {
   createdAt: new Date().toISOString().split("T")[0],
   updatedAt: new Date().toISOString().split("T")[0],
   sections: [],
+  mappings: [],
   variables: [],
   characteristicSections: [],
   resultWidgets: [],

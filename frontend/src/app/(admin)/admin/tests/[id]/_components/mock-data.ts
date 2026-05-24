@@ -18,13 +18,14 @@ export const hollandTest: ContentTest = {
   status: "published",
   createdAt: "2025-09-15",
   updatedAt: "2026-01-20",
+  mappings: [],
   variables: [
-    { id: "v_realistic", name: "realistic", description: "Realistic — hands-on, physical activities", scope: "both" },
-    { id: "v_investigative", name: "investigative", description: "Investigative — analytical, intellectual tasks", scope: "both" },
-    { id: "v_artistic", name: "artistic", description: "Artistic — creative, expressive activities", scope: "both" },
-    { id: "v_social", name: "social", description: "Social — helping, teaching, counseling", scope: "both" },
-    { id: "v_enterprising", name: "enterprising", description: "Enterprising — leading, persuading, managing", scope: "both" },
-    { id: "v_conventional", name: "conventional", description: "Conventional — organizing, data management", scope: "both" },
+    { id: "v_realistic", name: "realistic", label: l("Realistic"), kind: "characteristic", scope: "both" },
+    { id: "v_investigative", name: "investigative", label: l("Investigative"), kind: "characteristic", scope: "both" },
+    { id: "v_artistic", name: "artistic", label: l("Artistic"), kind: "characteristic", scope: "both" },
+    { id: "v_social", name: "social", label: l("Social"), kind: "characteristic", scope: "both" },
+    { id: "v_enterprising", name: "enterprising", label: l("Enterprising"), kind: "characteristic", scope: "both" },
+    { id: "v_conventional", name: "conventional", label: l("Conventional"), kind: "characteristic", scope: "both" },
   ],
   sections: [
     {

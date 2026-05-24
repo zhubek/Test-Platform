@@ -24,16 +24,47 @@ export interface VariableAssignment {
 // or both. Variables are defined once (with a formula) and tagged by scope.
 export type VariableScope = "result" | "dashboard" | "both";
 
+// What kind of variable this is — determines how it gets its value and which
+// parts of its editor row are shown.
+//  - characteristic: a matching dimension (e.g. RIASEC realistic), value from a formula
+//  - custom: free-form variable, value from a formula
+//  - profession: a top-N match result of a catalog mapping; value is a numeric
+//    catalog item code (read-only — produced by the distance computation)
+export type VariableKind = "characteristic" | "custom" | "profession";
+
+// One entry in a value→label translation table (e.g. code 101 → "Doctor").
+export interface ValueTranslation {
+  value: number;
+  label: Localized;
+}
+
 export interface Variable {
   id: string;
-  name: string;
-  description: string;
-  // Expression over question names / other variables. Empty for catalog vars
-  // that are just a named slot the catalog fills.
+  name: string; // machine identifier used in formulas/logic — never translated
+  label: Localized; // human display label (multilingual)
+  kind: VariableKind;
+  // Expression over question names / other variables. Empty for profession vars
+  // (computed by the mapping) and catalog slots.
   formula?: string;
   scope: VariableScope;
-  // If imported from a catalog characteristic group, records its source.
+  // For coded outputs (e.g. profession codes, band labels): value→label table.
+  // Catalog-sourced vars seed this from the catalog; inline overrides allowed.
+  valueTranslations?: ValueTranslation[];
+  // If sourced from a catalog characteristic group, records its source.
   source?: { catalogId: string; groupId: string };
+  // For profession vars: which mapping produced it, and its 1-based rank.
+  mappingId?: string;
+  rank?: number;
+}
+
+// A catalog mapping: match the respondent's computed characteristic values
+// against a catalog group's items using a distance method, returning top-N.
+export interface CatalogMapping {
+  id: string;
+  catalogId: string;
+  groupId: string;
+  method: import("@/lib/catalog-characteristics").DistanceMethod;
+  topN: number;
 }
 
 // ── Questions ────────────────────────────────────────────────────
@@ -211,6 +242,7 @@ export interface ContentTest {
   createdAt: string;
   updatedAt: string;
   sections: Section[];
+  mappings: CatalogMapping[];
   variables: Variable[];
   characteristicSections: CharacteristicSection[];
   resultWidgets: Widget[];

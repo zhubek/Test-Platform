@@ -9,14 +9,23 @@ import type { ContentTest } from "../../_components/mock-data";
 import type { VisibilityRule } from "@/lib/visibility-rule";
 
 function apiTestToContentTest(t: TestRow): ContentTest {
+  const toLoc = (x: any): { en: string; ru: string; kz: string } =>
+    x && typeof x === "object"
+      ? { en: x.en ?? "", ru: x.ru ?? "", kz: x.kz ?? "" }
+      : { en: x ?? "", ru: "", kz: "" };
   const vars = (t.vars?.variables ?? []).map((v: any) => ({
     id: v.id,
     name: v.name,
-    description: typeof v.description === "object" ? v.description.en ?? "" : v.description ?? "",
+    label: v.label ? toLoc(v.label) : toLoc(v.description),
+    kind: v.kind ?? "custom",
     formula: v.formula ?? "",
     scope: v.scope ?? "both",
+    valueTranslations: v.valueTranslations,
     source: v.source,
+    mappingId: v.mappingId,
+    rank: v.rank,
   }));
+  const mappings = t.calcLogic?.mappings ?? [];
   const calcLogic = t.calcLogic?.characteristicSections ?? [];
   const resultWidgets = t.resultViewLogic?.widgets ?? [];
   const dashboardWidgets = t.dashboardViewLogic?.widgets ?? [];
@@ -67,6 +76,7 @@ function apiTestToContentTest(t: TestRow): ContentTest {
         })),
       })),
     })),
+    mappings,
     variables: vars,
     characteristicSections: calcLogic,
     resultWidgets,
