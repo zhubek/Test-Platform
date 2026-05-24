@@ -59,11 +59,10 @@ const stateBadge: Record<LicenseState, { label: string; variant: "default" | "se
 export function LicensesTable() {
   const [licenses, setLicenses] = useState<OrgLicense[]>(seed);
   const [search, setSearch] = useState("");
-  const [gradeFilter, setGradeFilter] = useState("all");
   const [stateFilter, setStateFilter] = useState("all");
 
-  // inline name/grade editing
-  const [editCell, setEditCell] = useState<{ id: string; field: "name" | "grade" } | null>(null);
+  // inline name editing
+  const [editCell, setEditCell] = useState<{ id: string; field: "name" } | null>(null);
 
   // results drawer
   const [drawerData, setDrawerData] = useState<DrawerData | null>(null);
@@ -80,11 +79,6 @@ export function LicensesTable() {
     setDrawerOpen(true);
   }, []);
 
-  const grades = useMemo(
-    () => Array.from(new Set(licenses.map((l) => l.grade).filter(Boolean))).sort(),
-    [licenses],
-  );
-
   const filtered = useMemo(() => {
     let list = licenses;
     if (search) {
@@ -93,16 +87,15 @@ export function LicensesTable() {
         (l) => l.name.toLowerCase().includes(q) || l.code.toLowerCase().includes(q),
       );
     }
-    if (gradeFilter !== "all") list = list.filter((l) => l.grade === gradeFilter);
     if (stateFilter !== "all") list = list.filter((l) => l.state === stateFilter);
     return list;
-  }, [licenses, search, gradeFilter, stateFilter]);
+  }, [licenses, search, stateFilter]);
 
   const update = useCallback((id: string, patch: Partial<OrgLicense>) => {
     setLicenses((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
   }, []);
 
-  const hasFilters = search !== "" || gradeFilter !== "all" || stateFilter !== "all";
+  const hasFilters = search !== "" || stateFilter !== "all";
 
   return (
     <>
@@ -117,19 +110,6 @@ export function LicensesTable() {
             className="pl-9"
           />
         </div>
-        <Select value={gradeFilter} onValueChange={(v) => setGradeFilter(v ?? "all")}>
-          <SelectTrigger className="w-36">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All grades</SelectItem>
-            {grades.map((g) => (
-              <SelectItem key={g} value={g}>
-                {g}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         <Select value={stateFilter} onValueChange={(v) => setStateFilter(v ?? "all")}>
           <SelectTrigger className="w-40">
             <SelectValue />
@@ -145,7 +125,6 @@ export function LicensesTable() {
           <button
             onClick={() => {
               setSearch("");
-              setGradeFilter("all");
               setStateFilter("all");
             }}
             className="inline-flex items-center gap-1 px-2 text-xs font-medium text-muted-foreground hover:text-foreground"
@@ -168,7 +147,7 @@ export function LicensesTable() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b">
-                {["License code", "Name", "Grade", "State", "Accessible tests"].map((h) => (
+                {["License code", "Name", "State", "Accessible tests"].map((h) => (
                   <th
                     key={h}
                     className="px-3 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground"
@@ -211,32 +190,6 @@ export function LicensesTable() {
                         )}
                       >
                         {lic.name || "— unassigned"}
-                      </button>
-                    )}
-                  </td>
-
-                  {/* grade (inline edit) */}
-                  <td className="px-3 py-3">
-                    {editCell?.id === lic.id && editCell.field === "grade" ? (
-                      <Input
-                        autoFocus
-                        defaultValue={lic.grade}
-                        className="h-7 w-20"
-                        onBlur={(e) => {
-                          update(lic.id, { grade: e.target.value });
-                          setEditCell(null);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                          if (e.key === "Escape") setEditCell(null);
-                        }}
-                      />
-                    ) : (
-                      <button
-                        onClick={() => setEditCell({ id: lic.id, field: "grade" })}
-                        className="rounded px-1 py-0.5 text-sm hover:bg-muted"
-                      >
-                        {lic.grade || "—"}
                       </button>
                     )}
                   </td>
