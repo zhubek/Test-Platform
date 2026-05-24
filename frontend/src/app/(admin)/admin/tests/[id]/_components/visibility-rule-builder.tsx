@@ -105,7 +105,12 @@ export function VisibilityRuleBuilder({ value, onChange }: Props) {
           }}
         >
           <SelectTrigger className="w-40">
-            <SelectValue placeholder="Parameter" />
+            <SelectValue placeholder="Parameter">
+              {(v) => {
+                const p = paramById(v as string);
+                return p ? localize(p.label, locale) : "Parameter";
+              }}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {params.map((p) => (
@@ -170,7 +175,12 @@ export function VisibilityRuleBuilder({ value, onChange }: Props) {
               onValueChange={(v) => onCondChange({ ...c, values: v ? [v] : [] })}
             >
               <SelectTrigger className="w-40">
-                <SelectValue placeholder="Value" />
+                <SelectValue placeholder="Value">
+                  {(v) => {
+                    const opt = param.options[Number(v)];
+                    return opt ? localize(opt, locale) : "Value";
+                  }}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {param.options.map((opt, i) => (
