@@ -6,7 +6,6 @@ import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
 import { TabBar, type TabId } from "./tab-bar";
 import { GeneralTab } from "./general-tab";
-import { VariablesTab } from "./variables-tab";
 import { QuestionsTab } from "./questions-tab";
 import { CalculationTab } from "./calculation-tab";
 import { WidgetConstructorTab } from "./widget-constructor-tab";
@@ -53,9 +52,7 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
   const [variables, setVariables] = useState<Variable[]>(initialData.variables);
   const [surveyLogic, setSurveyLogic] = useState<SurveyLogic>({});
   const [resultWidgets, setResultWidgets] = useState<Widget[]>(initialData.resultWidgets);
-  // Dashboard widgets are no longer edited here (no Dashboard tab), but the
-  // value is preserved on save.
-  const [dashboardWidgets] = useState<Widget[]>(initialData.orgDashboardWidgets);
+  const [dashboardWidgets, setDashboardWidgets] = useState<Widget[]>(initialData.orgDashboardWidgets);
 
   return (
     <>
@@ -136,10 +133,6 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
         />
       )}
 
-      {tab === "variables" && (
-        <VariablesTab variables={variables} onVariablesChange={setVariables} />
-      )}
-
       {tab === "questions" && (
         <QuestionsTab
           testId={testId}
@@ -156,15 +149,25 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
           sections={characteristicSections}
           variables={variables}
           onSectionsChange={setCharacteristicSections}
+          onVariablesChange={setVariables}
         />
       )}
 
-      {tab === "results" && (
+      {tab === "result" && (
         <WidgetConstructorTab
           heading={t("cm.resultView.heading")}
           subheading={t("cm.resultView.sub")}
           widgets={resultWidgets}
           onChange={setResultWidgets}
+        />
+      )}
+
+      {tab === "dashboard" && (
+        <WidgetConstructorTab
+          heading={t("cm.dashboard.heading")}
+          subheading={t("cm.dashboard.sub")}
+          widgets={dashboardWidgets}
+          onChange={setDashboardWidgets}
         />
       )}
     </>

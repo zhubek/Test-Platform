@@ -9,7 +9,14 @@ import type { ContentTest } from "../../_components/mock-data";
 import type { VisibilityRule } from "@/lib/visibility-rule";
 
 function apiTestToContentTest(t: TestRow): ContentTest {
-  const vars = t.vars?.variables ?? [];
+  const vars = (t.vars?.variables ?? []).map((v: any) => ({
+    id: v.id,
+    name: v.name,
+    description: typeof v.description === "object" ? v.description.en ?? "" : v.description ?? "",
+    formula: v.formula ?? "",
+    scope: v.scope ?? "both",
+    source: v.source,
+  }));
   const calcLogic = t.calcLogic?.characteristicSections ?? [];
   const resultWidgets = t.resultViewLogic?.widgets ?? [];
   const dashboardWidgets = t.dashboardViewLogic?.widgets ?? [];

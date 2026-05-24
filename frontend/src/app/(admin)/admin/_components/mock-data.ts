@@ -20,10 +20,18 @@ export interface VariableAssignment {
   value: number;
 }
 
+// Where a variable is consumed: on the individual result page, on dashboards,
+// or both. Variables are defined once (with a formula) and tagged by scope.
+export type VariableScope = "result" | "dashboard" | "both";
+
 export interface Variable {
   id: string;
   name: string;
   description: string;
+  // Expression over question names / other variables. Empty for catalog vars
+  // that are just a named slot the catalog fills.
+  formula?: string;
+  scope: VariableScope;
   // If imported from a catalog characteristic group, records its source.
   source?: { catalogId: string; groupId: string };
 }

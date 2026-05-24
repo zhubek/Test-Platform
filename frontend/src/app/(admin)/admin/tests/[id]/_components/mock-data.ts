@@ -19,12 +19,12 @@ export const hollandTest: ContentTest = {
   createdAt: "2025-09-15",
   updatedAt: "2026-01-20",
   variables: [
-    { id: "v_realistic", name: "realistic", description: "Realistic — hands-on, physical activities" },
-    { id: "v_investigative", name: "investigative", description: "Investigative — analytical, intellectual tasks" },
-    { id: "v_artistic", name: "artistic", description: "Artistic — creative, expressive activities" },
-    { id: "v_social", name: "social", description: "Social — helping, teaching, counseling" },
-    { id: "v_enterprising", name: "enterprising", description: "Enterprising — leading, persuading, managing" },
-    { id: "v_conventional", name: "conventional", description: "Conventional — organizing, data management" },
+    { id: "v_realistic", name: "realistic", description: "Realistic — hands-on, physical activities", scope: "both" },
+    { id: "v_investigative", name: "investigative", description: "Investigative — analytical, intellectual tasks", scope: "both" },
+    { id: "v_artistic", name: "artistic", description: "Artistic — creative, expressive activities", scope: "both" },
+    { id: "v_social", name: "social", description: "Social — helping, teaching, counseling", scope: "both" },
+    { id: "v_enterprising", name: "enterprising", description: "Enterprising — leading, persuading, managing", scope: "both" },
+    { id: "v_conventional", name: "conventional", description: "Conventional — organizing, data management", scope: "both" },
   ],
   sections: [
     {
