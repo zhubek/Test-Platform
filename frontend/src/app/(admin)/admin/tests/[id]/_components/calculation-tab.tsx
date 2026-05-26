@@ -55,6 +55,7 @@ export function CalculationTab({
   const [refOpen, setRefOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [showJson, setShowJson] = useState(false);
+  const [mappingDialogOpen, setMappingDialogOpen] = useState(false);
 
   // Read-only JSON snapshot of the calculation config (excludes derived
   // data-catalog/profession variables — they're produced by the mappings).
@@ -75,18 +76,9 @@ export function CalculationTab({
     .filter((n): n is string => !!n);
 
   // ── Mapping handlers ────────────────────────────────────────────
-  const addMapping = () => {
-    const cat = CATALOGS[0];
-    onMappingsChange([
-      ...mappings,
-      {
-        id: `map_${Date.now()}`,
-        catalogId: cat.id,
-        groupId: cat.groups[0].id,
-        method: "euclidean",
-        topN: 5,
-      },
-    ]);
+  // Add Mapping opens a dialog; the mapping is created only on confirm.
+  const addMapping = (m: Omit<CatalogMapping, "id">) => {
+    onMappingsChange([...mappings, { id: `map_${Date.now()}`, ...m }]);
   };
   const updateMapping = (id: string, partial: Partial<CatalogMapping>) =>
     onMappingsChange(mappings.map((m) => (m.id === id ? { ...m, ...partial } : m)));
@@ -315,7 +307,7 @@ export function CalculationTab({
               {t("cm.calculation.mappingsSub")}
             </p>
           </div>
-          <Button variant="ghost" size="sm" onClick={addMapping} className="text-primary hover:text-teal-700">
+          <Button variant="ghost" size="sm" onClick={() => setMappingDialogOpen(true)} className="text-primary hover:text-teal-700">
             <Plus className="h-3.5 w-3.5" />
             {t("cm.calculation.addMapping")}
           </Button>
@@ -586,6 +578,112 @@ export function CalculationTab({
           )}
         </section>
       )}
+
+      {mappingDialogOpen && (
+        <MappingDialog
+          onCancel={() => setMappingDialogOpen(false)}
+          onConfirm={(m) => {
+            addMapping(m);
+            setMappingDialogOpen(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Add-mapping dialog ──────────────────────────────────────────
+function MappingDialog({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel: () => void;
+  onConfirm: (m: Omit<CatalogMapping, "id">) => void;
+}) {
+  const { t, locale } = useLocale();
+  const [catalogId, setCatalogId] = useState(CATALOGS[0].id);
+  const [groupId, setGroupId] = useState(CATALOGS[0].groups[0].id);
+  const [method, setMethod] = useState<CatalogMapping["method"]>("euclidean");
+  const [topN, setTopN] = useState(5);
+
+  const catalog = CATALOGS.find((c) => c.id === catalogId);
+  const groups = catalog?.groups ?? [];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/30" onClick={onCancel} />
+      <div className="relative mx-4 w-full max-w-md space-y-4 rounded-xl bg-card p-5 shadow-xl">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[0.9rem] font-semibold text-foreground">{t("cm.calculation.addMapping")}</h3>
+          <Button variant="ghost" size="icon-sm" onClick={onCancel} className="text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <Field label={t("cm.calculation.catalog")}>
+          <Select
+            value={catalogId}
+            onValueChange={(v) => {
+              const c = CATALOGS.find((x) => x.id === v);
+              setCatalogId(v ?? catalogId);
+              setGroupId(c?.groups[0].id ?? groupId);
+            }}
+          >
+            <SelectTrigger size="sm" className="w-full">
+              <SelectValue>{() => localize(catalog?.name ?? { en: "", ru: "", kz: "" }, locale)}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {CATALOGS.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{localize(c.name, locale)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field label={t("cm.calculation.matchBy")}>
+          <Select value={groupId} onValueChange={(v) => setGroupId(v ?? groupId)}>
+            <SelectTrigger size="sm" className="w-full">
+              <SelectValue>{() => localize(groups.find((g) => g.id === groupId)?.name ?? { en: "", ru: "", kz: "" }, locale)}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {groups.map((g) => (
+                <SelectItem key={g.id} value={g.id}>{localize(g.name, locale)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field label={t("cm.calculation.method")}>
+          <Select value={method} onValueChange={(v) => setMethod((v as CatalogMapping["method"]) ?? method)}>
+            <SelectTrigger size="sm" className="w-full">
+              <SelectValue>{() => localize(DISTANCE_METHODS.find((d) => d.id === method)?.label ?? { en: "", ru: "", kz: "" }, locale)}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {DISTANCE_METHODS.map((d) => (
+                <SelectItem key={d.id} value={d.id}>{localize(d.label, locale)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+
+        <Field label={t("cm.calculation.topN")}>
+          <Input
+            type="number"
+            min={1}
+            max={50}
+            value={topN}
+            onChange={(e) => setTopN(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
+            className="h-8 w-24"
+          />
+        </Field>
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="ghost" onClick={onCancel}>{t("common.cancel")}</Button>
+          <Button onClick={() => onConfirm({ catalogId, groupId, method, topN })}>
+            {t("cm.calculation.addMapping")}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
