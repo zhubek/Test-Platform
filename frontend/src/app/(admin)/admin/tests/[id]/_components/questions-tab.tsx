@@ -210,6 +210,43 @@ export function QuestionsTab({
     [sections, onSectionsChange]
   );
 
+  // Reorder whole sections (drag & drop).
+  const handleSectionReorder = useCallback(
+    (from: number, to: number) => {
+      if (from === to) return;
+      const next = [...sections];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      onSectionsChange(next);
+    },
+    [sections, onSectionsChange]
+  );
+
+  // Move a question from one section to another (cross-section drag).
+  // toQi = target index within the destination section (clamped).
+  const handleQuestionMove = useCallback(
+    (fromSi: number, fromQi: number, toSi: number, toQi: number) => {
+      if (fromSi === toSi) {
+        handleQuestionReorder(fromSi, fromQi, toQi);
+        return;
+      }
+      const moved = sections[fromSi]?.questions[fromQi];
+      if (!moved) return;
+      onSectionsChange(
+        sections.map((s, i) => {
+          if (i === fromSi) return { ...s, questions: s.questions.filter((_, j) => j !== fromQi) };
+          if (i === toSi) {
+            const next = [...s.questions];
+            next.splice(Math.max(0, Math.min(toQi, next.length)), 0, moved);
+            return { ...s, questions: next };
+          }
+          return s;
+        })
+      );
+    },
+    [sections, onSectionsChange, handleQuestionReorder]
+  );
+
   // ── Answer (Choice) CRUD ─────────────────────────────────────
 
   const handleChoiceAdd = useCallback(
@@ -369,6 +406,8 @@ export function QuestionsTab({
                 onQuestionUpdate={(si, qi, partial) => handleQuestionUpdate(si, qi, partial)}
                 onQuestionDelete={(si, qi) => handleQuestionDelete(si, qi)}
                 onQuestionReorder={handleQuestionReorder}
+                onSectionReorder={handleSectionReorder}
+                onQuestionMove={handleQuestionMove}
                 onOpenQuestion={(si, qi) => {
                   setActiveSection(si);
                   setOpenQ({ si, qi });
