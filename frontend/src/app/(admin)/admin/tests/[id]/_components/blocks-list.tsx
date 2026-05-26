@@ -43,6 +43,7 @@ interface Props {
   onQuestionAdd: (si: number) => void;
   onQuestionUpdate: (si: number, qi: number, partial: Partial<{ type: QuestionType }>) => void;
   onQuestionDelete: (si: number, qi: number) => void;
+  onQuestionReorder: (si: number, from: number, to: number) => void;
   onOpenQuestion: (si: number, qi: number) => void;
   activePage: number;
   onActivePageChange: (si: number) => void;
@@ -56,6 +57,7 @@ export function BlocksList({
   onQuestionAdd,
   onQuestionUpdate,
   onQuestionDelete,
+  onQuestionReorder,
   onOpenQuestion,
   activePage,
   onActivePageChange,
@@ -64,6 +66,11 @@ export function BlocksList({
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [editingTitle, setEditingTitle] = useState<number | null>(null);
   const [logicPage, setLogicPage] = useState<number | null>(null);
+  // Drag-to-reorder questions within a section. `ready` is armed on grip
+  // mousedown (makes that row draggable); `drag` is the active drag source.
+  const [ready, setReady] = useState<{ si: number; qi: number } | null>(null);
+  const [drag, setDrag] = useState<{ si: number; from: number } | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
 
   const toggle = (si: number) =>
     setCollapsed((prev) => {
@@ -142,9 +149,43 @@ export function BlocksList({
                 {section.questions.map((q, qi) => (
                   <div
                     key={q.id}
-                    className="group flex items-center gap-2 rounded-md border bg-background px-2 py-1.5"
+                    draggable={ready?.si === si && ready.qi === qi}
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = "move";
+                      setDrag({ si, from: qi });
+                    }}
+                    onDragOver={(e) => {
+                      if (drag?.si !== si) return;
+                      e.preventDefault();
+                      setOverIdx(qi);
+                    }}
+                    onDrop={(e) => {
+                      if (drag?.si !== si) return;
+                      e.preventDefault();
+                      onQuestionReorder(si, drag.from, qi);
+                      setDrag(null);
+                      setOverIdx(null);
+                      setReady(null);
+                    }}
+                    onDragEnd={() => {
+                      setDrag(null);
+                      setOverIdx(null);
+                      setReady(null);
+                    }}
+                    className={cn(
+                      "group flex items-center gap-2 rounded-md border bg-background px-2 py-1.5 transition-colors",
+                      drag?.si === si && drag.from === qi && "opacity-40",
+                      drag?.si === si && overIdx === qi && drag.from !== qi && "border-primary",
+                    )}
                   >
-                    <GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground/30" />
+                    <span
+                      onMouseDown={() => setReady({ si, qi })}
+                      onMouseUp={() => setReady(null)}
+                      className="shrink-0 cursor-grab text-muted-foreground/40 hover:text-muted-foreground active:cursor-grabbing"
+                      title="Drag to reorder"
+                    >
+                      <GripVertical className="h-3.5 w-3.5" />
+                    </span>
                     <button
                       onClick={() => onOpenQuestion(si, qi)}
                       className="flex-1 truncate text-left text-sm hover:text-primary"

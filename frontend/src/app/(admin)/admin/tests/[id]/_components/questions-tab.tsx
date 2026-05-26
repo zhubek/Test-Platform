@@ -192,6 +192,24 @@ export function QuestionsTab({
     [sections, onSectionsChange]
   );
 
+  // Reorder questions within a section (drag & drop). Local-state only for now;
+  // a real backend would persist the new order indexes.
+  const handleQuestionReorder = useCallback(
+    (sIdx: number, from: number, to: number) => {
+      if (from === to) return;
+      onSectionsChange(
+        sections.map((s, i) => {
+          if (i !== sIdx) return s;
+          const next = [...s.questions];
+          const [moved] = next.splice(from, 1);
+          next.splice(to, 0, moved);
+          return { ...s, questions: next };
+        })
+      );
+    },
+    [sections, onSectionsChange]
+  );
+
   // ── Answer (Choice) CRUD ─────────────────────────────────────
 
   const handleChoiceAdd = useCallback(
@@ -350,6 +368,7 @@ export function QuestionsTab({
                 onQuestionAdd={(si) => handleQuestionAdd(si)}
                 onQuestionUpdate={(si, qi, partial) => handleQuestionUpdate(si, qi, partial)}
                 onQuestionDelete={(si, qi) => handleQuestionDelete(si, qi)}
+                onQuestionReorder={handleQuestionReorder}
                 onOpenQuestion={(si, qi) => {
                   setActiveSection(si);
                   setOpenQ({ si, qi });
