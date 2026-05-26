@@ -484,6 +484,7 @@ export function CalculationTab({
                 onDelete={() => deleteVar(v.id)}
                 lockName
                 readOnlyFormula
+                fixedValues
               />
             ))}
           </div>
@@ -539,6 +540,7 @@ export function CalculationTab({
                 onDelete={() => deleteVar(v.id)}
                 lockName
                 readOnlyFormula
+                fixedValues
               />
             ))}
           </div>

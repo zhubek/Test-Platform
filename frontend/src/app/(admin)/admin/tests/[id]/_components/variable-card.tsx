@@ -16,6 +16,8 @@ interface Props {
   noFormula?: boolean; // hides the formula field entirely
   readOnlyFormula?: boolean; // single/multi-choice vars: formula shown but not editable ({qN})
   lockName?: boolean; // name tied to its source (catalog key / question), not editable
+  fixedValues?: boolean; // single/multi-choice: option values come from the question
+                         // (read-only, no add/delete) — only labels are editable
 }
 
 const KIND_BADGE: Record<Variable["kind"], string> = {
@@ -26,13 +28,16 @@ const KIND_BADGE: Record<Variable["kind"], string> = {
   profession: "cm.calculation.kindProfession",
 };
 
-export function VariableCard({ variable, onChange, onDelete, readOnlyValue, noFormula, readOnlyFormula, lockName }: Props) {
+export function VariableCard({ variable, onChange, onDelete, readOnlyValue, noFormula, readOnlyFormula, lockName, fixedValues }: Props) {
   const { t, locale } = useLocale();
   const translations = variable.valueTranslations ?? [];
   // Characteristic vars are pure numeric dimensions — no value→label table.
   const showTranslations = variable.kind !== "characteristic";
-  // Editable for everything except catalog-derived (profession) vars.
+  // Labels are editable except for catalog-derived (profession) vars.
   const editableTr = !readOnlyValue;
+  // Values are editable only when the author defines them (custom vars); for
+  // choice-bound vars they're fixed by the question.
+  const editableValues = editableTr && !fixedValues;
   const [trOpen, setTrOpen] = useState(translations.length === 0 ? false : !editableTr ? false : true);
 
   const updateTranslation = (i: number, partial: Partial<ValueTranslation>) =>
@@ -128,7 +133,7 @@ export function VariableCard({ variable, onChange, onDelete, readOnlyValue, noFo
             <div className="space-y-1.5 border-t px-2.5 py-2">
               {translations.map((tr, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  {editableTr ? (
+                  {editableValues ? (
                     <Input
                       type="number"
                       value={tr.value}
@@ -146,7 +151,7 @@ export function VariableCard({ variable, onChange, onDelete, readOnlyValue, noFo
                     placeholder={localize(tr.label, locale)}
                     className="flex-1"
                   />
-                  {editableTr && (
+                  {editableValues && (
                     <Button
                       variant="ghost"
                       size="icon-sm"
@@ -158,7 +163,7 @@ export function VariableCard({ variable, onChange, onDelete, readOnlyValue, noFo
                   )}
                 </div>
               ))}
-              {editableTr && (
+              {editableValues && (
                 <Button
                   variant="ghost"
                   size="sm"
