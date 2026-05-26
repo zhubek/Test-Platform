@@ -2,6 +2,20 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Plus, Trash2, Pencil, GripVertical, GitBranch } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
 import { LocalizedInput } from "@/components/localized-input";
@@ -66,11 +80,9 @@ export function BlocksList({
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [editingTitle, setEditingTitle] = useState<number | null>(null);
   const [logicPage, setLogicPage] = useState<number | null>(null);
-  // Drag-to-reorder questions within a section. `ready` is armed on grip
-  // mousedown (makes that row draggable); `drag` is the active drag source.
-  const [ready, setReady] = useState<{ si: number; qi: number } | null>(null);
-  const [drag, setDrag] = useState<{ si: number; from: number } | null>(null);
-  const [overIdx, setOverIdx] = useState<number | null>(null);
+  // Drag-to-reorder questions within a section (dnd-kit). 8px activation
+  // distance so clicks on the grip don't start a drag accidentally.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const toggle = (si: number) =>
     setCollapsed((prev) => {
@@ -146,84 +158,42 @@ export function BlocksList({
             {/* Questions */}
             {!isCollapsed && (
               <div className="space-y-1.5 p-2.5">
-                {section.questions.map((q, qi) => (
-                  <div
-                    key={q.id}
-                    draggable={ready?.si === si && ready.qi === qi}
-                    onDragStart={(e) => {
-                      e.dataTransfer.effectAllowed = "move";
-                      setDrag({ si, from: qi });
-                    }}
-                    onDragOver={(e) => {
-                      if (drag?.si !== si) return;
-                      e.preventDefault();
-                      setOverIdx(qi);
-                    }}
-                    onDrop={(e) => {
-                      if (drag?.si !== si) return;
-                      e.preventDefault();
-                      onQuestionReorder(si, drag.from, qi);
-                      setDrag(null);
-                      setOverIdx(null);
-                      setReady(null);
-                    }}
-                    onDragEnd={() => {
-                      setDrag(null);
-                      setOverIdx(null);
-                      setReady(null);
-                    }}
-                    className={cn(
-                      "group flex items-center gap-2 rounded-md border bg-background px-2 py-1.5 transition-colors",
-                      drag?.si === si && drag.from === qi && "opacity-40",
-                      drag?.si === si && overIdx === qi && drag.from !== qi && "border-primary",
-                    )}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={(e: DragEndEvent) => {
+                    const { active, over } = e;
+                    if (!over || active.id === over.id) return;
+                    const from = section.questions.findIndex((q) => q.id === active.id);
+                    const to = section.questions.findIndex((q) => q.id === over.id);
+                    if (from !== -1 && to !== -1) onQuestionReorder(si, from, to);
+                  }}
+                >
+                  <SortableContext
+                    items={section.questions.map((q) => q.id)}
+                    strategy={verticalListSortingStrategy}
                   >
-                    <span
-                      onMouseDown={() => setReady({ si, qi })}
-                      onMouseUp={() => setReady(null)}
-                      className="shrink-0 cursor-grab text-muted-foreground/40 hover:text-muted-foreground active:cursor-grabbing"
-                      title="Drag to reorder"
-                    >
-                      <GripVertical className="h-3.5 w-3.5" />
-                    </span>
-                    <button
-                      onClick={() => onOpenQuestion(si, qi)}
-                      className="flex-1 truncate text-left text-sm hover:text-primary"
-                    >
-                      {localize(q.text, locale) || (
-                        <span className="italic text-muted-foreground">Untitled question</span>
-                      )}
-                    </button>
-                    <Select
-                      value={q.type}
-                      onValueChange={(v) =>
-                        onQuestionUpdate(si, qi, { type: (v as QuestionType) ?? "single" })
-                      }
-                    >
-                      <SelectTrigger size="sm" className="w-28">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {QUESTION_TYPES.map((qt) => (
-                          <SelectItem key={qt.value} value={qt.value}>
-                            {t(qt.key)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" size="sm" onClick={() => onOpenQuestion(si, qi)}>
-                      Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => onQuestionDelete(si, qi)}
-                      className="text-muted-foreground opacity-0 hover:text-red-500 group-hover:opacity-100"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ))}
+                    <div className="space-y-1.5">
+                      {section.questions.map((q, qi) => (
+                        <SortableQuestionRow
+                          key={q.id}
+                          id={q.id}
+                          label={
+                            localize(q.text, locale) || (
+                              <span className="italic text-muted-foreground">Untitled question</span>
+                            )
+                          }
+                          type={q.type}
+                          questionTypes={QUESTION_TYPES}
+                          tr={t}
+                          onOpen={() => onOpenQuestion(si, qi)}
+                          onTypeChange={(v) => onQuestionUpdate(si, qi, { type: v })}
+                          onDelete={() => onQuestionDelete(si, qi)}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -278,6 +248,79 @@ export function BlocksList({
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ── Sortable question row (dnd-kit) ─────────────────────────────
+function SortableQuestionRow({
+  id,
+  label,
+  type,
+  questionTypes,
+  tr,
+  onOpen,
+  onTypeChange,
+  onDelete,
+}: {
+  id: string;
+  label: React.ReactNode;
+  type: QuestionType;
+  questionTypes: { value: QuestionType; key: string }[];
+  tr: (key: string) => string;
+  onOpen: () => void;
+  onTypeChange: (type: QuestionType) => void;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "group flex items-center gap-2 rounded-md border bg-background px-2 py-1.5",
+        isDragging && "z-10 border-primary/60 shadow-lg",
+      )}
+    >
+      <button
+        {...attributes}
+        {...listeners}
+        className="shrink-0 cursor-grab text-muted-foreground/40 hover:text-muted-foreground active:cursor-grabbing"
+        title="Drag to reorder"
+        aria-label="Drag to reorder"
+      >
+        <GripVertical className="h-3.5 w-3.5" />
+      </button>
+      <button onClick={onOpen} className="flex-1 truncate text-left text-sm hover:text-primary">
+        {label}
+      </button>
+      <Select value={type} onValueChange={(v) => onTypeChange((v as QuestionType) ?? "single")}>
+        <SelectTrigger size="sm" className="w-28">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {questionTypes.map((qt) => (
+            <SelectItem key={qt.value} value={qt.value}>
+              {tr(qt.key)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button variant="outline" size="sm" onClick={onOpen}>
+        Edit
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        onClick={onDelete}
+        className="text-muted-foreground opacity-0 hover:text-red-500 group-hover:opacity-100"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
     </div>
   );
 }
