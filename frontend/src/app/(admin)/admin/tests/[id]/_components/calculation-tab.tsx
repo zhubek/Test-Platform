@@ -250,18 +250,59 @@ export function CalculationTab({
 
   return (
     <div className="space-y-8">
-      {/* Top toolbar: view the whole calculation config as JSON. */}
-      <div className="flex justify-end">
+      {/* Top toolbar: formula reference (left) + view JSON (right). */}
+      <div className="flex items-start gap-2">
+        <div className="flex-1">
+          <FormulaReference open={refOpen} onToggle={() => setRefOpen(!refOpen)} />
+        </div>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setShowJson(true)}
-          className="text-muted-foreground hover:text-foreground"
+          className="shrink-0 text-muted-foreground hover:text-foreground"
         >
           <Code2 className="h-3.5 w-3.5" />
           {t("cm.calculation.viewJson")}
         </Button>
       </div>
+
+      {/* ── Variables (formula) ──────────────────────────────────── */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-[0.88rem] font-semibold text-foreground">
+              {t("cm.calculation.variables")}
+            </h3>
+            <p className="mt-0.5 text-[0.75rem] text-muted-foreground">
+              {t("cm.calculation.variablesSub")}
+            </p>
+          </div>
+          <div className="flex items-center gap-1">
+            <SurveyVarsButton questionVars={questionVars} calcValueVars={calcValueVars} />
+            <Button variant="ghost" size="sm" onClick={addCustomVar} className="text-primary hover:text-teal-700">
+              <Plus className="h-3.5 w-3.5" />
+              {t("cm.calculation.addVariable")}
+            </Button>
+          </div>
+        </div>
+
+        {customVars.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {customVars.map((v) => (
+              <VariableCard
+                key={v.id}
+                variable={v}
+                onChange={(partial) => updateVar(v.id, partial)}
+                onDelete={() => deleteVar(v.id)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed py-6 text-center text-[0.78rem] text-muted-foreground">
+            {t("cm.calculation.noVariables")}
+          </div>
+        )}
+      </section>
 
       {/* ── Catalog mappings ─────────────────────────────────────── */}
       <section className="space-y-3">
@@ -372,46 +413,6 @@ export function CalculationTab({
             {t("cm.calculation.noMappings")}
           </div>
         )}
-      </section>
-
-      {/* ── Variables (formula) ──────────────────────────────────── */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-[0.88rem] font-semibold text-foreground">
-              {t("cm.calculation.variables")}
-            </h3>
-            <p className="mt-0.5 text-[0.75rem] text-muted-foreground">
-              {t("cm.calculation.variablesSub")}
-            </p>
-          </div>
-          <div className="flex items-center gap-1">
-            <SurveyVarsButton questionVars={questionVars} calcValueVars={calcValueVars} />
-            <Button variant="ghost" size="sm" onClick={addCustomVar} className="text-primary hover:text-teal-700">
-              <Plus className="h-3.5 w-3.5" />
-              {t("cm.calculation.addVariable")}
-            </Button>
-          </div>
-        </div>
-
-        {customVars.length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {customVars.map((v) => (
-              <VariableCard
-                key={v.id}
-                variable={v}
-                onChange={(partial) => updateVar(v.id, partial)}
-                onDelete={() => deleteVar(v.id)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-dashed py-6 text-center text-[0.78rem] text-muted-foreground">
-            {t("cm.calculation.noVariables")}
-          </div>
-        )}
-
-        <FormulaReference open={refOpen} onToggle={() => setRefOpen(!refOpen)} />
       </section>
 
       {/* ── Characteristics (auto from mappings) ─────────────────── */}
