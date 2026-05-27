@@ -214,10 +214,23 @@ export interface Widget {
 // ── Result components (variable-bound, shown on the result page) ──
 // Unlike SQL Widgets, result components read the test's computed variables.
 export type ResultComponentType =
-  | "characteristics_bar" // horizontal bars of all characteristic scores
+  // characteristics-bound (all/subset of characteristic variables)
+  | "characteristics_bar" // horizontal bars of characteristic scores
   | "characteristics_radar" // radar/spider of characteristics
-  | "score_card" // a single variable shown prominently
-  | "matches_list"; // ranked top-N catalog matches from a mapping
+  | "characteristics_pie" // pie/donut distribution of characteristics
+  | "score_table" // ranked table of characteristic | score
+  | "stat_grid" // small stat cards for several characteristics
+  | "summary_text" // auto "Your top types are X, Y, Z" sentence
+  // single-variable
+  | "score_card" // one variable shown prominently
+  | "gauge" // one variable as a 0–max meter
+  // mapping-bound
+  | "matches_list" // ranked top-N catalog matches from a mapping
+  | "match_detail" // the #1 catalog match: name + description
+  // static layout (not data-bound)
+  | "heading" // a section heading
+  | "text" // a paragraph / rich text block
+  | "divider"; // a visual separator
 
 // What a component binds to.
 //  - kind "characteristics": all characteristic variables (bar / radar)
@@ -247,6 +260,7 @@ export interface ResultComponent {
   variableNames?: string[];
   options?: ResultDisplayOptions; // structured display params
   params?: WidgetParam[]; // free-form key/value escape hatch
+  content?: Localized; // for static heading / text blocks
 }
 
 // A result page groups components (like a survey page groups questions).

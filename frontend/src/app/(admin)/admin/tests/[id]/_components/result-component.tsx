@@ -17,11 +17,27 @@ interface Props {
   data: ResultDatum[]; // resolved sample/real values for the component's binding
 }
 
-// Renders one result component (variable-bound) as the student would see it.
+// Renders one result component as the student would see it.
 export function ResultComponentView({ component, data }: Props) {
   const { locale } = useLocale();
   const title = localize(component.title, locale);
+  const content = component.content ? localize(component.content, locale) : "";
   const opts = component.options ?? {};
+
+  // ── Static layout blocks (not data-bound) ──
+  if (component.type === "divider") {
+    return <hr className="my-2 border-border" />;
+  }
+  if (component.type === "heading") {
+    return <h2 className="text-xl font-bold tracking-tight">{title || content || "Heading"}</h2>;
+  }
+  if (component.type === "text") {
+    return (
+      <p className="whitespace-pre-line text-[0.86rem] leading-relaxed text-muted-foreground">
+        {content || "Text block"}
+      </p>
+    );
+  }
 
   // Apply structured options: sort, then count.
   let shown = [...data];
@@ -40,8 +56,20 @@ export function ResultComponentView({ component, data }: Props) {
         <BarChart data={shown} maxScale={opts.maxScale} showValues={showValues} />
       ) : component.type === "characteristics_radar" ? (
         <RadarChart data={shown} maxScale={opts.maxScale} />
+      ) : component.type === "characteristics_pie" ? (
+        <PieChart data={shown} showValues={showValues} />
+      ) : component.type === "score_table" ? (
+        <ScoreTable data={shown} showValues={showValues} />
+      ) : component.type === "stat_grid" ? (
+        <StatGrid data={shown} />
+      ) : component.type === "summary_text" ? (
+        <SummaryText data={shown} />
       ) : component.type === "score_card" ? (
         <ScoreCard data={shown} showValues={showValues} />
+      ) : component.type === "gauge" ? (
+        <Gauge data={shown} maxScale={opts.maxScale} />
+      ) : component.type === "match_detail" ? (
+        <MatchDetail data={shown} />
       ) : (
         <MatchesList data={shown} showValues={showValues} />
       )}
@@ -188,6 +216,127 @@ function MatchesList({ data, showValues }: { data: ResultDatum[]; showValues: bo
         </li>
       ))}
     </ol>
+  );
+}
+
+// ── Pie / donut: characteristic distribution ────────────────────
+const PIE_COLORS = ["#0f172a", "#334155", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#475569", "#1e293b"];
+function PieChart({ data, showValues }: { data: ResultDatum[]; showValues: boolean }) {
+  const total = data.reduce((s, d) => s + d.value, 0) || 1;
+  let acc = 0;
+  const segs = data.map((d, i) => {
+    const pct = (d.value / total) * 100;
+    const start = acc;
+    acc += pct;
+    return { ...d, pct, start, color: PIE_COLORS[i % PIE_COLORS.length] };
+  });
+  const gradient = segs.map((s) => `${s.color} ${s.start}% ${s.start + s.pct}%`).join(", ");
+  return (
+    <div className="flex items-center gap-5">
+      <div
+        className="relative h-28 w-28 shrink-0 rounded-full"
+        style={{ background: `conic-gradient(${gradient})` }}
+      >
+        <div className="absolute inset-[22%] rounded-full bg-card" />
+      </div>
+      <div className="min-w-0 flex-1 space-y-1">
+        {segs.map((s) => (
+          <div key={s.label} className="flex items-center gap-1.5 text-[0.74rem]">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: s.color }} />
+            <span className="truncate text-muted-foreground">{s.label}</span>
+            <span className="ml-auto tabular-nums text-muted-foreground">
+              {showValues ? `${Math.round(s.pct)}%` : ""}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Score table: ranked characteristic | score ─────────────────
+function ScoreTable({ data, showValues }: { data: ResultDatum[]; showValues: boolean }) {
+  return (
+    <table className="w-full text-[0.8rem]">
+      <tbody>
+        {data.map((d, i) => (
+          <tr key={d.label} className="border-b border-border/60 last:border-0">
+            <td className="w-7 py-1.5 text-muted-foreground">{i + 1}</td>
+            <td className="py-1.5 font-medium">{d.label}</td>
+            {showValues && <td className="py-1.5 text-right tabular-nums text-muted-foreground">{round(d.value)}</td>}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+// ── Stat grid: small cards of key numbers ───────────────────────
+function StatGrid({ data }: { data: ResultDatum[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {data.map((d) => (
+        <div key={d.label} className="rounded-xl border bg-muted/30 p-3 text-center">
+          <p className="text-xl font-bold tabular-nums">{round(d.value)}</p>
+          <p className="truncate text-[0.7rem] text-muted-foreground">{d.label}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Summary text: "Your top types are X, Y and Z." ──────────────
+function SummaryText({ data }: { data: ResultDatum[] }) {
+  const top = [...data].sort((a, b) => b.value - a.value).slice(0, 3).map((d) => d.label);
+  const list = top.length <= 1 ? top.join("") : `${top.slice(0, -1).join(", ")} and ${top[top.length - 1]}`;
+  return (
+    <p className="text-[0.86rem] leading-relaxed">
+      Your strongest areas are <span className="font-semibold">{list}</span>.
+    </p>
+  );
+}
+
+// ── Gauge: single value as a 0–max arc meter ────────────────────
+function Gauge({ data, maxScale }: { data: ResultDatum[]; maxScale?: number }) {
+  const top = [...data].sort((a, b) => b.value - a.value)[0];
+  const max = maxScale && maxScale > 0 ? maxScale : 100;
+  const ratio = Math.max(0, Math.min(1, top.value / max));
+  const r = 52;
+  const circ = Math.PI * r; // half circle
+  return (
+    <div className="flex flex-col items-center">
+      <svg viewBox="0 0 140 80" className="w-44">
+        <path d="M 18 70 A 52 52 0 0 1 122 70" fill="none" className="stroke-muted" strokeWidth="12" strokeLinecap="round" />
+        <path
+          d="M 18 70 A 52 52 0 0 1 122 70"
+          fill="none"
+          className="stroke-foreground"
+          strokeWidth="12"
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={circ * (1 - ratio)}
+        />
+      </svg>
+      <p className="-mt-2 text-2xl font-bold tabular-nums">{round(top.value)}</p>
+      <p className="text-[0.74rem] text-muted-foreground">{top.label}</p>
+    </div>
+  );
+}
+
+// ── Match detail: the #1 catalog match prominently ──────────────
+function MatchDetail({ data }: { data: ResultDatum[] }) {
+  const top = [...data].sort((a, b) => b.value - a.value)[0];
+  return (
+    <div className="flex items-center gap-4">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-foreground text-background">
+        <Trophy className="h-6 w-6" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[0.66rem] font-semibold uppercase tracking-wider text-muted-foreground">Your top match</p>
+        <p className="truncate text-xl font-bold tracking-tight">{top.label}</p>
+        <p className="text-[0.78rem] text-muted-foreground">Match score: {round(top.value)}</p>
+      </div>
+    </div>
   );
 }
 

@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Pencil, BarChart3, Radar, Trophy, ListOrdered, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Plus, Trash2, Pencil, ChevronLeft, ChevronRight, X,
+  BarChart3, Radar, PieChart, Table, LayoutGrid, AlignLeft,
+  Trophy, Gauge as GaugeIcon, ListOrdered, Award, Heading, Type, Minus,
+} from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { localize, l } from "@/lib/localized";
 import { Button } from "@/components/ui/button";
@@ -32,11 +36,41 @@ interface Props {
   onChange: (pages: ResultPage[]) => void;
 }
 
-const COMPONENT_TYPES: { type: ResultComponentType; icon: typeof BarChart3; key: string; bindingKind: ResultComponent["binding"]["kind"] }[] = [
-  { type: "characteristics_bar", icon: BarChart3, key: "cm.resultView.typeBar", bindingKind: "characteristics" },
-  { type: "characteristics_radar", icon: Radar, key: "cm.resultView.typeRadar", bindingKind: "characteristics" },
-  { type: "score_card", icon: Trophy, key: "cm.resultView.typeCard", bindingKind: "characteristics" },
-  { type: "matches_list", icon: ListOrdered, key: "cm.resultView.typeMatches", bindingKind: "mapping" },
+type BlockBinding = ResultComponent["binding"]["kind"] | "static";
+interface BlockDef {
+  type: ResultComponentType;
+  icon: typeof BarChart3;
+  key: string; // label i18n key
+  descKey: string; // short description i18n key
+  group: "characteristics" | "single" | "mapping" | "layout";
+  bindingKind: BlockBinding;
+}
+
+const COMPONENT_TYPES: BlockDef[] = [
+  // Characteristics
+  { type: "characteristics_bar", icon: BarChart3, key: "cm.resultView.typeBar", descKey: "cm.resultView.descBar", group: "characteristics", bindingKind: "characteristics" },
+  { type: "characteristics_radar", icon: Radar, key: "cm.resultView.typeRadar", descKey: "cm.resultView.descRadar", group: "characteristics", bindingKind: "characteristics" },
+  { type: "characteristics_pie", icon: PieChart, key: "cm.resultView.typePie", descKey: "cm.resultView.descPie", group: "characteristics", bindingKind: "characteristics" },
+  { type: "score_table", icon: Table, key: "cm.resultView.typeTable", descKey: "cm.resultView.descTable", group: "characteristics", bindingKind: "characteristics" },
+  { type: "stat_grid", icon: LayoutGrid, key: "cm.resultView.typeStatGrid", descKey: "cm.resultView.descStatGrid", group: "characteristics", bindingKind: "characteristics" },
+  { type: "summary_text", icon: AlignLeft, key: "cm.resultView.typeSummary", descKey: "cm.resultView.descSummary", group: "characteristics", bindingKind: "characteristics" },
+  // Single variable
+  { type: "score_card", icon: Trophy, key: "cm.resultView.typeCard", descKey: "cm.resultView.descCard", group: "single", bindingKind: "characteristics" },
+  { type: "gauge", icon: GaugeIcon, key: "cm.resultView.typeGauge", descKey: "cm.resultView.descGauge", group: "single", bindingKind: "characteristics" },
+  // Mapping
+  { type: "matches_list", icon: ListOrdered, key: "cm.resultView.typeMatches", descKey: "cm.resultView.descMatches", group: "mapping", bindingKind: "mapping" },
+  { type: "match_detail", icon: Award, key: "cm.resultView.typeMatchDetail", descKey: "cm.resultView.descMatchDetail", group: "mapping", bindingKind: "mapping" },
+  // Static layout
+  { type: "heading", icon: Heading, key: "cm.resultView.typeHeading", descKey: "cm.resultView.descHeading", group: "layout", bindingKind: "static" },
+  { type: "text", icon: Type, key: "cm.resultView.typeText", descKey: "cm.resultView.descText", group: "layout", bindingKind: "static" },
+  { type: "divider", icon: Minus, key: "cm.resultView.typeDivider", descKey: "cm.resultView.descDivider", group: "layout", bindingKind: "static" },
+];
+
+const BLOCK_GROUPS: { id: BlockDef["group"]; key: string }[] = [
+  { id: "characteristics", key: "cm.resultView.groupCharacteristics" },
+  { id: "single", key: "cm.resultView.groupSingle" },
+  { id: "mapping", key: "cm.resultView.groupMapping" },
+  { id: "layout", key: "cm.resultView.groupLayout" },
 ];
 
 export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
@@ -46,6 +80,8 @@ export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
   const [editingTitle, setEditingTitle] = useState<number | null>(null);
 
   const activePage = pages[Math.min(active, Math.max(0, pages.length - 1))];
+  // Which page's "Add block" modal is open (null = closed).
+  const [pickerPage, setPickerPage] = useState<number | null>(null);
 
   // ── Page handlers ───────────────────────────────────────────────
   const addPage = () => {
@@ -69,7 +105,16 @@ export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
       type === "matches_list" ? { count: 5, sort: "score_desc", showValues: true } : { sort: "score_desc", showValues: true };
     setComponents(pi, [
       ...pages[pi].components,
-      { id: `rc_${Date.now()}`, type, title: { en: "", ru: "", kz: "" }, binding, variableNames: [], options, params: [] },
+      {
+        id: `rc_${Date.now()}`,
+        type,
+        title: { en: "", ru: "", kz: "" },
+        binding,
+        variableNames: [],
+        options,
+        params: [],
+        ...(def.bindingKind === "static" ? { content: { en: "", ru: "", kz: "" } } : {}),
+      },
     ]);
   };
   const updateComponent = (pi: number, id: string, partial: Partial<ResultComponent>) =>
@@ -154,17 +199,8 @@ export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
                   </Button>
                 </div>
 
-                {/* Page body: palette + component configs */}
+                {/* Page body: component configs + Add block */}
                 <div className="space-y-3 p-2.5">
-                  <div className="flex flex-wrap gap-1.5">
-                    {COMPONENT_TYPES.map((ct) => (
-                      <Button key={ct.type} variant="outline" size="sm" onClick={() => addComponent(pi, ct.type)}>
-                        <ct.icon className="h-3.5 w-3.5" />
-                        {t(ct.key)}
-                      </Button>
-                    ))}
-                  </div>
-
                   {page.components.length === 0 ? (
                     <p className="py-3 text-center text-[0.72rem] text-muted-foreground">
                       {t("cm.resultView.pageEmpty")}
@@ -181,6 +217,14 @@ export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
                       />
                     ))
                   )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPickerPage(pi)}
+                    className="w-full border-dashed text-muted-foreground hover:border-teal-300 hover:text-primary"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> {t("cm.resultView.addBlock")}
+                  </Button>
                 </div>
               </div>
             ))
@@ -259,6 +303,55 @@ export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
           )}
         </div>
       </div>
+
+      {/* Add-block picker modal */}
+      {pickerPage !== null && (
+        <BlockPicker
+          onCancel={() => setPickerPage(null)}
+          onPick={(type) => {
+            addComponent(pickerPage, type);
+            setPickerPage(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Add-block picker modal (grid of block cards by group) ───────
+function BlockPicker({ onCancel, onPick }: { onCancel: () => void; onPick: (type: ResultComponentType) => void }) {
+  const { t } = useLocale();
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/30" onClick={onCancel} />
+      <div className="relative mx-4 max-h-[85vh] w-full max-w-2xl space-y-4 overflow-auto rounded-xl bg-card p-5 shadow-xl">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[0.9rem] font-semibold">{t("cm.resultView.addBlock")}</h3>
+          <Button variant="ghost" size="icon-sm" onClick={onCancel} className="text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        {BLOCK_GROUPS.map((g) => (
+          <div key={g.id}>
+            <p className="mb-1.5 text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
+              {t(g.key)}
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {COMPONENT_TYPES.filter((b) => b.group === g.id).map((b) => (
+                <button
+                  key={b.type}
+                  onClick={() => onPick(b.type)}
+                  className="flex flex-col items-start gap-1 rounded-xl border bg-card p-3 text-left transition-colors hover:border-foreground hover:bg-muted/40"
+                >
+                  <b.icon className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-[0.8rem] font-medium">{t(b.key)}</span>
+                  <span className="text-[0.68rem] leading-snug text-muted-foreground">{t(b.descKey)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -281,6 +374,38 @@ function ComponentConfig({
   const def = COMPONENT_TYPES.find((x) => x.type === c.type)!;
   const updateOptions = (partial: Partial<NonNullable<ResultComponent["options"]>>) =>
     onUpdate({ options: { ...c.options, ...partial } });
+
+  // ── Static layout blocks: minimal config ──
+  if (def.bindingKind === "static") {
+    return (
+      <div className="rounded-xl border bg-muted/30 p-3">
+        <div className="flex items-center gap-3">
+          <Param label={t("cm.resultView.component")}>
+            <span className="flex h-8 items-center gap-1.5 rounded-md border bg-card px-2.5 text-[0.78rem]">
+              <def.icon className="h-3.5 w-3.5 text-muted-foreground" />
+              {t(def.key)}
+            </span>
+          </Param>
+          {c.type !== "divider" && (
+            <div className="flex flex-1 flex-col gap-1">
+              <label className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                {c.type === "heading" ? t("cm.resultView.headingText") : t("cm.resultView.bodyText")}
+              </label>
+              <LocalizedInput
+                value={c.content ?? { en: "", ru: "", kz: "" }}
+                onChange={(v) => onUpdate({ content: v })}
+                placeholder={c.type === "heading" ? t("cm.resultView.headingText") : t("cm.resultView.bodyText")}
+              />
+            </div>
+          )}
+          {c.type === "divider" && <span className="flex-1 text-[0.72rem] text-muted-foreground">{t("cm.resultView.descDivider")}</span>}
+          <Button variant="ghost" size="icon-sm" onClick={onRemove} className="ml-auto text-muted-foreground hover:text-red-500 hover:bg-red-50">
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl border bg-muted/30 p-3">
