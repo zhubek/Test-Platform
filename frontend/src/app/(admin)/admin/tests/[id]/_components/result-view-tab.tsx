@@ -481,12 +481,13 @@ function ComponentConfig({
         </span>
       </Param>
       {def.group !== "text" && def.group !== "divider" && (
-        <div className="flex flex-1 flex-col gap-1">
-          <label className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("cm.resultView.title")}
-          </label>
-          <LocalizedInput value={c.title} onChange={(v) => onUpdate({ title: v })} placeholder={t("cm.resultView.titlePlaceholder")} />
-        </div>
+        <LocalizedInput
+          label={t("cm.resultView.title")}
+          value={c.title}
+          onChange={(v) => onUpdate({ title: v })}
+          placeholder={t("cm.resultView.titlePlaceholder")}
+          className="flex-1"
+        />
       )}
       <Button variant="ghost" size="icon-sm" onClick={onRemove} className="ml-auto text-muted-foreground hover:text-red-500 hover:bg-red-50">
         <Trash2 className="h-3.5 w-3.5" />
@@ -520,10 +521,8 @@ function ComponentConfig({
     return (
       <div className="rounded-xl border bg-muted/30 p-3">
         {header}
-        <label className="mb-1 block text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
-          {c.type === "heading" ? t("cm.resultView.headingText") : t("cm.resultView.template")}
-        </label>
         <LocalizedInput
+          label={c.type === "heading" ? t("cm.resultView.headingText") : t("cm.resultView.template")}
           value={c.content ?? { en: "", ru: "", kz: "" }}
           onChange={(v) => onUpdate({ content: v })}
           placeholder={t("cm.resultView.templatePlaceholder")}
