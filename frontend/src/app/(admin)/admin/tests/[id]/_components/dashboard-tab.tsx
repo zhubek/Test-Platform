@@ -111,8 +111,8 @@ export function DashboardTab({ pages, onChange }: Props) {
   };
 
   return (
-    <div>
-      {/* ── Full-width constructor ── */}
+    <div className="grid gap-4 lg:grid-cols-2">
+      {/* ── Left: constructor ── */}
       <div className="rounded-xl border bg-card">
         <div className="flex items-center gap-2 border-b px-3 py-2">
           <span className="text-sm font-semibold">
@@ -235,6 +235,42 @@ export function DashboardTab({ pages, onChange }: Props) {
             )}
           </div>
         )}
+      </div>
+
+      {/* ── Right: live preview (single column) ── */}
+      <div className="rounded-xl border bg-card">
+        <div className="border-b px-3 py-2 text-sm font-medium text-muted-foreground">{t("cm.dashboard.preview")}</div>
+        <div className="max-h-[72vh] overflow-auto p-5">
+          {pages.length === 0 || !activePage ? (
+            <p className="py-10 text-center text-[0.78rem] text-muted-foreground">{t("cm.dashboard.previewEmpty")}</p>
+          ) : (
+            <>
+              {pages.length > 1 && (
+                <div className="mb-5 flex flex-wrap gap-1.5">
+                  {pages.map((p, i) => (
+                    <button key={p.id} onClick={() => setActive(i)} className={cn("rounded-full px-2.5 py-1 text-xs font-medium transition-colors", i === active ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:text-foreground")}>
+                      {i + 1}. {localize(p.title, locale) || `${t("cm.dashboard.page")} ${i + 1}`}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <h2 className="mb-4 text-lg font-bold tracking-tight">
+                {localize(activePage.title, locale) || `${t("cm.dashboard.page")} ${active + 1}`}
+              </h2>
+              {activePage.widgets.length === 0 ? (
+                <p className="py-10 text-center text-[0.78rem] text-muted-foreground">{t("cm.dashboard.pageEmpty")}</p>
+              ) : (
+                <div className="space-y-4">
+                  {activePage.widgets.map((w) => (
+                    <div key={w.id} className="rounded-2xl border bg-card p-5 shadow-sm">
+                      <WidgetPreview componentType={w.componentType} title={w.title} rows={mockRows(w.sql)} params={[]} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* ── Full-screen preview ── */}
