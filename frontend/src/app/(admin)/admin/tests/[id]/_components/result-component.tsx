@@ -4,6 +4,7 @@ import { Trophy } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
 import { cn } from "@/lib/utils";
+import { resolveTemplate, type ResolvedVar } from "@/lib/result-template";
 import type { ResultComponent } from "../../../_components/mock-data";
 
 // A data pair the result renderers consume. `label` is already localized.
@@ -15,23 +16,26 @@ export interface ResultDatum {
 interface Props {
   component: ResultComponent;
   data: ResultDatum[]; // resolved sample/real values for the component's binding
+  // For text templates: variable name → resolved value + optional label.
+  vars?: Record<string, ResolvedVar>;
 }
 
 // Renders one result component as the student would see it.
-export function ResultComponentView({ component, data }: Props) {
+export function ResultComponentView({ component, data, vars = {} }: Props) {
   const { locale } = useLocale();
   const title = localize(component.title, locale);
-  const content = component.content ? localize(component.content, locale) : "";
+  const rawContent = component.content ? localize(component.content, locale) : "";
+  const content = resolveTemplate(rawContent, vars);
   const opts = component.options ?? {};
 
-  // ── Static layout blocks (not data-bound) ──
+  // ── Layout / text blocks ──
   if (component.type === "divider") {
     return <hr className="my-2 border-border" />;
   }
   if (component.type === "heading") {
-    return <h2 className="text-xl font-bold tracking-tight">{title || content || "Heading"}</h2>;
+    return <h2 className="text-xl font-bold tracking-tight">{content || "Heading"}</h2>;
   }
-  if (component.type === "text") {
+  if (component.type === "text" || component.type === "summary_text") {
     return (
       <p className="whitespace-pre-line text-[0.86rem] leading-relaxed text-muted-foreground">
         {content || "Text block"}
@@ -62,8 +66,6 @@ export function ResultComponentView({ component, data }: Props) {
         <ScoreTable data={shown} showValues={showValues} />
       ) : component.type === "stat_grid" ? (
         <StatGrid data={shown} />
-      ) : component.type === "summary_text" ? (
-        <SummaryText data={shown} />
       ) : component.type === "score_card" ? (
         <ScoreCard data={shown} showValues={showValues} />
       ) : component.type === "gauge" ? (
@@ -83,8 +85,8 @@ function BarChart({ data, maxScale, showValues }: { data: ResultDatum[]; maxScal
   const topVal = Math.max(...data.map((d) => d.value));
   return (
     <div className="space-y-2.5">
-      {data.map((d) => (
-        <div key={d.label} className="flex items-center gap-3">
+      {data.map((d, i) => (
+        <div key={i} className="flex items-center gap-3">
           <span className="w-28 shrink-0 truncate text-right text-[0.78rem] text-muted-foreground">
             {d.label}
           </span>
@@ -200,7 +202,7 @@ function MatchesList({ data, showValues }: { data: ResultDatum[]; showValues: bo
   return (
     <ol className="space-y-2">
       {data.map((d, i) => (
-        <li key={d.label} className="flex items-center gap-3">
+        <li key={i} className="flex items-center gap-3">
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[0.7rem] font-bold text-muted-foreground">
             {i + 1}
           </span>
@@ -260,7 +262,7 @@ function ScoreTable({ data, showValues }: { data: ResultDatum[]; showValues: boo
     <table className="w-full text-[0.8rem]">
       <tbody>
         {data.map((d, i) => (
-          <tr key={d.label} className="border-b border-border/60 last:border-0">
+          <tr key={i} className="border-b border-border/60 last:border-0">
             <td className="w-7 py-1.5 text-muted-foreground">{i + 1}</td>
             <td className="py-1.5 font-medium">{d.label}</td>
             {showValues && <td className="py-1.5 text-right tabular-nums text-muted-foreground">{round(d.value)}</td>}
@@ -275,8 +277,8 @@ function ScoreTable({ data, showValues }: { data: ResultDatum[]; showValues: boo
 function StatGrid({ data }: { data: ResultDatum[] }) {
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-      {data.map((d) => (
-        <div key={d.label} className="rounded-xl border bg-muted/30 p-3 text-center">
+      {data.map((d, i) => (
+        <div key={i} className="rounded-xl border bg-muted/30 p-3 text-center">
           <p className="text-xl font-bold tabular-nums">{round(d.value)}</p>
           <p className="truncate text-[0.7rem] text-muted-foreground">{d.label}</p>
         </div>
@@ -285,16 +287,6 @@ function StatGrid({ data }: { data: ResultDatum[] }) {
   );
 }
 
-// ── Summary text: "Your top types are X, Y and Z." ──────────────
-function SummaryText({ data }: { data: ResultDatum[] }) {
-  const top = [...data].sort((a, b) => b.value - a.value).slice(0, 3).map((d) => d.label);
-  const list = top.length <= 1 ? top.join("") : `${top.slice(0, -1).join(", ")} and ${top[top.length - 1]}`;
-  return (
-    <p className="text-[0.86rem] leading-relaxed">
-      Your strongest areas are <span className="font-semibold">{list}</span>.
-    </p>
-  );
-}
 
 // ── Gauge: single value as a 0–max arc meter ────────────────────
 function Gauge({ data, maxScale }: { data: ResultDatum[]; maxScale?: number }) {

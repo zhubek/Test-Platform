@@ -260,7 +260,8 @@ export interface ResultComponent {
   variableNames?: string[];
   options?: ResultDisplayOptions; // structured display params
   params?: WidgetParam[]; // free-form key/value escape hatch
-  content?: Localized; // for static heading / text blocks
+  content?: Localized; // text blocks: a template with {var} / {var.value} / {var.label}
+  catalogFieldId?: string; // catalog blocks: which item parameter to show (name/description/score/<custom>)
 }
 
 // A result page groups components (like a survey page groups questions).

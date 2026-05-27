@@ -19,8 +19,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { findGroup } from "@/lib/catalog-characteristics";
+import { findGroup, catalogFields } from "@/lib/catalog-characteristics";
 import { ResultComponentView, type ResultDatum } from "./result-component";
+import { VariableSelect, VariableMultiSelect } from "./variable-select";
 import type {
   ResultComponent,
   ResultComponentType,
@@ -42,35 +43,39 @@ interface BlockDef {
   icon: typeof BarChart3;
   key: string; // label i18n key
   descKey: string; // short description i18n key
-  group: "characteristics" | "single" | "mapping" | "layout";
-  bindingKind: BlockBinding;
+  // config group drives how the block is configured & previewed:
+  //  text    → a {var} template; single → one numeric var; multi → many numeric vars;
+  //  catalog → a mapping + a catalog parameter; divider → nothing.
+  group: "text" | "single" | "multi" | "catalog" | "divider";
 }
 
 const COMPONENT_TYPES: BlockDef[] = [
-  // Characteristics
-  { type: "characteristics_bar", icon: BarChart3, key: "cm.resultView.typeBar", descKey: "cm.resultView.descBar", group: "characteristics", bindingKind: "characteristics" },
-  { type: "characteristics_radar", icon: Radar, key: "cm.resultView.typeRadar", descKey: "cm.resultView.descRadar", group: "characteristics", bindingKind: "characteristics" },
-  { type: "characteristics_pie", icon: PieChart, key: "cm.resultView.typePie", descKey: "cm.resultView.descPie", group: "characteristics", bindingKind: "characteristics" },
-  { type: "score_table", icon: Table, key: "cm.resultView.typeTable", descKey: "cm.resultView.descTable", group: "characteristics", bindingKind: "characteristics" },
-  { type: "stat_grid", icon: LayoutGrid, key: "cm.resultView.typeStatGrid", descKey: "cm.resultView.descStatGrid", group: "characteristics", bindingKind: "characteristics" },
-  { type: "summary_text", icon: AlignLeft, key: "cm.resultView.typeSummary", descKey: "cm.resultView.descSummary", group: "characteristics", bindingKind: "characteristics" },
-  // Single variable
-  { type: "score_card", icon: Trophy, key: "cm.resultView.typeCard", descKey: "cm.resultView.descCard", group: "single", bindingKind: "characteristics" },
-  { type: "gauge", icon: GaugeIcon, key: "cm.resultView.typeGauge", descKey: "cm.resultView.descGauge", group: "single", bindingKind: "characteristics" },
-  // Mapping
-  { type: "matches_list", icon: ListOrdered, key: "cm.resultView.typeMatches", descKey: "cm.resultView.descMatches", group: "mapping", bindingKind: "mapping" },
-  { type: "match_detail", icon: Award, key: "cm.resultView.typeMatchDetail", descKey: "cm.resultView.descMatchDetail", group: "mapping", bindingKind: "mapping" },
-  // Static layout
-  { type: "heading", icon: Heading, key: "cm.resultView.typeHeading", descKey: "cm.resultView.descHeading", group: "layout", bindingKind: "static" },
-  { type: "text", icon: Type, key: "cm.resultView.typeText", descKey: "cm.resultView.descText", group: "layout", bindingKind: "static" },
-  { type: "divider", icon: Minus, key: "cm.resultView.typeDivider", descKey: "cm.resultView.descDivider", group: "layout", bindingKind: "static" },
+  // Text (template with {var})
+  { type: "heading", icon: Heading, key: "cm.resultView.typeHeading", descKey: "cm.resultView.descHeading", group: "text" },
+  { type: "text", icon: Type, key: "cm.resultView.typeText", descKey: "cm.resultView.descText", group: "text" },
+  { type: "summary_text", icon: AlignLeft, key: "cm.resultView.typeSummary", descKey: "cm.resultView.descSummary", group: "text" },
+  // Single numeric variable
+  { type: "score_card", icon: Trophy, key: "cm.resultView.typeCard", descKey: "cm.resultView.descCard", group: "single" },
+  { type: "gauge", icon: GaugeIcon, key: "cm.resultView.typeGauge", descKey: "cm.resultView.descGauge", group: "single" },
+  // Multiple numeric variables (charts)
+  { type: "characteristics_bar", icon: BarChart3, key: "cm.resultView.typeBar", descKey: "cm.resultView.descBar", group: "multi" },
+  { type: "characteristics_radar", icon: Radar, key: "cm.resultView.typeRadar", descKey: "cm.resultView.descRadar", group: "multi" },
+  { type: "characteristics_pie", icon: PieChart, key: "cm.resultView.typePie", descKey: "cm.resultView.descPie", group: "multi" },
+  { type: "score_table", icon: Table, key: "cm.resultView.typeTable", descKey: "cm.resultView.descTable", group: "multi" },
+  { type: "stat_grid", icon: LayoutGrid, key: "cm.resultView.typeStatGrid", descKey: "cm.resultView.descStatGrid", group: "multi" },
+  // Catalog matching
+  { type: "matches_list", icon: ListOrdered, key: "cm.resultView.typeMatches", descKey: "cm.resultView.descMatches", group: "catalog" },
+  { type: "match_detail", icon: Award, key: "cm.resultView.typeMatchDetail", descKey: "cm.resultView.descMatchDetail", group: "catalog" },
+  // Divider (no config)
+  { type: "divider", icon: Minus, key: "cm.resultView.typeDivider", descKey: "cm.resultView.descDivider", group: "divider" },
 ];
 
 const BLOCK_GROUPS: { id: BlockDef["group"]; key: string }[] = [
-  { id: "characteristics", key: "cm.resultView.groupCharacteristics" },
+  { id: "text", key: "cm.resultView.groupText" },
   { id: "single", key: "cm.resultView.groupSingle" },
-  { id: "mapping", key: "cm.resultView.groupMapping" },
-  { id: "layout", key: "cm.resultView.groupLayout" },
+  { id: "multi", key: "cm.resultView.groupMulti" },
+  { id: "catalog", key: "cm.resultView.groupMapping" },
+  { id: "divider", key: "cm.resultView.groupLayout" },
 ];
 
 export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
@@ -100,7 +105,7 @@ export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
   const addComponent = (pi: number, type: ResultComponentType) => {
     const def = COMPONENT_TYPES.find((c) => c.type === type)!;
     const binding: ResultComponent["binding"] =
-      def.bindingKind === "mapping" ? { kind: "mapping", mappingId: mappings[0]?.id } : { kind: "characteristics" };
+      def.group === "catalog" ? { kind: "mapping", mappingId: mappings[0]?.id } : { kind: "characteristics" };
     const options: ResultComponent["options"] =
       type === "matches_list" ? { count: 5, sort: "score_desc", showValues: true } : { sort: "score_desc", showValues: true };
     setComponents(pi, [
@@ -113,7 +118,8 @@ export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
         variableNames: [],
         options,
         params: [],
-        ...(def.bindingKind === "static" ? { content: { en: "", ru: "", kz: "" } } : {}),
+        ...(def.group === "text" ? { content: { en: "", ru: "", kz: "" } } : {}),
+        ...(def.group === "catalog" ? { catalogFieldId: "name" } : {}),
       },
     ]);
   };
@@ -122,16 +128,48 @@ export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
   const removeComponent = (pi: number, id: string) =>
     setComponents(pi, pages[pi].components.filter((c) => c.id !== id));
 
-  // Sample data for a component, honoring its variable selection.
+  // Fabricated sample score for a variable (stable per name), for previews.
+  const sampleScore = (i: number) => 30 + ((i * 37) % 60);
+
+  // Sample data for a component, honoring its variable selection / catalog param.
   const sampleData = (c: ResultComponent): ResultDatum[] => {
     if (c.binding.kind === "mapping") {
       const m = mappings.find((x) => x.id === c.binding.mappingId);
       const group = m && findGroup(m.catalogId, m.groupId);
-      const items = (group?.items ?? []).slice(0, m?.topN ?? 5);
-      return items.map((it, i) => ({ label: localize(it.name, locale), value: 95 - i * 11 }));
+      const items = (group?.items ?? []).slice(0, c.options?.count ?? m?.topN ?? 5);
+      const fieldId = c.catalogFieldId ?? "name";
+      return items.map((it, i) => {
+        const score = 95 - i * 11;
+        let label: string;
+        if (fieldId === "name") label = localize(it.name, locale);
+        else if (fieldId === "description") label = it.description ? localize(it.description, locale) : "—";
+        else if (fieldId === "score") label = String(score);
+        else {
+          const f = it.fields?.[fieldId];
+          label = f == null ? "—" : typeof f === "number" ? String(f) : localize(f, locale);
+        }
+        return { label, value: score };
+      });
     }
-    const picked = c.variableNames?.length ? charVars.filter((v) => c.variableNames!.includes(v.name)) : charVars;
-    return picked.map((v, i) => ({ label: localize(v.label, locale) || v.name, value: 30 + ((i * 37) % 60) }));
+    // single var → just that one; multi → picked subset (or all)
+    let picked = charVars;
+    if (c.binding.kind === "variable" && c.binding.variableName) {
+      picked = charVars.filter((v) => v.name === c.binding.variableName);
+    } else if (c.variableNames?.length) {
+      picked = charVars.filter((v) => c.variableNames!.includes(v.name));
+    }
+    return picked.map((v) => ({ label: localize(v.label, locale) || v.name, value: sampleScore(charVars.indexOf(v)) }));
+  };
+
+  // Resolved-variable map for text templates: {var} → label-if-translated-else-number.
+  const sampleVars = (): Record<string, { value: number; label?: string }> => {
+    const map: Record<string, { value: number; label?: string }> = {};
+    charVars.forEach((v, i) => {
+      const score = sampleScore(i);
+      const tr = v.valueTranslations?.find((t) => t.value === score);
+      map[v.name] = { value: score, label: tr ? localize(tr.label, locale) : undefined };
+    });
+    return map;
   };
 
   return (
@@ -279,6 +317,7 @@ export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
                         key={c.id}
                         component={{ ...c, title: c.title.en || c.title.ru || c.title.kz ? c.title : l(t(def.key)) }}
                         data={sampleData(c)}
+                        vars={sampleVars()}
                       />
                     );
                   })}
@@ -375,8 +414,30 @@ function ComponentConfig({
   const updateOptions = (partial: Partial<NonNullable<ResultComponent["options"]>>) =>
     onUpdate({ options: { ...c.options, ...partial } });
 
-  // ── Static layout blocks: minimal config ──
-  if (def.bindingKind === "static") {
+  const header = (
+    <div className="mb-3 flex flex-wrap items-end gap-3">
+      <Param label={t("cm.resultView.component")}>
+        <span className="flex h-8 items-center gap-1.5 rounded-md border bg-card px-2.5 text-[0.78rem]">
+          <def.icon className="h-3.5 w-3.5 text-muted-foreground" />
+          {t(def.key)}
+        </span>
+      </Param>
+      {def.group !== "text" && def.group !== "divider" && (
+        <div className="flex flex-1 flex-col gap-1">
+          <label className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("cm.resultView.title")}
+          </label>
+          <LocalizedInput value={c.title} onChange={(v) => onUpdate({ title: v })} placeholder={t("cm.resultView.titlePlaceholder")} />
+        </div>
+      )}
+      <Button variant="ghost" size="icon-sm" onClick={onRemove} className="ml-auto text-muted-foreground hover:text-red-500 hover:bg-red-50">
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  );
+
+  // ── Divider: just the header ──
+  if (def.group === "divider") {
     return (
       <div className="rounded-xl border bg-muted/30 p-3">
         <div className="flex items-center gap-3">
@@ -386,19 +447,7 @@ function ComponentConfig({
               {t(def.key)}
             </span>
           </Param>
-          {c.type !== "divider" && (
-            <div className="flex flex-1 flex-col gap-1">
-              <label className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                {c.type === "heading" ? t("cm.resultView.headingText") : t("cm.resultView.bodyText")}
-              </label>
-              <LocalizedInput
-                value={c.content ?? { en: "", ru: "", kz: "" }}
-                onChange={(v) => onUpdate({ content: v })}
-                placeholder={c.type === "heading" ? t("cm.resultView.headingText") : t("cm.resultView.bodyText")}
-              />
-            </div>
-          )}
-          {c.type === "divider" && <span className="flex-1 text-[0.72rem] text-muted-foreground">{t("cm.resultView.descDivider")}</span>}
+          <span className="flex-1 text-[0.72rem] text-muted-foreground">{t("cm.resultView.descDivider")}</span>
           <Button variant="ghost" size="icon-sm" onClick={onRemove} className="ml-auto text-muted-foreground hover:text-red-500 hover:bg-red-50">
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
@@ -407,30 +456,44 @@ function ComponentConfig({
     );
   }
 
-  return (
-    <div className="rounded-xl border bg-muted/30 p-3">
-      <div className="mb-3 flex flex-wrap items-end gap-3">
-        <Param label={t("cm.resultView.component")}>
-          <span className="flex h-8 items-center gap-1.5 rounded-md border bg-card px-2.5 text-[0.78rem]">
-            <def.icon className="h-3.5 w-3.5 text-muted-foreground" />
-            {t(def.key)}
-          </span>
-        </Param>
+  // ── Text: a {var} template ──
+  if (def.group === "text") {
+    return (
+      <div className="rounded-xl border bg-muted/30 p-3">
+        {header}
+        <label className="mb-1 block text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
+          {c.type === "heading" ? t("cm.resultView.headingText") : t("cm.resultView.template")}
+        </label>
+        <LocalizedInput
+          value={c.content ?? { en: "", ru: "", kz: "" }}
+          onChange={(v) => onUpdate({ content: v })}
+          placeholder={t("cm.resultView.templatePlaceholder")}
+        />
+        <p className="mt-1 text-[0.66rem] text-muted-foreground">
+          {t("cm.resultView.templateHint")} — {charVars.slice(0, 4).map((v) => `{${v.name}}`).join(" ")}
+        </p>
+      </div>
+    );
+  }
 
-        <div className="flex flex-1 flex-col gap-1">
-          <label className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("cm.resultView.title")}
-          </label>
-          <LocalizedInput value={c.title} onChange={(v) => onUpdate({ title: v })} placeholder={t("cm.resultView.titlePlaceholder")} />
-        </div>
-
-        {c.binding.kind === "mapping" && (
+  // ── Catalog matching: mapping + which parameter ──
+  if (def.group === "catalog") {
+    const fields = c.binding.mappingId
+      ? (() => {
+          const m = mappings.find((x) => x.id === c.binding.mappingId);
+          return m ? catalogFields(m.catalogId) : [];
+        })()
+      : [];
+    return (
+      <div className="rounded-xl border bg-muted/30 p-3">
+        {header}
+        <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
           <Param label={t("cm.resultView.fromMapping")}>
             <Select
               value={c.binding.mappingId ?? ""}
               onValueChange={(v) => onUpdate({ binding: { kind: "mapping", mappingId: v ?? undefined } })}
             >
-              <SelectTrigger size="sm" className="w-52">
+              <SelectTrigger size="sm" className="w-48">
                 <SelectValue>
                   {() => {
                     const m = mappings.find((x) => x.id === c.binding.mappingId);
@@ -455,90 +518,99 @@ function ComponentConfig({
               </SelectContent>
             </Select>
           </Param>
-        )}
 
-        <Button variant="ghost" size="icon-sm" onClick={onRemove} className="ml-auto text-muted-foreground hover:text-red-500 hover:bg-red-50">
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-
-      {/* Variables + parameters */}
-      <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
-        {c.binding.kind === "characteristics" && c.type !== "score_card" && (
-          <div className="flex flex-col gap-1">
-            <label className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
-              {t("cm.resultView.variables")}
-            </label>
-            <div className="flex flex-wrap gap-1">
-              {charVars.length === 0 && (
-                <span className="text-[0.72rem] text-muted-foreground">{t("cm.resultView.noVars")}</span>
-              )}
-              {charVars.map((v) => {
-                const selected = !c.variableNames?.length || c.variableNames.includes(v.name);
-                return (
-                  <button
-                    key={v.name}
-                    onClick={() => {
-                      const cur = c.variableNames?.length ? c.variableNames : charVars.map((x) => x.name);
-                      const next = cur.includes(v.name) ? cur.filter((n) => n !== v.name) : [...cur, v.name];
-                      onUpdate({ variableNames: next.length === charVars.length ? [] : next });
-                    }}
-                    className={cn(
-                      "rounded-md border px-2 py-0.5 text-[0.7rem] transition-colors",
-                      selected ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted",
-                    )}
-                  >
-                    {localize(v.label, locale) || v.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {c.type === "score_card" && (
-          <Param label={t("cm.resultView.variable")}>
-            <Select
-              value={c.binding.variableName ?? "__top__"}
-              onValueChange={(v) =>
-                onUpdate({
-                  binding: v === "__top__" ? { kind: "characteristics" } : { kind: "variable", variableName: v ?? undefined },
-                })
-              }
-            >
-              <SelectTrigger size="sm" className="w-48">
+          <Param label={t("cm.resultView.parameter")}>
+            <Select value={c.catalogFieldId ?? "name"} onValueChange={(v) => onUpdate({ catalogFieldId: v ?? "name" })}>
+              <SelectTrigger size="sm" className="w-40">
                 <SelectValue>
-                  {() =>
-                    c.binding.kind === "variable" && c.binding.variableName
-                      ? localize(charVars.find((v) => v.name === c.binding.variableName)?.label ?? { en: c.binding.variableName, ru: "", kz: "" }, locale)
-                      : t("cm.resultView.topAuto")
-                  }
+                  {() => localize(fields.find((f) => f.id === (c.catalogFieldId ?? "name"))?.label ?? { en: "Name", ru: "", kz: "" }, locale)}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__top__">{t("cm.resultView.topAuto")}</SelectItem>
-                {charVars.map((v) => (
-                  <SelectItem key={v.name} value={v.name}>{localize(v.label, locale) || v.name}</SelectItem>
+                {fields.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>{localize(f.label, locale)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </Param>
-        )}
 
-        {c.type === "matches_list" && (
-          <Param label={t("cm.resultView.count")}>
-            <Input
-              type="number"
-              min={1}
-              max={50}
-              value={c.options?.count ?? 5}
-              onChange={(e) => updateOptions({ count: Math.max(1, Math.min(50, parseInt(e.target.value) || 1)) })}
-              className="h-8 w-20"
+          {c.type === "matches_list" && (
+            <Param label={t("cm.resultView.count")}>
+              <Input
+                type="number"
+                min={1}
+                max={50}
+                value={c.options?.count ?? 5}
+                onChange={(e) => updateOptions({ count: Math.max(1, Math.min(50, parseInt(e.target.value) || 1)) })}
+                className="h-8 w-20"
+              />
+            </Param>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Single numeric variable ──
+  if (def.group === "single") {
+    return (
+      <div className="rounded-xl border bg-muted/30 p-3">
+        {header}
+        <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
+          <Param label={t("cm.resultView.variable")}>
+            <VariableSelect
+              variables={charVars}
+              numericOnly
+              value={c.binding.kind === "variable" ? c.binding.variableName : undefined}
+              onChange={(name) =>
+                onUpdate({ binding: name ? { kind: "variable", variableName: name } : { kind: "characteristics" } })
+              }
+              placeholder={t("cm.resultView.topAuto")}
             />
           </Param>
-        )}
+          {c.type === "gauge" && (
+            <Param label={t("cm.resultView.maxScale")}>
+              <Input
+                type="number"
+                min={0}
+                value={c.options?.maxScale ?? 0}
+                onChange={(e) => updateOptions({ maxScale: Math.max(0, parseInt(e.target.value) || 0) })}
+                placeholder="100"
+                className="h-8 w-20"
+              />
+            </Param>
+          )}
+          <button
+            onClick={() => updateOptions({ showValues: c.options?.showValues === false })}
+            className={cn(
+              "h-8 self-end rounded-md border px-2.5 text-[0.72rem] font-medium transition-colors",
+              c.options?.showValues !== false ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted",
+            )}
+          >
+            {t("cm.resultView.showValues")}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-        {c.type !== "score_card" && (
+  // ── Multi numeric variables (charts) ──
+  return (
+    <div className="rounded-xl border bg-muted/30 p-3">
+      {header}
+      <div className="space-y-2">
+        <div>
+          <label className="mb-1 block text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("cm.resultView.variables")}
+          </label>
+          <VariableMultiSelect
+            variables={charVars}
+            numericOnly
+            value={c.variableNames ?? []}
+            onChange={(names) => onUpdate({ variableNames: names })}
+          />
+        </div>
+        <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
           <Param label={t("cm.resultView.sort")}>
             <Select
               value={c.options?.sort ?? "score_desc"}
@@ -554,30 +626,28 @@ function ComponentConfig({
               </SelectContent>
             </Select>
           </Param>
-        )}
-
-        <button
-          onClick={() => updateOptions({ showValues: c.options?.showValues === false })}
-          className={cn(
-            "h-8 self-end rounded-md border px-2.5 text-[0.72rem] font-medium transition-colors",
-            c.options?.showValues !== false ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted",
+          <button
+            onClick={() => updateOptions({ showValues: c.options?.showValues === false })}
+            className={cn(
+              "h-8 self-end rounded-md border px-2.5 text-[0.72rem] font-medium transition-colors",
+              c.options?.showValues !== false ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted",
+            )}
+          >
+            {t("cm.resultView.showValues")}
+          </button>
+          {(c.type === "characteristics_bar" || c.type === "characteristics_radar") && (
+            <Param label={t("cm.resultView.maxScale")}>
+              <Input
+                type="number"
+                min={0}
+                value={c.options?.maxScale ?? 0}
+                onChange={(e) => updateOptions({ maxScale: Math.max(0, parseInt(e.target.value) || 0) })}
+                placeholder="auto"
+                className="h-8 w-20"
+              />
+            </Param>
           )}
-        >
-          {t("cm.resultView.showValues")}
-        </button>
-
-        {(c.type === "characteristics_bar" || c.type === "characteristics_radar") && (
-          <Param label={t("cm.resultView.maxScale")}>
-            <Input
-              type="number"
-              min={0}
-              value={c.options?.maxScale ?? 0}
-              onChange={(e) => updateOptions({ maxScale: Math.max(0, parseInt(e.target.value) || 0) })}
-              placeholder="auto"
-              className="h-8 w-20"
-            />
-          </Param>
-        )}
+        </div>
       </div>
     </div>
   );

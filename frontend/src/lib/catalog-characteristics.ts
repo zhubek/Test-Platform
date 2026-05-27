@@ -20,6 +20,16 @@ export interface CatalogItem {
   description?: Localized;
   // characteristic vector: { [characteristicKey]: value } over the group's keys
   vector: Record<string, number>;
+  // arbitrary extra fields (keyed by CatalogFieldDef.id) — e.g. salary, demand
+  fields?: Record<string, Localized | number>;
+}
+
+// A pickable display parameter on a catalog item, shown in catalog-matching
+// result blocks. Built-in ids "name"/"description"/"score" plus any custom field.
+export interface CatalogFieldDef {
+  id: string;
+  label: Localized;
+  kind: "text" | "number";
 }
 
 export interface CharacteristicGroupDef {
@@ -33,6 +43,21 @@ export interface CatalogDef {
   id: string;
   name: Localized;
   groups: CharacteristicGroupDef[];
+  // extra item fields available as result-block parameters
+  fields?: CatalogFieldDef[];
+}
+
+// Built-in catalog parameters every catalog item has.
+export const BUILTIN_CATALOG_FIELDS: CatalogFieldDef[] = [
+  { id: "name", label: l("Name", "Название", "Атауы"), kind: "text" },
+  { id: "description", label: l("Description", "Описание", "Сипаттама"), kind: "text" },
+  { id: "score", label: l("Match score", "Балл совпадения", "Сәйкестік балы"), kind: "number" },
+];
+
+// All pickable parameters for a catalog (built-in + custom fields).
+export function catalogFields(catalogId: string): CatalogFieldDef[] {
+  const cat = CATALOGS.find((c) => c.id === catalogId);
+  return [...BUILTIN_CATALOG_FIELDS, ...(cat?.fields ?? [])];
 }
 
 // Distance methods available for catalog matching.
@@ -49,6 +74,10 @@ export const CATALOGS: CatalogDef[] = [
   {
     id: "professions",
     name: l("Professions", "Профессии", "Мамандықтар"),
+    fields: [
+      { id: "salary", label: l("Avg. salary", "Средняя зарплата", "Орташа жалақы"), kind: "number" },
+      { id: "demand", label: l("Demand", "Спрос", "Сұраныс"), kind: "text" },
+    ],
     groups: [
       {
         id: "interests",
@@ -63,17 +92,29 @@ export const CATALOGS: CatalogDef[] = [
         ],
         items: [
           { code: 101, name: l("Software Engineer", "Инженер-программист", "Бағдарламашы инженер"),
-            vector: { realistic: 6, investigative: 9, artistic: 4, social: 3, enterprising: 4, conventional: 6 } },
+            vector: { realistic: 6, investigative: 9, artistic: 4, social: 3, enterprising: 4, conventional: 6 },
+            description: l("Builds software systems.", "Создаёт программные системы.", "Бағдарламалық жүйелер жасайды."),
+            fields: { salary: 4200, demand: l("High", "Высокий", "Жоғары") } },
           { code: 102, name: l("Doctor", "Врач", "Дәрігер"),
-            vector: { realistic: 5, investigative: 9, artistic: 2, social: 8, enterprising: 4, conventional: 5 } },
+            vector: { realistic: 5, investigative: 9, artistic: 2, social: 8, enterprising: 4, conventional: 5 },
+            description: l("Diagnoses and treats patients.", "Диагностирует и лечит пациентов.", "Науқастарды емдейді."),
+            fields: { salary: 3800, demand: l("High", "Высокий", "Жоғары") } },
           { code: 103, name: l("Teacher", "Учитель", "Мұғалім"),
-            vector: { realistic: 3, investigative: 5, artistic: 5, social: 9, enterprising: 5, conventional: 5 } },
+            vector: { realistic: 3, investigative: 5, artistic: 5, social: 9, enterprising: 5, conventional: 5 },
+            description: l("Educates and mentors students.", "Обучает и наставляет учеников.", "Оқушыларды оқытады."),
+            fields: { salary: 2200, demand: l("Medium", "Средний", "Орташа") } },
           { code: 104, name: l("Graphic Designer", "Графический дизайнер", "Графикалық дизайнер"),
-            vector: { realistic: 4, investigative: 4, artistic: 9, social: 4, enterprising: 5, conventional: 3 } },
+            vector: { realistic: 4, investigative: 4, artistic: 9, social: 4, enterprising: 5, conventional: 3 },
+            description: l("Creates visual designs.", "Создаёт визуальный дизайн.", "Визуалды дизайн жасайды."),
+            fields: { salary: 2600, demand: l("Medium", "Средний", "Орташа") } },
           { code: 105, name: l("Entrepreneur", "Предприниматель", "Кәсіпкер"),
-            vector: { realistic: 4, investigative: 5, artistic: 5, social: 6, enterprising: 9, conventional: 4 } },
+            vector: { realistic: 4, investigative: 5, artistic: 5, social: 6, enterprising: 9, conventional: 4 },
+            description: l("Starts and runs businesses.", "Создаёт и ведёт бизнес.", "Бизнес ашады және жүргізеді."),
+            fields: { salary: 5000, demand: l("Variable", "Переменный", "Өзгермелі") } },
           { code: 106, name: l("Accountant", "Бухгалтер", "Бухгалтер"),
-            vector: { realistic: 3, investigative: 6, artistic: 2, social: 3, enterprising: 4, conventional: 9 } },
+            vector: { realistic: 3, investigative: 6, artistic: 2, social: 3, enterprising: 4, conventional: 9 },
+            description: l("Manages financial records.", "Ведёт финансовый учёт.", "Қаржылық есепті жүргізеді."),
+            fields: { salary: 2800, demand: l("Medium", "Средний", "Орташа") } },
         ],
       },
       {
