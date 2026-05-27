@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import {
-  Plus, Trash2, Pencil, ChevronLeft, ChevronRight, X, GripVertical, Code2, Copy, Check, Lock,
+  Plus, Trash2, Pencil, X, GripVertical, Code2, Copy, Check, Lock, Eye,
   BarChart3, PieChart, Radar, Table, Trophy, AlignLeft, Code,
 } from "lucide-react";
 import {
@@ -60,6 +60,7 @@ export function DashboardTab({ pages, onChange }: Props) {
   const [pickerPage, setPickerPage] = useState<number | null>(null);
   const [showJson, setShowJson] = useState(false);
   const [jsonCopied, setJsonCopied] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const json = JSON.stringify(buildDashboardJson(pages), null, 2);
 
@@ -110,8 +111,8 @@ export function DashboardTab({ pages, onChange }: Props) {
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      {/* ── Left: constructor ── */}
+    <div>
+      {/* ── Full-width constructor ── */}
       <div className="rounded-xl border bg-card">
         <div className="flex items-center gap-2 border-b px-3 py-2">
           <span className="text-sm font-semibold">
@@ -143,6 +144,9 @@ export function DashboardTab({ pages, onChange }: Props) {
               </>
             ) : (
               <>
+                <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)} disabled={pages.length === 0}>
+                  <Eye className="mr-1 h-3.5 w-3.5" /> {t("cm.dashboard.preview")}
+                </Button>
                 <Button variant="ghost" size="sm" onClick={addPage} className="text-primary hover:text-teal-700">
                   <Plus className="h-3.5 w-3.5" /> {t("cm.dashboard.addPage")}
                 </Button>
@@ -233,52 +237,50 @@ export function DashboardTab({ pages, onChange }: Props) {
         )}
       </div>
 
-      {/* ── Right: live preview ── */}
-      <div className="rounded-xl border bg-card">
-        <div className="border-b px-3 py-2 text-sm font-medium text-muted-foreground">{t("cm.dashboard.preview")}</div>
-        <div className="max-h-[72vh] overflow-auto p-5">
-          {pages.length === 0 || !activePage ? (
-            <p className="py-10 text-center text-[0.78rem] text-muted-foreground">{t("cm.dashboard.previewEmpty")}</p>
-          ) : (
-            <>
-              {pages.length > 1 && (
-                <div className="mb-5 flex flex-wrap gap-1.5">
-                  {pages.map((p, i) => (
-                    <button key={p.id} onClick={() => setActive(i)} className={cn("rounded-full px-2.5 py-1 text-xs font-medium transition-colors", i === active ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:text-foreground")}>
-                      {i + 1}. {localize(p.title, locale) || `${t("cm.dashboard.page")} ${i + 1}`}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <h2 className="mb-4 text-lg font-bold tracking-tight">
-                {localize(activePage.title, locale) || `${t("cm.dashboard.page")} ${active + 1}`}
-              </h2>
-              {activePage.widgets.length === 0 ? (
-                <p className="py-10 text-center text-[0.78rem] text-muted-foreground">{t("cm.dashboard.pageEmpty")}</p>
+      {/* ── Full-screen preview ── */}
+      {previewOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-background">
+          <div className="flex items-center gap-3 border-b px-5 py-3">
+            <span className="text-sm font-semibold">{t("cm.dashboard.preview")}</span>
+            {pages.length > 1 && (
+              <div className="flex flex-wrap gap-1.5">
+                {pages.map((p, i) => (
+                  <button key={p.id} onClick={() => setActive(i)} className={cn("rounded-full px-2.5 py-1 text-xs font-medium transition-colors", i === active ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:text-foreground")}>
+                    {i + 1}. {localize(p.title, locale) || `${t("cm.dashboard.page")} ${i + 1}`}
+                  </button>
+                ))}
+              </div>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => setPreviewOpen(false)} className="ml-auto text-muted-foreground hover:text-foreground">
+              <X className="mr-1 h-4 w-4" /> {t("cm.dashboard.closePreview")}
+            </Button>
+          </div>
+          <div className="flex-1 overflow-auto p-6">
+            <div className="mx-auto max-w-5xl">
+              {!activePage ? (
+                <p className="py-10 text-center text-[0.78rem] text-muted-foreground">{t("cm.dashboard.previewEmpty")}</p>
               ) : (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {activePage.widgets.map((w) => (
-                    <div key={w.id} className="rounded-2xl border bg-card p-5 shadow-sm">
-                      <WidgetPreview componentType={w.componentType} title={w.title} rows={mockRows(w.sql)} params={[]} />
+                <>
+                  <h2 className="mb-5 text-xl font-bold tracking-tight">
+                    {localize(activePage.title, locale) || `${t("cm.dashboard.page")} ${active + 1}`}
+                  </h2>
+                  {activePage.widgets.length === 0 ? (
+                    <p className="py-10 text-center text-[0.78rem] text-muted-foreground">{t("cm.dashboard.pageEmpty")}</p>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                      {activePage.widgets.map((w) => (
+                        <div key={w.id} className="rounded-2xl border bg-card p-6 shadow-sm">
+                          <WidgetPreview componentType={w.componentType} title={w.title} rows={mockRows(w.sql)} params={[]} />
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )}
-              {pages.length > 1 && (
-                <div className="mt-6 flex items-center justify-between border-t pt-4">
-                  <Button variant="outline" size="sm" disabled={active === 0} onClick={() => setActive(active - 1)}>
-                    <ChevronLeft className="mr-1 h-4 w-4" /> {t("cm.dashboard.prev")}
-                  </Button>
-                  <span className="text-xs text-muted-foreground">{active + 1} / {pages.length}</span>
-                  <Button variant="outline" size="sm" disabled={active === pages.length - 1} onClick={() => setActive(active + 1)}>
-                    {t("cm.dashboard.next")} <ChevronRight className="ml-1 h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {pickerPage !== null && (
         <BlockPicker
