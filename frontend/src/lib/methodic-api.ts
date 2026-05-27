@@ -312,7 +312,7 @@ const grp = (id: number) => professionGroups.find((g) => g.id === id) ?? null;
 // editor previews render real charts/lists.
 const dsDetail = professionDetails[1];
 const professions: ProfessionRow[] = [
-  { id: 1, name: L("Data Scientist", "Дата-сайентист"), desc: L("Analyze complex data to drive business decisions", "Анализ сложных данных для принятия бизнес-решений"), popular: true, complexityLevel: "high", code: "DS-401", profGroupId: 1, profGroup: grp(1), params: { description: dsDetail?.description, education: dsDetail?.education, labor_market: dsDetail?.laborMarket, content: dsDetail?.content }, ...ts },
+  { id: 1, name: L("Data Scientist", "Дата-сайентист"), desc: L("Analyze complex data to drive business decisions", "Анализ сложных данных для принятия бизнес-решений"), popular: true, complexityLevel: "high", code: "DS-401", profGroupId: 1, profGroup: grp(1), params: { description: dsDetail?.description, education: { specializations: [1, 3], collegeSpecs: [1] }, labor_market: dsDetail?.laborMarket, content: dsDetail?.content }, ...ts },
   { id: 2, name: L("Registered Nurse", "Медсестра/медбрат"), desc: L("Provide patient care and coordinate treatments", "Уход за пациентами и координация лечения"), popular: true, complexityLevel: "medium", code: "HC-201", profGroupId: 2, profGroup: grp(2), params: {}, ...ts },
   { id: 3, name: L("High School Teacher", "Учитель старших классов"), desc: null, popular: false, complexityLevel: "medium", code: "ED-105", profGroupId: 3, profGroup: grp(3), params: {}, ...ts },
   { id: 4, name: L("Marketing Manager", "Менеджер по маркетингу"), desc: null, popular: true, complexityLevel: "medium", code: "BU-302", profGroupId: 4, profGroup: grp(4), params: {}, ...ts },
