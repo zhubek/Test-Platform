@@ -229,11 +229,24 @@ export interface ResultBinding {
   mappingId?: string; // for kind "mapping"
 }
 
+// Structured, type-specific display options.
+export interface ResultDisplayOptions {
+  count?: number; // matches_list: how many to show
+  sort?: "score_desc" | "score_asc" | "as_is"; // bar / matches ordering
+  showValues?: boolean; // bar / card / matches: show the numeric score
+  maxScale?: number; // radar / bar: fixed max (0 = auto)
+}
+
 export interface ResultComponent {
   id: string;
   type: ResultComponentType;
   title: Localized;
   binding: ResultBinding;
+  // For characteristics-bound components: which variables to show. Empty/omitted
+  // = all of the bound group. For score_card, binding.variableName is the pick.
+  variableNames?: string[];
+  options?: ResultDisplayOptions; // structured display params
+  params?: WidgetParam[]; // free-form key/value escape hatch
 }
 
 // ── ContentTest ──────────────────────────────────────────────────

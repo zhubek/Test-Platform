@@ -4,6 +4,7 @@ import { Plus, Trash2, BarChart3, Radar, Trophy, ListOrdered } from "lucide-reac
 import { useLocale } from "@/lib/locale-context";
 import { localize, l } from "@/lib/localized";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { LocalizedInput } from "@/components/localized-input";
 import {
   Select,
@@ -12,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { findGroup } from "@/lib/catalog-characteristics";
 import { ResultComponentView, type ResultDatum } from "./result-component";
 import type {
@@ -43,31 +45,37 @@ export function ResultViewTab({ components, variables, mappings, onChange }: Pro
   const add = (type: ResultComponentType) => {
     const def = COMPONENT_TYPES.find((c) => c.type === type)!;
     const binding: ResultComponent["binding"] =
-      def.bindingKind === "mapping"
-        ? { kind: "mapping", mappingId: mappings[0]?.id }
+      def.bindingKind === "mapping" ? { kind: "mapping", mappingId: mappings[0]?.id } : { kind: "characteristics" };
+    const options: ResultComponent["options"] =
+      type === "matches_list"
+        ? { count: 5, sort: "score_desc", showValues: true }
         : type === "score_card"
-          ? { kind: "characteristics" }
-          : { kind: "characteristics" };
+          ? { sort: "score_desc", showValues: true }
+          : { sort: "score_desc", showValues: true };
     onChange([
       ...components,
-      { id: `rc_${Date.now()}`, type, title: { en: "", ru: "", kz: "" }, binding },
+      { id: `rc_${Date.now()}`, type, title: { en: "", ru: "", kz: "" }, binding, variableNames: [], options, params: [] },
     ]);
   };
   const update = (id: string, partial: Partial<ResultComponent>) =>
     onChange(components.map((c) => (c.id === id ? { ...c, ...partial } : c)));
+  const updateOptions = (id: string, partial: Partial<NonNullable<ResultComponent["options"]>>) =>
+    onChange(components.map((c) => (c.id === id ? { ...c, options: { ...c.options, ...partial } } : c)));
   const remove = (id: string) => onChange(components.filter((c) => c.id !== id));
 
-  // Sample data for a component's binding, so the preview shows something real.
+  // Sample data for a component's binding, honoring its variable selection.
   const sampleData = (c: ResultComponent): ResultDatum[] => {
     if (c.binding.kind === "mapping") {
       const m = mappings.find((x) => x.id === c.binding.mappingId);
       const group = m && findGroup(m.catalogId, m.groupId);
       const items = (group?.items ?? []).slice(0, m?.topN ?? 5);
-      // fabricate descending match scores
       return items.map((it, i) => ({ label: localize(it.name, locale), value: 95 - i * 11 }));
     }
-    // characteristics: use the char vars with fabricated scores
-    return charVars.map((v, i) => ({
+    // characteristics: optionally narrowed to the picked variable names
+    const picked = c.variableNames && c.variableNames.length
+      ? charVars.filter((v) => c.variableNames!.includes(v.name))
+      : charVars;
+    return picked.map((v, i) => ({
       label: localize(v.label, locale) || v.name,
       value: 30 + ((i * 37) % 60),
     }));
@@ -174,6 +182,139 @@ export function ResultViewTab({ components, variables, mappings, onChange }: Pro
                   </Button>
                 </div>
 
+                {/* Variables + parameters row */}
+                <div className="mb-3 flex flex-wrap items-end gap-x-4 gap-y-2">
+                  {/* Variable selection — characteristics-bound components */}
+                  {c.binding.kind === "characteristics" && c.type !== "score_card" && (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {t("cm.resultView.variables")}
+                      </label>
+                      <div className="flex flex-wrap gap-1">
+                        {charVars.length === 0 && (
+                          <span className="text-[0.72rem] text-muted-foreground">{t("cm.resultView.noVars")}</span>
+                        )}
+                        {charVars.map((v) => {
+                          const selected = !c.variableNames?.length || c.variableNames.includes(v.name);
+                          return (
+                            <button
+                              key={v.name}
+                              onClick={() => {
+                                const cur = c.variableNames?.length ? c.variableNames : charVars.map((x) => x.name);
+                                const next = cur.includes(v.name) ? cur.filter((n) => n !== v.name) : [...cur, v.name];
+                                // all selected → store [] (means "all")
+                                update(c.id, { variableNames: next.length === charVars.length ? [] : next });
+                              }}
+                              className={cn(
+                                "rounded-md border px-2 py-0.5 text-[0.7rem] transition-colors",
+                                selected ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted",
+                              )}
+                            >
+                              {localize(v.label, locale) || v.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Score card: pick the single variable to show */}
+                  {c.type === "score_card" && (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {t("cm.resultView.variable")}
+                      </label>
+                      <Select
+                        value={c.binding.variableName ?? "__top__"}
+                        onValueChange={(v) =>
+                          update(c.id, {
+                            binding:
+                              v === "__top__"
+                                ? { kind: "characteristics" }
+                                : { kind: "variable", variableName: v ?? undefined },
+                          })
+                        }
+                      >
+                        <SelectTrigger size="sm" className="w-48">
+                          <SelectValue>
+                            {() =>
+                              c.binding.kind === "variable" && c.binding.variableName
+                                ? localize(charVars.find((v) => v.name === c.binding.variableName)?.label ?? { en: c.binding.variableName, ru: "", kz: "" }, locale)
+                                : t("cm.resultView.topAuto")
+                            }
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__top__">{t("cm.resultView.topAuto")}</SelectItem>
+                          {charVars.map((v) => (
+                            <SelectItem key={v.name} value={v.name}>
+                              {localize(v.label, locale) || v.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Matches list: count */}
+                  {c.type === "matches_list" && (
+                    <Param label={t("cm.resultView.count")}>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={c.options?.count ?? 5}
+                        onChange={(e) => updateOptions(c.id, { count: Math.max(1, Math.min(50, parseInt(e.target.value) || 1)) })}
+                        className="h-8 w-20"
+                      />
+                    </Param>
+                  )}
+
+                  {/* Sort */}
+                  {c.type !== "score_card" && (
+                    <Param label={t("cm.resultView.sort")}>
+                      <Select
+                        value={c.options?.sort ?? "score_desc"}
+                        onValueChange={(v) => updateOptions(c.id, { sort: (v as "score_desc" | "score_asc" | "as_is") ?? "score_desc" })}
+                      >
+                        <SelectTrigger size="sm" className="w-36">
+                          <SelectValue>{() => t(`cm.resultView.sort.${c.options?.sort ?? "score_desc"}`)}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="score_desc">{t("cm.resultView.sort.score_desc")}</SelectItem>
+                          <SelectItem value="score_asc">{t("cm.resultView.sort.score_asc")}</SelectItem>
+                          <SelectItem value="as_is">{t("cm.resultView.sort.as_is")}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </Param>
+                  )}
+
+                  {/* Show values toggle */}
+                  <button
+                    onClick={() => updateOptions(c.id, { showValues: c.options?.showValues === false })}
+                    className={cn(
+                      "h-8 self-end rounded-md border px-2.5 text-[0.72rem] font-medium transition-colors",
+                      c.options?.showValues !== false ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted",
+                    )}
+                  >
+                    {t("cm.resultView.showValues")}
+                  </button>
+
+                  {/* Max scale (bar / radar) */}
+                  {(c.type === "characteristics_bar" || c.type === "characteristics_radar") && (
+                    <Param label={t("cm.resultView.maxScale")}>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={c.options?.maxScale ?? 0}
+                        onChange={(e) => updateOptions(c.id, { maxScale: Math.max(0, parseInt(e.target.value) || 0) })}
+                        placeholder="auto"
+                        className="h-8 w-20"
+                      />
+                    </Param>
+                  )}
+                </div>
+
                 {/* Live preview against sample data */}
                 <ResultComponentView
                   component={{ ...c, title: c.title.en || c.title.ru || c.title.kz ? c.title : l(t(def.key)) }}
@@ -184,6 +325,18 @@ export function ResultViewTab({ components, variables, mappings, onChange }: Pro
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// Small labeled wrapper for a parameter control.
+function Param({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </label>
+      {children}
     </div>
   );
 }

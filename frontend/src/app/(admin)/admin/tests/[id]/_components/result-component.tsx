@@ -21,28 +21,37 @@ interface Props {
 export function ResultComponentView({ component, data }: Props) {
   const { locale } = useLocale();
   const title = localize(component.title, locale);
+  const opts = component.options ?? {};
+
+  // Apply structured options: sort, then count.
+  let shown = [...data];
+  if (opts.sort === "score_desc") shown.sort((a, b) => b.value - a.value);
+  else if (opts.sort === "score_asc") shown.sort((a, b) => a.value - b.value);
+  if (opts.count && opts.count > 0) shown = shown.slice(0, opts.count);
+
+  const showValues = opts.showValues !== false; // default true
 
   return (
     <div className="rounded-2xl border bg-card p-5 shadow-sm">
       {title && <h3 className="mb-4 text-sm font-bold tracking-tight">{title}</h3>}
-      {data.length === 0 ? (
+      {shown.length === 0 ? (
         <p className="py-6 text-center text-[0.78rem] text-muted-foreground">No data to display.</p>
       ) : component.type === "characteristics_bar" ? (
-        <BarChart data={data} />
+        <BarChart data={shown} maxScale={opts.maxScale} showValues={showValues} />
       ) : component.type === "characteristics_radar" ? (
-        <RadarChart data={data} />
+        <RadarChart data={shown} maxScale={opts.maxScale} />
       ) : component.type === "score_card" ? (
-        <ScoreCard data={data} />
+        <ScoreCard data={shown} showValues={showValues} />
       ) : (
-        <MatchesList data={data} />
+        <MatchesList data={shown} showValues={showValues} />
       )}
     </div>
   );
 }
 
 // ── Bar chart: characteristics, top score highlighted ───────────
-function BarChart({ data }: { data: ResultDatum[] }) {
-  const max = Math.max(...data.map((d) => d.value), 1);
+function BarChart({ data, maxScale, showValues }: { data: ResultDatum[]; maxScale?: number; showValues: boolean }) {
+  const max = maxScale && maxScale > 0 ? maxScale : Math.max(...data.map((d) => d.value), 1);
   const topVal = Math.max(...data.map((d) => d.value));
   return (
     <div className="space-y-2.5">
@@ -57,12 +66,14 @@ function BarChart({ data }: { data: ResultDatum[] }) {
                 "h-full rounded-full transition-all duration-500",
                 d.value === topVal ? "bg-foreground" : "bg-foreground/40",
               )}
-              style={{ width: `${(d.value / max) * 100}%` }}
+              style={{ width: `${Math.min(100, (d.value / max) * 100)}%` }}
             />
           </div>
-          <span className="w-8 shrink-0 text-right text-[0.74rem] font-semibold tabular-nums">
-            {round(d.value)}
-          </span>
+          {showValues && (
+            <span className="w-8 shrink-0 text-right text-[0.74rem] font-semibold tabular-nums">
+              {round(d.value)}
+            </span>
+          )}
         </div>
       ))}
     </div>
@@ -70,8 +81,8 @@ function BarChart({ data }: { data: ResultDatum[] }) {
 }
 
 // ── Radar / spider chart ────────────────────────────────────────
-function RadarChart({ data }: { data: ResultDatum[] }) {
-  const max = Math.max(...data.map((d) => d.value), 1);
+function RadarChart({ data, maxScale }: { data: ResultDatum[]; maxScale?: number }) {
+  const max = maxScale && maxScale > 0 ? maxScale : Math.max(...data.map((d) => d.value), 1);
   const cx = 110;
   const cy = 110;
   const r = 78;
@@ -140,7 +151,7 @@ function RadarChart({ data }: { data: ResultDatum[] }) {
 }
 
 // ── Score card: single prominent value (the top item) ───────────
-function ScoreCard({ data }: { data: ResultDatum[] }) {
+function ScoreCard({ data, showValues }: { data: ResultDatum[]; showValues: boolean }) {
   const top = [...data].sort((a, b) => b.value - a.value)[0];
   return (
     <div className="flex items-center gap-4">
@@ -149,14 +160,14 @@ function ScoreCard({ data }: { data: ResultDatum[] }) {
       </div>
       <div>
         <p className="text-xl font-bold tracking-tight">{top.label}</p>
-        <p className="text-[0.78rem] text-muted-foreground">Score: {round(top.value)}</p>
+        {showValues && <p className="text-[0.78rem] text-muted-foreground">Score: {round(top.value)}</p>}
       </div>
     </div>
   );
 }
 
 // ── Matches list: ranked top-N with score bars ──────────────────
-function MatchesList({ data }: { data: ResultDatum[] }) {
+function MatchesList({ data, showValues }: { data: ResultDatum[]; showValues: boolean }) {
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
     <ol className="space-y-2">
@@ -169,9 +180,11 @@ function MatchesList({ data }: { data: ResultDatum[] }) {
           <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
             <div className="h-full rounded-full bg-foreground" style={{ width: `${(d.value / max) * 100}%` }} />
           </div>
-          <span className="w-10 shrink-0 text-right text-[0.74rem] tabular-nums text-muted-foreground">
-            {round(d.value)}
-          </span>
+          {showValues && (
+            <span className="w-10 shrink-0 text-right text-[0.74rem] tabular-nums text-muted-foreground">
+              {round(d.value)}
+            </span>
+          )}
         </li>
       ))}
     </ol>
