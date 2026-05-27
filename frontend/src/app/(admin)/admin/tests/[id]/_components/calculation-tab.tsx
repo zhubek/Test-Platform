@@ -206,12 +206,12 @@ export function CalculationTab({
         </div>
         <Button
           variant="ghost"
-          size="sm"
+          size="icon-sm"
           onClick={() => setShowJson(true)}
+          title={t("cm.calculation.viewJson")}
           className="shrink-0 text-muted-foreground hover:text-foreground"
         >
-          <Code2 className="h-3.5 w-3.5" />
-          {t("cm.calculation.viewJson")}
+          <Code2 className="h-4 w-4" />
         </Button>
       </div>
 
