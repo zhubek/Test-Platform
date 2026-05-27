@@ -467,6 +467,16 @@ const translations: Record<Locale, Record<string, string>> = {
     "cm.results.sub": "Design how test results are displayed to students",
     "cm.resultView.heading": "Result View",
     "cm.resultView.sub": "Design how test results are displayed to students",
+    "cm.resultView.typeBar": "Characteristics bar",
+    "cm.resultView.typeRadar": "Radar profile",
+    "cm.resultView.typeCard": "Top score card",
+    "cm.resultView.typeMatches": "Matches list",
+    "cm.resultView.empty": "No result components yet. Add one above.",
+    "cm.resultView.component": "Component",
+    "cm.resultView.title": "Title",
+    "cm.resultView.titlePlaceholder": "Section title (optional)",
+    "cm.resultView.fromMapping": "From mapping",
+    "cm.resultView.noMapping": "No mappings — add one in Calculation",
 
     // Dashboard tabs
     "cm.dashboard.heading": "Dashboard",
@@ -1223,6 +1233,16 @@ const translations: Record<Locale, Record<string, string>> = {
     "cm.results.sub": "Настройте отображение результатов теста для студентов",
     "cm.resultView.heading": "Вид результата",
     "cm.resultView.sub": "Настройте отображение результатов теста для студентов",
+    "cm.resultView.typeBar": "Характеристики (столбцы)",
+    "cm.resultView.typeRadar": "Профиль (радар)",
+    "cm.resultView.typeCard": "Карточка лидера",
+    "cm.resultView.typeMatches": "Список совпадений",
+    "cm.resultView.empty": "Компонентов результата пока нет. Добавьте выше.",
+    "cm.resultView.component": "Компонент",
+    "cm.resultView.title": "Заголовок",
+    "cm.resultView.titlePlaceholder": "Заголовок секции (необязательно)",
+    "cm.resultView.fromMapping": "Из сопоставления",
+    "cm.resultView.noMapping": "Нет сопоставлений — добавьте в Расчёте",
 
     // Dashboard tabs
     "cm.dashboard.heading": "Дашборд",

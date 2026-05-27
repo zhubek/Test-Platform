@@ -211,6 +211,31 @@ export interface Widget {
   params: WidgetParam[];
 }
 
+// ── Result components (variable-bound, shown on the result page) ──
+// Unlike SQL Widgets, result components read the test's computed variables.
+export type ResultComponentType =
+  | "characteristics_bar" // horizontal bars of all characteristic scores
+  | "characteristics_radar" // radar/spider of characteristics
+  | "score_card" // a single variable shown prominently
+  | "matches_list"; // ranked top-N catalog matches from a mapping
+
+// What a component binds to.
+//  - kind "characteristics": all characteristic variables (bar / radar)
+//  - kind "variable": one specific variable by name (score card)
+//  - kind "mapping": a catalog mapping's top-N matches (matches list / top card)
+export interface ResultBinding {
+  kind: "characteristics" | "variable" | "mapping";
+  variableName?: string; // for kind "variable"
+  mappingId?: string; // for kind "mapping"
+}
+
+export interface ResultComponent {
+  id: string;
+  type: ResultComponentType;
+  title: Localized;
+  binding: ResultBinding;
+}
+
 // ── ContentTest ──────────────────────────────────────────────────
 
 export type TestIconKey =
@@ -256,6 +281,7 @@ export interface ContentTest {
   variables: Variable[];
   surveyLogic: SurveyLogic;
   characteristicSections: CharacteristicSection[];
+  resultComponents: ResultComponent[];
   resultWidgets: Widget[];
   orgDashboardWidgets: Widget[];
   regionDashboardWidgets: Widget[];

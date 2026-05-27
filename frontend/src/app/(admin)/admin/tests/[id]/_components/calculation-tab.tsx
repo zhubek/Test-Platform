@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Plus, Trash2, ChevronDown, BookOpen, Compass, Braces, Copy, Check, Code2, X } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
@@ -174,51 +174,8 @@ export function CalculationTab({
     ]);
   };
 
-  // Characteristic variables appear AUTOMATICALLY for every mapped group's keys
-  // (no import step). Their formulas are author-editable and persist; we only
-  // add missing ones and drop those whose source group is no longer mapped.
-  useEffect(() => {
-    const wanted = new Map<string, { key: string; label: typeof variables[number]["label"]; src: { catalogId: string; groupId: string } }>();
-    for (const m of mappings) {
-      const group = findGroup(m.catalogId, m.groupId);
-      if (!group) continue;
-      for (const k of group.keys) {
-        // key per (group, characteristic) so two mappings on the same group share one var
-        if (!wanted.has(k.key)) wanted.set(k.key, { key: k.key, label: k.label, src: { catalogId: m.catalogId, groupId: m.groupId } });
-      }
-    }
-
-    // Characteristics are ENTIRELY driven by mappings — no standalone ones.
-    // No mapping → no characteristics. Other kinds are left untouched.
-    const managed = variables.filter((v) => v.kind === "characteristic");
-    const untouched = variables.filter((v) => v.kind !== "characteristic");
-    const haveByName = new Map(managed.map((v) => [v.name, v]));
-
-    // Keep existing managed vars still wanted (preserve their formula);
-    // add new ones for newly-mapped keys; drop ones no longer wanted.
-    const nextChar: Variable[] = [];
-    for (const [name, w] of wanted) {
-      const existing = haveByName.get(name);
-      if (existing) nextChar.push(existing);
-      else
-        nextChar.push({
-          id: `char_${w.src.groupId}_${name}`,
-          name,
-          label: w.label,
-          kind: "characteristic",
-          formula: "",
-          scope: "both",
-          source: w.src,
-        });
-    }
-
-    // Only push an update if the managed set actually changed.
-    const sameSet =
-      nextChar.length === managed.length &&
-      nextChar.every((v, i) => managed[i] && managed[i].id === v.id);
-    if (!sameSet) onVariablesChange([...untouched, ...nextChar]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mappings]);
+  // Characteristic variables are kept in sync with the mappings by the editor
+  // shell (so they exist regardless of which tab is open). See syncCharacteristics.
 
   // Derived profession variables: topN per mapping, value→label = catalog items.
   const professionVars: Variable[] = mappings.flatMap((m) => {

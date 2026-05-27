@@ -28,6 +28,7 @@ function apiTestToContentTest(t: TestRow): ContentTest {
   const mappings = t.calcLogic?.mappings ?? [];
   const calcLogic = t.calcLogic?.characteristicSections ?? [];
   const resultWidgets = t.resultViewLogic?.widgets ?? [];
+  const resultComponents = t.resultViewLogic?.components ?? [];
   const dashboardWidgets = t.dashboardViewLogic?.widgets ?? [];
 
   return {
@@ -80,6 +81,7 @@ function apiTestToContentTest(t: TestRow): ContentTest {
     variables: vars,
     surveyLogic: (t.surveyLogic as ContentTest["surveyLogic"]) ?? {},
     characteristicSections: calcLogic,
+    resultComponents,
     resultWidgets,
     orgDashboardWidgets: dashboardWidgets,
     regionDashboardWidgets: [],

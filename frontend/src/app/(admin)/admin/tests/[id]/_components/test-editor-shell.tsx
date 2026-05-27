@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Save, Eye } from "lucide-react";
+import { syncCharacteristics } from "@/lib/characteristics-sync";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
 import { TabBar, type TabId } from "./tab-bar";
@@ -9,6 +10,7 @@ import { GeneralTab } from "./general-tab";
 import { QuestionsTab } from "./questions-tab";
 import { CalculationTab } from "./calculation-tab";
 import { WidgetConstructorTab } from "./widget-constructor-tab";
+import { ResultViewTab } from "./result-view-tab";
 import { StatusToggle } from "../../../_components/status-toggle";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/button-link";
@@ -18,6 +20,7 @@ import type {
   Variable,
   CatalogMapping,
   CharacteristicSection,
+  ResultComponent,
   Widget,
   TestIconKey,
   SurveyLogic,
@@ -53,8 +56,17 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
   const [mappings, setMappings] = useState<CatalogMapping[]>(initialData.mappings);
   const [variables, setVariables] = useState<Variable[]>(initialData.variables);
   const [surveyLogic, setSurveyLogic] = useState<SurveyLogic>(initialData.surveyLogic ?? {});
+  const [resultComponents, setResultComponents] = useState<ResultComponent[]>(initialData.resultComponents ?? []);
   const [resultWidgets, setResultWidgets] = useState<Widget[]>(initialData.resultWidgets);
   const [dashboardWidgets, setDashboardWidgets] = useState<Widget[]>(initialData.orgDashboardWidgets);
+
+  // Keep characteristic variables in sync with the mappings, regardless of which
+  // tab is open (so Result View etc. always see them).
+  useEffect(() => {
+    const next = syncCharacteristics(mappings, variables);
+    if (next) setVariables(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mappings]);
 
   return (
     <>
@@ -102,7 +114,7 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
                 vars: { variables },
                 calcLogic: { characteristicSections, mappings },
                 surveyLogic,
-                resultViewLogic: { widgets: resultWidgets },
+                resultViewLogic: { widgets: resultWidgets, components: resultComponents },
                 dashboardViewLogic: { widgets: dashboardWidgets },
               });
             }}
@@ -161,11 +173,11 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
       )}
 
       {tab === "result" && (
-        <WidgetConstructorTab
-          heading={t("cm.resultView.heading")}
-          subheading={t("cm.resultView.sub")}
-          widgets={resultWidgets}
-          onChange={setResultWidgets}
+        <ResultViewTab
+          components={resultComponents}
+          variables={variables}
+          mappings={mappings}
+          onChange={setResultComponents}
         />
       )}
 

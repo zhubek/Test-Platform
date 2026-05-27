@@ -129,6 +129,7 @@ export const hollandTest: ContentTest = {
       ],
     },
   ],
+  resultComponents: [],
   resultWidgets: [
     {
       id: "rw1",
