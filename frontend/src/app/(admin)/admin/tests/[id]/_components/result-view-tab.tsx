@@ -2,10 +2,25 @@
 
 import { useState } from "react";
 import {
-  Plus, Trash2, Pencil, ChevronLeft, ChevronRight, X,
+  Plus, Trash2, Pencil, ChevronLeft, ChevronRight, X, GripVertical,
   BarChart3, Radar, PieChart, Table, LayoutGrid, AlignLeft,
   Trophy, Gauge as GaugeIcon, ListOrdered, Award, Heading, Type, Minus,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useLocale } from "@/lib/locale-context";
 import { localize, l } from "@/lib/localized";
 import { Button } from "@/components/ui/button";
@@ -87,6 +102,7 @@ export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
   const activePage = pages[Math.min(active, Math.max(0, pages.length - 1))];
   // Which page's "Add block" modal is open (null = closed).
   const [pickerPage, setPickerPage] = useState<number | null>(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   // ── Page handlers ───────────────────────────────────────────────
   const addPage = () => {
@@ -98,6 +114,26 @@ export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
   const deletePage = (pi: number) => {
     onChange(pages.filter((_, i) => i !== pi));
     setActive((a) => Math.max(0, Math.min(a, pages.length - 2)));
+  };
+
+  // Drag handlers: page ids are "rp:<id>", block ids are "rc:<id>".
+  const onPagesDragEnd = (e: DragEndEvent) => {
+    const { active: a, over } = e;
+    if (!over || a.id === over.id) return;
+    const from = pages.findIndex((p) => `rp:${p.id}` === a.id);
+    const to = pages.findIndex((p) => `rp:${p.id}` === over.id);
+    if (from !== -1 && to !== -1) {
+      onChange(arrayMove(pages, from, to));
+      setActive(to);
+    }
+  };
+  const onBlocksDragEnd = (pi: number) => (e: DragEndEvent) => {
+    const { active: a, over } = e;
+    if (!over || a.id === over.id) return;
+    const comps = pages[pi].components;
+    const from = comps.findIndex((c) => `rc:${c.id}` === a.id);
+    const to = comps.findIndex((c) => `rc:${c.id}` === over.id);
+    if (from !== -1 && to !== -1) updatePage(pi, { components: arrayMove(comps, from, to) });
   };
 
   // ── Component handlers (within the active page) ─────────────────
@@ -156,7 +192,9 @@ export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
     if (c.binding.kind === "variable" && c.binding.variableName) {
       picked = charVars.filter((v) => v.name === c.binding.variableName);
     } else if (c.variableNames?.length) {
-      picked = charVars.filter((v) => c.variableNames!.includes(v.name));
+      // preserve the author's manual order
+      const byName = new Map(charVars.map((v) => [v.name, v]));
+      picked = c.variableNames.map((n) => byName.get(n)).filter((v): v is (typeof charVars)[number] => !!v);
     }
     return picked.map((v) => ({ label: localize(v.label, locale) || v.name, value: sampleScore(charVars.indexOf(v)) }));
   };
@@ -192,16 +230,19 @@ export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
               {t("cm.resultView.empty")}
             </div>
           ) : (
-            pages.map((page, pi) => (
-              <div
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onPagesDragEnd}>
+            <SortableContext items={pages.map((p) => `rp:${p.id}`)} strategy={verticalListSortingStrategy}>
+            {pages.map((page, pi) => (
+              <SortablePageCard
                 key={page.id}
-                className={cn(
-                  "rounded-lg border",
-                  pi === active ? "border-primary/40" : "border-border",
-                )}
+                id={`rp:${page.id}`}
+                isActive={pi === active}
               >
+                {(pageHandle) => (
+                <>
                 {/* Page header */}
                 <div className="flex items-center gap-1.5 border-b px-2.5 py-2">
+                  {pageHandle}
                   {editingTitle === pi ? (
                     <LocalizedInput
                       value={page.title}
@@ -244,16 +285,26 @@ export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
                       {t("cm.resultView.pageEmpty")}
                     </p>
                   ) : (
-                    page.components.map((c) => (
-                      <ComponentConfig
-                        key={c.id}
-                        component={c}
-                        charVars={charVars}
-                        mappings={mappings}
-                        onUpdate={(partial) => updateComponent(pi, c.id, partial)}
-                        onRemove={() => removeComponent(pi, c.id)}
-                      />
-                    ))
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onBlocksDragEnd(pi)}>
+                      <SortableContext items={page.components.map((c) => `rc:${c.id}`)} strategy={verticalListSortingStrategy}>
+                        <div className="space-y-3">
+                          {page.components.map((c) => (
+                            <SortableBlock key={c.id} id={`rc:${c.id}`}>
+                              {(blockHandle) => (
+                                <ComponentConfig
+                                  component={c}
+                                  charVars={charVars}
+                                  mappings={mappings}
+                                  onUpdate={(partial) => updateComponent(pi, c.id, partial)}
+                                  onRemove={() => removeComponent(pi, c.id)}
+                                  handle={blockHandle}
+                                />
+                              )}
+                            </SortableBlock>
+                          ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
                   )}
                   <Button
                     variant="outline"
@@ -264,8 +315,12 @@ export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
                     <Plus className="h-3.5 w-3.5" /> {t("cm.resultView.addBlock")}
                   </Button>
                 </div>
-              </div>
-            ))
+                </>
+                )}
+              </SortablePageCard>
+            ))}
+            </SortableContext>
+            </DndContext>
           )}
         </div>
       </div>
@@ -402,12 +457,14 @@ function ComponentConfig({
   mappings,
   onUpdate,
   onRemove,
+  handle,
 }: {
   component: ResultComponent;
   charVars: Variable[];
   mappings: CatalogMapping[];
   onUpdate: (partial: Partial<ResultComponent>) => void;
   onRemove: () => void;
+  handle?: React.ReactNode;
 }) {
   const { t, locale } = useLocale();
   const def = COMPONENT_TYPES.find((x) => x.type === c.type)!;
@@ -416,6 +473,7 @@ function ComponentConfig({
 
   const header = (
     <div className="mb-3 flex flex-wrap items-end gap-3">
+      {handle && <div className="flex h-8 items-center">{handle}</div>}
       <Param label={t("cm.resultView.component")}>
         <span className="flex h-8 items-center gap-1.5 rounded-md border bg-card px-2.5 text-[0.78rem]">
           <def.icon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -441,6 +499,7 @@ function ComponentConfig({
     return (
       <div className="rounded-xl border bg-muted/30 p-3">
         <div className="flex items-center gap-3">
+          {handle && <div className="flex h-8 items-center">{handle}</div>}
           <Param label={t("cm.resultView.component")}>
             <span className="flex h-8 items-center gap-1.5 rounded-md border bg-card px-2.5 text-[0.78rem]">
               <def.icon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -608,6 +667,7 @@ function ComponentConfig({
             numericOnly
             value={c.variableNames ?? []}
             onChange={(names) => onUpdate({ variableNames: names })}
+            onReorder={() => updateOptions({ sort: "as_is" })}
           />
         </div>
         <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
@@ -649,6 +709,62 @@ function ComponentConfig({
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Sortable page card — renders children with a drag handle injected into the header.
+function SortablePageCard({
+  id,
+  isActive,
+  children,
+}: {
+  id: string;
+  isActive: boolean;
+  children: (handle: React.ReactNode) => React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style: React.CSSProperties = { transform: CSS.Transform.toString(transform), transition };
+  const handle = (
+    <button
+      {...attributes}
+      {...listeners}
+      className="shrink-0 cursor-grab text-muted-foreground/40 hover:text-muted-foreground active:cursor-grabbing"
+      title="Drag to reorder page"
+      aria-label="Drag to reorder page"
+    >
+      <GripVertical className="h-4 w-4" />
+    </button>
+  );
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn("rounded-lg border", isActive ? "border-primary/40" : "border-border", isDragging && "opacity-50")}
+    >
+      {children(handle)}
+    </div>
+  );
+}
+
+// Sortable block wrapper — injects a drag handle into the ComponentConfig header.
+function SortableBlock({ id, children }: { id: string; children: (handle: React.ReactNode) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style: React.CSSProperties = { transform: CSS.Transform.toString(transform), transition };
+  const handle = (
+    <button
+      {...attributes}
+      {...listeners}
+      className="shrink-0 cursor-grab text-muted-foreground/40 hover:text-muted-foreground active:cursor-grabbing"
+      title="Drag to reorder block"
+      aria-label="Drag to reorder block"
+    >
+      <GripVertical className="h-3.5 w-3.5" />
+    </button>
+  );
+  return (
+    <div ref={setNodeRef} style={style} className={cn(isDragging && "opacity-50")}>
+      {children(handle)}
     </div>
   );
 }
