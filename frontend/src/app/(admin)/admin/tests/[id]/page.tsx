@@ -36,6 +36,7 @@ function apiTestToContentTest(t: TestRow): ContentTest {
       ? [{ id: "rp_legacy", title: { en: "Results", ru: "Результаты", kz: "Нәтижелер" }, components: legacyComponents }]
       : []);
   const dashboardWidgets = t.dashboardViewLogic?.widgets ?? [];
+  const dashboardPages = t.dashboardViewLogic?.pages ?? [];
 
   return {
     id: String(t.id),
@@ -89,6 +90,7 @@ function apiTestToContentTest(t: TestRow): ContentTest {
     characteristicSections: calcLogic,
     resultPages,
     resultWidgets,
+    dashboardPages,
     orgDashboardWidgets: dashboardWidgets,
     regionDashboardWidgets: [],
   };

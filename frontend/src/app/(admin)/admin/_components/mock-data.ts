@@ -271,6 +271,23 @@ export interface ResultPage {
   components: ResultComponent[];
 }
 
+// ── Dashboard (aggregated SQL widgets, grouped into pages) ───────
+// A dashboard widget renders an aggregated SQL query as a chart. The scoping
+// WHERE clause is appended automatically (dashboards aggregate per organization),
+// so the author writes only the SELECT / GROUP BY.
+export interface DashboardBlock {
+  id: string;
+  componentType: WidgetComponentType;
+  title: Localized;
+  sql: string; // SELECT … GROUP BY … (no WHERE scope — appended automatically)
+}
+
+export interface DashboardPage {
+  id: string;
+  title: Localized;
+  widgets: DashboardBlock[];
+}
+
 // ── ContentTest ──────────────────────────────────────────────────
 
 export type TestIconKey =
@@ -318,6 +335,7 @@ export interface ContentTest {
   characteristicSections: CharacteristicSection[];
   resultPages: ResultPage[];
   resultWidgets: Widget[];
+  dashboardPages: DashboardPage[];
   orgDashboardWidgets: Widget[];
   regionDashboardWidgets: Widget[];
 }

@@ -9,8 +9,8 @@ import { TabBar, type TabId } from "./tab-bar";
 import { GeneralTab } from "./general-tab";
 import { QuestionsTab } from "./questions-tab";
 import { CalculationTab } from "./calculation-tab";
-import { WidgetConstructorTab } from "./widget-constructor-tab";
 import { ResultViewTab } from "./result-view-tab";
+import { DashboardTab } from "./dashboard-tab";
 import { StatusToggle } from "../../../_components/status-toggle";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/button-link";
@@ -21,6 +21,7 @@ import type {
   CatalogMapping,
   CharacteristicSection,
   ResultPage,
+  DashboardPage,
   Widget,
   TestIconKey,
   SurveyLogic,
@@ -57,8 +58,8 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
   const [variables, setVariables] = useState<Variable[]>(initialData.variables);
   const [surveyLogic, setSurveyLogic] = useState<SurveyLogic>(initialData.surveyLogic ?? {});
   const [resultPages, setResultPages] = useState<ResultPage[]>(initialData.resultPages ?? []);
-  const [resultWidgets, setResultWidgets] = useState<Widget[]>(initialData.resultWidgets);
-  const [dashboardWidgets, setDashboardWidgets] = useState<Widget[]>(initialData.orgDashboardWidgets);
+  const [resultWidgets] = useState<Widget[]>(initialData.resultWidgets);
+  const [dashboardPages, setDashboardPages] = useState<DashboardPage[]>(initialData.dashboardPages ?? []);
 
   // Keep characteristic variables in sync with the mappings, regardless of which
   // tab is open (so Result View etc. always see them).
@@ -115,7 +116,7 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
                 calcLogic: { characteristicSections, mappings },
                 surveyLogic,
                 resultViewLogic: { widgets: resultWidgets, pages: resultPages },
-                dashboardViewLogic: { widgets: dashboardWidgets },
+                dashboardViewLogic: { pages: dashboardPages },
               });
             }}
           >
@@ -182,12 +183,7 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
       )}
 
       {tab === "dashboard" && (
-        <WidgetConstructorTab
-          heading={t("cm.dashboard.heading")}
-          subheading={t("cm.dashboard.sub")}
-          widgets={dashboardWidgets}
-          onChange={setDashboardWidgets}
-        />
+        <DashboardTab pages={dashboardPages} onChange={setDashboardPages} />
       )}
     </>
   );

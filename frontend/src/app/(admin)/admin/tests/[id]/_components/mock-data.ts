@@ -130,6 +130,7 @@ export const hollandTest: ContentTest = {
     },
   ],
   resultPages: [],
+  dashboardPages: [],
   resultWidgets: [
     {
       id: "rw1",
