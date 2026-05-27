@@ -8,6 +8,7 @@ import { CharacteristicsEditor } from "./_components/characteristics-editor";
 import { EducationEditor } from "./_components/education-editor";
 import { LaborMarketEditor } from "./_components/labor-market-editor";
 import { ContentEditor } from "./_components/content-editor";
+import { OutputVariablesTab } from "../../_components/output-variables-tab";
 import {
   fetchProfession,
   updateProfession,
@@ -24,6 +25,7 @@ const TABS = [
   "education",
   "labor",
   "content",
+  "output",
 ] as const;
 type Tab = (typeof TABS)[number];
 
@@ -102,6 +104,7 @@ export default function ProfessionDetailPage({
     education: t("professionDetail.tabs.education"),
     labor: t("professionDetail.tabs.labor"),
     content: t("professionDetail.tabs.content"),
+    output: t("cm.methodic.tab.output"),
   };
 
   return (
@@ -162,6 +165,13 @@ export default function ProfessionDetailPage({
       )}
       {activeTab === "content" && (
         <ContentEditor data={prof.params?.content ?? null} />
+      )}
+      {activeTab === "output" && (
+        <OutputVariablesTab
+          type="professions"
+          output={(prof.params?.output as Record<string, import("@/lib/localized").Localized>) ?? {}}
+          onChange={(next) => saveParams("output", next)}
+        />
       )}
     </>
   );

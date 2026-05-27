@@ -14,11 +14,12 @@ import {
   type Localized,
 } from "@/lib/methodic-api";
 import { Archive, Plus, ArchiveRestore } from "lucide-react";
+import { OutputVariablesTab } from "../../_components/output-variables-tab";
 
 const inputClass =
   "w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all";
 
-type Tab = "general" | "characteristics";
+type Tab = "general" | "characteristics" | "output";
 
 export default function CharacteristicTypeEditorPage({
   params,
@@ -99,7 +100,7 @@ export default function CharacteristicTypeEditorPage({
 
       {/* Tab bar */}
       <div className="flex gap-1 mb-6 border-b border-gray-100">
-        {(["general", "characteristics"] as const).map((t2) => (
+        {(["general", "characteristics", "output"] as const).map((t2) => (
           <button
             key={t2}
             onClick={() => setTab(t2)}
@@ -108,7 +109,11 @@ export default function CharacteristicTypeEditorPage({
               (tab === t2 ? "text-gray-900" : "text-gray-400 hover:text-gray-600")
             }
           >
-            {t2 === "general" ? t("cm.characteristics.tab.general") : t("cm.characteristics.tab.characteristics")}
+            {t2 === "general"
+              ? t("cm.characteristics.tab.general")
+              : t2 === "characteristics"
+                ? t("cm.characteristics.tab.characteristics")
+                : t("cm.methodic.tab.output")}
             {tab === t2 && (
               <span className="absolute bottom-0 left-4 right-4 h-[2px] rounded-full bg-gray-900" />
             )}
@@ -136,6 +141,17 @@ export default function CharacteristicTypeEditorPage({
           setCt={setCt}
           loc={loc}
           t={t}
+        />
+      )}
+      {tab === "output" && (
+        <OutputVariablesTab
+          type="characteristics"
+          output={(ct.params?.output as Record<string, Localized>) ?? {}}
+          onChange={(next) => {
+            const newParams = { ...(ct.params ?? {}), output: next };
+            setCt({ ...ct, params: newParams });
+            save({ params: newParams });
+          }}
         />
       )}
     </>

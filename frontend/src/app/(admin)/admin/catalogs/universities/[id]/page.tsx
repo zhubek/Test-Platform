@@ -15,7 +15,9 @@ import {
   type Localized,
 } from "@/lib/methodic-api";
 import { LocalizedInput } from "../../_components/localized-input";
+import { OutputVariablesTab } from "../../_components/output-variables-tab";
 import { Mail, Phone, Globe } from "lucide-react";
+import type { Localized as Loc } from "@/lib/localized";
 
 const inputClass =
   "w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all";
@@ -35,6 +37,7 @@ export default function UniversityEditorPage({
   const [cities, setCities] = useState<CityRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState<"general" | "output">("general");
   const uniRef = useRef(uni);
   uniRef.current = uni;
 
@@ -119,6 +122,37 @@ export default function UniversityEditorPage({
         ]}
       />
 
+      <div className="flex gap-1 mb-6 border-b border-gray-100 overflow-x-auto">
+        {(["general", "output"] as const).map((tb) => (
+          <button
+            key={tb}
+            onClick={() => setTab(tb)}
+            className={
+              "relative shrink-0 px-4 py-2.5 text-[0.82rem] font-medium transition-colors " +
+              (tab === tb ? "text-gray-900" : "text-gray-400 hover:text-gray-600")
+            }
+          >
+            {tb === "general" ? t("cm.methodic.tab.general") : t("cm.methodic.tab.output")}
+            {tab === tb && (
+              <span className="absolute bottom-0 left-4 right-4 h-[2px] rounded-full bg-gray-900" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {tab === "output" && (
+        <OutputVariablesTab
+          type="universities"
+          output={(uni.params?.output as Record<string, Loc>) ?? {}}
+          onChange={(next) => {
+            const newParams = { ...uni.params, output: next };
+            setUni({ ...uni, params: newParams });
+          }}
+          onBlur={saveParams}
+        />
+      )}
+
+      {tab === "general" && (
       <EditorLayout
         editor={
           <div className="space-y-3">
@@ -264,6 +298,7 @@ export default function UniversityEditorPage({
         }
         preview={<UniversityPreview uni={uni} locale={locale} t={t} />}
       />
+      )}
     </>
   );
 }

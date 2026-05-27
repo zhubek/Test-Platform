@@ -40,6 +40,7 @@ export interface UniversityParams {
   youtube?: string;
   photo?: string;
   grant?: boolean;
+  output?: Record<string, Localized>;
 }
 export interface UniversityRow {
   id: number;
@@ -68,6 +69,7 @@ export interface CollegeParams {
   facebook?: string;
   youtube?: string;
   photo?: string;
+  output?: Record<string, Localized>;
 }
 export interface CollegeRow {
   id: number;
@@ -95,6 +97,7 @@ export interface UniverProgramParams {
   subjects?: Localized;
   points?: Record<string, number[]>;
   universities?: UniverProgramUniversity[];
+  output?: Record<string, Localized>;
 }
 export interface UniverProgramRow {
   id: number;
@@ -119,6 +122,7 @@ export interface CollegeProgramCollege {
 }
 export interface CollegeProgramParams {
   colleges?: CollegeProgramCollege[];
+  output?: Record<string, Localized>;
 }
 export interface CollegeProgramRow {
   id: number;

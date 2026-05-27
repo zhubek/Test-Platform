@@ -15,6 +15,8 @@ import {
   type Localized,
 } from "@/lib/methodic-api";
 import { LocalizedInput } from "../../_components/localized-input";
+import { OutputVariablesTab } from "../../_components/output-variables-tab";
+import type { Localized as Loc } from "@/lib/localized";
 import { Mail, Phone, Globe } from "lucide-react";
 
 const inputClass =
@@ -33,6 +35,7 @@ export default function CollegeEditorPage({
   const [cities, setCities] = useState<CityRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState<"general" | "output">("general");
   const colRef = useRef(col);
   colRef.current = col;
 
@@ -117,6 +120,37 @@ export default function CollegeEditorPage({
         ]}
       />
 
+      <div className="flex gap-1 mb-6 border-b border-gray-100 overflow-x-auto">
+        {(["general", "output"] as const).map((tb) => (
+          <button
+            key={tb}
+            onClick={() => setTab(tb)}
+            className={
+              "relative shrink-0 px-4 py-2.5 text-[0.82rem] font-medium transition-colors " +
+              (tab === tb ? "text-gray-900" : "text-gray-400 hover:text-gray-600")
+            }
+          >
+            {tb === "general" ? t("cm.methodic.tab.general") : t("cm.methodic.tab.output")}
+            {tab === tb && (
+              <span className="absolute bottom-0 left-4 right-4 h-[2px] rounded-full bg-gray-900" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {tab === "output" && (
+        <OutputVariablesTab
+          type="colleges"
+          output={(col.params?.output as Record<string, Loc>) ?? {}}
+          onChange={(next) => {
+            const newParams = { ...col.params, output: next };
+            setCol({ ...col, params: newParams });
+          }}
+          onBlur={saveParams}
+        />
+      )}
+
+      {tab === "general" && (
       <EditorLayout
         editor={
           <div className="space-y-3">
@@ -248,6 +282,7 @@ export default function CollegeEditorPage({
         }
         preview={<CollegePreview col={col} locale={locale} t={t} />}
       />
+      )}
     </>
   );
 }

@@ -5,6 +5,8 @@ import { useLocale } from "@/lib/locale-context";
 import { Breadcrumb } from "../../../_components/breadcrumb";
 import { EditorLayout } from "../../_components/editor-layout";
 import { LocalizedInput } from "../../_components/localized-input";
+import { OutputVariablesTab } from "../../_components/output-variables-tab";
+import type { Localized as Loc } from "@/lib/localized";
 import {
   fetchUniverProgram,
   updateUniverProgram,
@@ -33,6 +35,7 @@ export default function UniverProgramEditorPage({
   const [allUnis, setAllUnis] = useState<UniversityRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState<"general" | "output">("general");
   const progRef = useRef(prog);
   progRef.current = prog;
 
@@ -178,6 +181,37 @@ export default function UniverProgramEditorPage({
         ]}
       />
 
+      <div className="flex gap-1 mb-6 border-b border-gray-100 overflow-x-auto">
+        {(["general", "output"] as const).map((tb) => (
+          <button
+            key={tb}
+            onClick={() => setTab(tb)}
+            className={
+              "relative shrink-0 px-4 py-2.5 text-[0.82rem] font-medium transition-colors " +
+              (tab === tb ? "text-gray-900" : "text-gray-400 hover:text-gray-600")
+            }
+          >
+            {tb === "general" ? t("cm.methodic.tab.general") : t("cm.methodic.tab.output")}
+            {tab === tb && (
+              <span className="absolute bottom-0 left-4 right-4 h-[2px] rounded-full bg-gray-900" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {tab === "output" && (
+        <OutputVariablesTab
+          type="univerPrograms"
+          output={(prog.params?.output as Record<string, Loc>) ?? {}}
+          onChange={(next) => {
+            const newParams = { ...prog.params, output: next };
+            setProg({ ...prog, params: newParams });
+          }}
+          onBlur={saveAll}
+        />
+      )}
+
+      {tab === "general" && (
       <EditorLayout
         editor={
           <div className="space-y-3">
@@ -373,6 +407,7 @@ export default function UniverProgramEditorPage({
           </div>
         }
       />
+      )}
     </>
   );
 }
