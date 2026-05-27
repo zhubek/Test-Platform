@@ -28,7 +28,13 @@ function apiTestToContentTest(t: TestRow): ContentTest {
   const mappings = t.calcLogic?.mappings ?? [];
   const calcLogic = t.calcLogic?.characteristicSections ?? [];
   const resultWidgets = t.resultViewLogic?.widgets ?? [];
-  const resultComponents = t.resultViewLogic?.components ?? [];
+  // Prefer pages; fall back to legacy flat components wrapped in one page.
+  const legacyComponents = t.resultViewLogic?.components ?? [];
+  const resultPages =
+    t.resultViewLogic?.pages ??
+    (legacyComponents.length
+      ? [{ id: "rp_legacy", title: { en: "Results", ru: "Результаты", kz: "Нәтижелер" }, components: legacyComponents }]
+      : []);
   const dashboardWidgets = t.dashboardViewLogic?.widgets ?? [];
 
   return {
@@ -81,7 +87,7 @@ function apiTestToContentTest(t: TestRow): ContentTest {
     variables: vars,
     surveyLogic: (t.surveyLogic as ContentTest["surveyLogic"]) ?? {},
     characteristicSections: calcLogic,
-    resultComponents,
+    resultPages,
     resultWidgets,
     orgDashboardWidgets: dashboardWidgets,
     regionDashboardWidgets: [],

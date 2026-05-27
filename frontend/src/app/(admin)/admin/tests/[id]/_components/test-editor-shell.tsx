@@ -20,7 +20,7 @@ import type {
   Variable,
   CatalogMapping,
   CharacteristicSection,
-  ResultComponent,
+  ResultPage,
   Widget,
   TestIconKey,
   SurveyLogic,
@@ -56,7 +56,7 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
   const [mappings, setMappings] = useState<CatalogMapping[]>(initialData.mappings);
   const [variables, setVariables] = useState<Variable[]>(initialData.variables);
   const [surveyLogic, setSurveyLogic] = useState<SurveyLogic>(initialData.surveyLogic ?? {});
-  const [resultComponents, setResultComponents] = useState<ResultComponent[]>(initialData.resultComponents ?? []);
+  const [resultPages, setResultPages] = useState<ResultPage[]>(initialData.resultPages ?? []);
   const [resultWidgets, setResultWidgets] = useState<Widget[]>(initialData.resultWidgets);
   const [dashboardWidgets, setDashboardWidgets] = useState<Widget[]>(initialData.orgDashboardWidgets);
 
@@ -114,7 +114,7 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
                 vars: { variables },
                 calcLogic: { characteristicSections, mappings },
                 surveyLogic,
-                resultViewLogic: { widgets: resultWidgets, components: resultComponents },
+                resultViewLogic: { widgets: resultWidgets, pages: resultPages },
                 dashboardViewLogic: { widgets: dashboardWidgets },
               });
             }}
@@ -174,10 +174,10 @@ export function TestEditorShell({ initialData, testId, onSave }: Props) {
 
       {tab === "result" && (
         <ResultViewTab
-          components={resultComponents}
+          pages={resultPages}
           variables={variables}
           mappings={mappings}
-          onChange={setResultComponents}
+          onChange={setResultPages}
         />
       )}
 

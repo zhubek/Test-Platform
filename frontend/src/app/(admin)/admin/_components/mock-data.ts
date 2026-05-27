@@ -249,6 +249,13 @@ export interface ResultComponent {
   params?: WidgetParam[]; // free-form key/value escape hatch
 }
 
+// A result page groups components (like a survey page groups questions).
+export interface ResultPage {
+  id: string;
+  title: Localized;
+  components: ResultComponent[];
+}
+
 // ── ContentTest ──────────────────────────────────────────────────
 
 export type TestIconKey =
@@ -294,7 +301,7 @@ export interface ContentTest {
   variables: Variable[];
   surveyLogic: SurveyLogic;
   characteristicSections: CharacteristicSection[];
-  resultComponents: ResultComponent[];
+  resultPages: ResultPage[];
   resultWidgets: Widget[];
   orgDashboardWidgets: Widget[];
   regionDashboardWidgets: Widget[];

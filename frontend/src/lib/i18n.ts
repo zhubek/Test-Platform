@@ -488,6 +488,16 @@ const translations: Record<Locale, Record<string, string>> = {
     "cm.resultView.sort.as_is": "As defined",
     "cm.resultView.showValues": "Show values",
     "cm.resultView.maxScale": "Max scale",
+    "cm.resultView.addPage": "Add page",
+    "cm.resultView.page": "Page",
+    "cm.resultView.pageTitle": "Page title",
+    "cm.resultView.renamePage": "Rename page",
+    "cm.resultView.deletePage": "Delete page",
+    "cm.resultView.pageEmpty": "No components on this page yet. Add one above.",
+    "cm.resultView.preview": "Preview",
+    "cm.resultView.previewEmpty": "Add a page to preview the result.",
+    "cm.resultView.prev": "Previous",
+    "cm.resultView.next": "Next",
 
     // Dashboard tabs
     "cm.dashboard.heading": "Dashboard",
@@ -1265,6 +1275,16 @@ const translations: Record<Locale, Record<string, string>> = {
     "cm.resultView.sort.as_is": "Как задано",
     "cm.resultView.showValues": "Показывать значения",
     "cm.resultView.maxScale": "Макс. шкала",
+    "cm.resultView.addPage": "Добавить страницу",
+    "cm.resultView.page": "Страница",
+    "cm.resultView.pageTitle": "Заголовок страницы",
+    "cm.resultView.renamePage": "Переименовать страницу",
+    "cm.resultView.deletePage": "Удалить страницу",
+    "cm.resultView.pageEmpty": "На этой странице пока нет компонентов. Добавьте выше.",
+    "cm.resultView.preview": "Предпросмотр",
+    "cm.resultView.previewEmpty": "Добавьте страницу, чтобы увидеть результат.",
+    "cm.resultView.prev": "Назад",
+    "cm.resultView.next": "Далее",
 
     // Dashboard tabs
     "cm.dashboard.heading": "Дашборд",

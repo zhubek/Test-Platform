@@ -26,7 +26,7 @@ const emptyTest: ContentTest = {
   variables: [],
   surveyLogic: {},
   characteristicSections: [],
-  resultComponents: [],
+  resultPages: [],
   resultWidgets: [],
   orgDashboardWidgets: [],
   regionDashboardWidgets: [],
