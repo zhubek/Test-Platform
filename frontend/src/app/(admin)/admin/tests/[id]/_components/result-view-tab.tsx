@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import {
-  Plus, Trash2, Pencil, ChevronLeft, ChevronRight, X, GripVertical,
+  Plus, Trash2, Pencil, ChevronLeft, ChevronRight, X, GripVertical, Code2, Copy, Check,
   BarChart3, Radar, PieChart, Table, LayoutGrid, AlignLeft,
   Trophy, Gauge as GaugeIcon, ListOrdered, Award, Heading, Type, Minus,
 } from "lucide-react";
@@ -36,6 +36,7 @@ import {
 import { cn } from "@/lib/utils";
 import { findGroup, catalogFields } from "@/lib/catalog-characteristics";
 import { ResultComponentView, type ResultDatum } from "./result-component";
+import { buildResultJson } from "@/lib/result-json";
 import { VariableSelect, VariableMultiSelect } from "./variable-select";
 import type {
   ResultComponent,
@@ -98,6 +99,9 @@ export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
   const charVars = variables.filter((v) => v.kind === "characteristic");
   const [active, setActive] = useState(0);
   const [editingTitle, setEditingTitle] = useState<number | null>(null);
+  const [showJson, setShowJson] = useState(false);
+  const [jsonCopied, setJsonCopied] = useState(false);
+  const resultJson = JSON.stringify(buildResultJson(pages), null, 2);
 
   const activePage = pages[Math.min(active, Math.max(0, pages.length - 1))];
   // Which page's "Add block" modal is open (null = closed).
@@ -215,15 +219,57 @@ export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
       {/* ── Left: constructor (pages + component forms) ── */}
       <div className="rounded-xl border bg-card">
         <div className="flex items-center gap-2 border-b px-3 py-2">
-          <span className="text-sm font-semibold">{t("cm.resultView.heading")}</span>
-          <span className="text-[0.7rem] text-muted-foreground">
-            {pages.length} page{pages.length !== 1 && "s"}
+          <span className="text-sm font-semibold">
+            {showJson ? t("cm.resultView.jsonHeading") : t("cm.resultView.heading")}
           </span>
-          <Button variant="ghost" size="sm" onClick={addPage} className="ml-auto text-primary hover:text-teal-700">
-            <Plus className="h-3.5 w-3.5" /> {t("cm.resultView.addPage")}
-          </Button>
+          {!showJson && (
+            <span className="text-[0.7rem] text-muted-foreground">
+              {pages.length} page{pages.length !== 1 && "s"}
+            </span>
+          )}
+          <div className="ml-auto flex items-center gap-1">
+            {showJson ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard?.writeText(resultJson);
+                    setJsonCopied(true);
+                    setTimeout(() => setJsonCopied(false), 1500);
+                  }}
+                >
+                  {jsonCopied ? <Check className="mr-1 h-3.5 w-3.5" /> : <Copy className="mr-1 h-3.5 w-3.5" />}
+                  {jsonCopied ? t("common.copied") : t("common.copy")}
+                </Button>
+                <Button variant="ghost" size="icon-sm" onClick={() => setShowJson(false)} title={t("cm.resultView.closeJson")}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" onClick={addPage} className="text-primary hover:text-teal-700">
+                  <Plus className="h-3.5 w-3.5" /> {t("cm.resultView.addPage")}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setShowJson(true)}
+                  title={t("cm.resultView.viewJson")}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Code2 className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
+        {showJson ? (
+          <pre className="max-h-[72vh] overflow-auto bg-muted/20 p-4 font-mono text-[0.72rem] leading-relaxed text-foreground">
+            {resultJson}
+          </pre>
+        ) : (
         <div className="max-h-[72vh] space-y-3 overflow-auto p-3">
           {pages.length === 0 ? (
             <div className="rounded-xl border border-dashed py-10 text-center text-[0.78rem] text-muted-foreground">
@@ -323,6 +369,7 @@ export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
             </DndContext>
           )}
         </div>
+        )}
       </div>
 
       {/* ── Right: live preview (one page at a time, with pills) ── */}
