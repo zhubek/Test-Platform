@@ -256,7 +256,7 @@ export function DashboardTab({ pages, onChange }: Props) {
               {activePage.widgets.length === 0 ? (
                 <p className="py-10 text-center text-[0.78rem] text-muted-foreground">{t("cm.dashboard.pageEmpty")}</p>
               ) : (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {activePage.widgets.map((w) => (
                     <div key={w.id} className="rounded-2xl border bg-card p-5 shadow-sm">
                       <WidgetPreview componentType={w.componentType} title={w.title} rows={mockRows(w.sql)} params={[]} />
