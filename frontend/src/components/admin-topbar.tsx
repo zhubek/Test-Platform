@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Check, ChevronsUpDown, FolderKanban } from "lucide-react";
+import { Check, ChevronsUpDown, FolderKanban, ChevronDown } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { useProject } from "@/lib/project-context";
 import { localize } from "@/lib/localized";
@@ -18,10 +18,20 @@ import {
 
 const locales = ["kz", "ru", "en"] as const;
 
-const nav = [
+type NavItem =
+  | { label: string; href: string }
+  | { label: string; children: { label: string; href: string }[] };
+
+const nav: NavItem[] = [
   { label: "Tests", href: "/admin/tests" },
-  { label: "Organizations", href: "/admin/organizations" },
-  { label: "Licenses", href: "/admin/licenses" },
+  { label: "Catalogs", href: "/admin/catalogs" },
+  {
+    label: "Access",
+    children: [
+      { label: "Organizations", href: "/admin/organizations" },
+      { label: "Licenses", href: "/admin/licenses" },
+    ],
+  },
   { label: "Dashboards", href: "/admin/dashboards" },
   { label: "Parameters", href: "/admin/parameters" },
 ];
@@ -79,6 +89,29 @@ export function AdminTopbar() {
 
         <nav className="hidden flex-1 items-center gap-1 md:flex">
           {nav.map((item) => {
+            if ("children" in item) {
+              const active = item.children.some((c) => pathname.startsWith(c.href));
+              return (
+                <DropdownMenu key={item.label}>
+                  <DropdownMenuTrigger
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors outline-none",
+                      active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {item.label}
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    {item.children.map((c) => (
+                      <DropdownMenuItem key={c.href} render={<Link href={c.href} />}>
+                        {c.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              );
+            }
             const active = pathname.startsWith(item.href);
             return (
               <Link
@@ -86,9 +119,7 @@ export function AdminTopbar() {
                 href={item.href}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  active
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
+                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {item.label}
