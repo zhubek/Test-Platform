@@ -5,21 +5,35 @@ import { useLocale } from "@/lib/locale-context";
 import { Breadcrumb } from "../../../_components/breadcrumb";
 import { EditorLayout } from "../../_components/editor-layout";
 import { LocalizedInput } from "../../_components/localized-input";
-import { OutputVariablesTab } from "../../_components/output-variables-tab";
+import { CatalogDetailScaffold } from "../../_components/catalog-detail-scaffold";
+import { GraduationCap } from "lucide-react";
+import { UntChart } from "@/app/professions/[id]/_components/unt-chart";
 import type { Localized as Loc } from "@/lib/localized";
 import {
   fetchUniverProgram,
   updateUniverProgram,
   deleteUniverProgram,
   fetchUniversities,
+  fetchCities,
   type UniverProgramRow,
   type UniverProgramParams,
   type UniversityRow,
+  type CityRow,
   type Localized,
 } from "@/lib/methodic-api";
 
 const inputClass =
   "w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all";
+
+// UNT minimum points are entered by grant TYPE (rows) and YEAR (columns).
+// The type keys must match the chart (unt-chart.tsx GRANT_LINES) so it renders.
+const UNT_YEARS = [2021, 2022, 2023, 2024, 2025];
+const UNT_TYPES: { key: string; label: string }[] = [
+  { key: "general", label: "General" },
+  { key: "aul", label: "Aul" },
+  { key: "serpin", label: "Serpin" },
+  { key: "gos", label: "Gos" },
+];
 
 export default function UniverProgramEditorPage({
   params,
@@ -29,13 +43,13 @@ export default function UniverProgramEditorPage({
   const { id } = use(params);
   const numId = Number(id);
   const { t, locale } = useLocale();
-  const loc = locale as "en" | "ru" | "kz";
+  const loc = locale as "en" | "ru" | "kk";
 
   const [prog, setProg] = useState<UniverProgramRow | null>(null);
   const [allUnis, setAllUnis] = useState<UniversityRow[]>([]);
+  const [allCities, setAllCities] = useState<CityRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"general" | "output">("general");
   const progRef = useRef(prog);
   progRef.current = prog;
 
@@ -43,10 +57,11 @@ export default function UniverProgramEditorPage({
   const [uniSearch, setUniSearch] = useState("");
 
   useEffect(() => {
-    Promise.all([fetchUniverProgram(numId), fetchUniversities()])
-      .then(([p, u]) => {
+    Promise.all([fetchUniverProgram(numId), fetchUniversities(), fetchCities()])
+      .then(([p, u, c]) => {
         setProg(p);
         setAllUnis(u);
+        setAllCities(c);
       })
       .catch((err) => console.error("Failed to load:", err))
       .finally(() => setLoading(false));
@@ -89,6 +104,12 @@ export default function UniverProgramEditorPage({
     allUnis.forEach((u) => m.set(u.id, u));
     return m;
   }, [allUnis]);
+
+  const cityMap = useMemo(() => {
+    const m = new Map<number, CityRow>();
+    allCities.forEach((c) => m.set(c.id, c));
+    return m;
+  }, [allCities]);
 
   function getUniName(uniId: number): string {
     const u = uniMap.get(uniId);
@@ -158,9 +179,8 @@ export default function UniverProgramEditorPage({
     updateParams({ points: newPoints });
   }
 
-  function addPointRow() {
-    const newKey = `category_${Object.keys(points).length + 1}`;
-    updateParams({ points: { ...points, [newKey]: [0, 0, 0, 0, 0] } });
+  function addPointType(typeKey: string) {
+    updateParams({ points: { ...points, [typeKey]: [0, 0, 0, 0, 0] } });
   }
 
   function removePointRow(key: string) {
@@ -171,124 +191,104 @@ export default function UniverProgramEditorPage({
 
   const title = prog.name[loc] || prog.name.en || "";
 
-  return (
-    <>
-      <Breadcrumb
-        items={[
-          { label: t("cm.methodic.heading"), href: "/admin/catalogs" },
-          { label: t("cm.methodic.tabs.univerPrograms"), href: "/admin/catalogs#univerPrograms" },
-          { label: title || "—" },
-        ]}
-      />
+  const editors: number[] = Array.isArray(prog.params?.access) ? prog.params!.access : [];
 
-      <div className="flex gap-1 mb-6 border-b border-gray-100 overflow-x-auto">
-        {(["general", "output"] as const).map((tb) => (
-          <button
-            key={tb}
-            onClick={() => setTab(tb)}
-            className={
-              "relative shrink-0 px-4 py-2.5 text-[0.82rem] font-medium transition-colors " +
-              (tab === tb ? "text-gray-900" : "text-gray-400 hover:text-gray-600")
-            }
-          >
-            {tb === "general" ? t("cm.methodic.tab.general") : t("cm.methodic.tab.output")}
-            {tab === tb && (
-              <span className="absolute bottom-0 left-4 right-4 h-[2px] rounded-full bg-gray-900" />
-            )}
-          </button>
-        ))}
-      </div>
-
-      {tab === "output" && (
-        <OutputVariablesTab
-          type="univerPrograms"
-          output={(prog.params?.output as Record<string, Loc>) ?? {}}
-          onChange={(next) => {
-            const newParams = { ...prog.params, output: next };
-            setProg({ ...prog, params: newParams });
-          }}
-          onBlur={saveAll}
-        />
-      )}
-
-      {tab === "general" && (
+  const detailsNode = (
       <EditorLayout
         editor={
           <div className="space-y-3">
-            <Field label={t("cm.methodic.col.title")}>
-              <div onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) saveName(); }}>
-                <LocalizedInput
-                  value={prog.name}
-                  onChange={(v) => setProg({ ...prog, name: v })}
-                  className={inputClass}
-                />
-              </div>
-            </Field>
-            <Field label={t("cm.methodic.col.code")}>
+            {/* Program identity (code + UNT subjects) */}
+            <div>
+              <label className="block text-[0.68rem] font-medium text-gray-500 mb-1">
+                {t("cm.methodic.col.code")}
+              </label>
               <input
                 type="text"
                 value={prog.code ?? ""}
                 onChange={(e) => setProg({ ...prog, code: e.target.value })}
-                onBlur={() => save({ code: prog.code })}
-                className={inputClass + " font-mono text-xs max-w-xs"}
+                onBlur={() => save({ code: progRef.current?.code ?? null })}
+                className={inputClass}
               />
-            </Field>
-            <Field label={t("cm.methodic.col.subjects")}>
-              <div onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) save({ subjects: prog.subjects }); }}>
+            </div>
+            <div>
+              <label className="block text-[0.68rem] font-medium text-gray-500 mb-1">
+                {t("cm.methodic.col.subjects")}
+              </label>
+              <div onBlur={() => save({ subjects: progRef.current?.subjects ?? null })}>
                 <LocalizedInput
-                  value={prog.subjects ?? { en: "", ru: "", kz: "" }}
+                  value={prog.subjects ?? { en: "", ru: "", kk: "" }}
                   onChange={(v) => setProg({ ...prog, subjects: v })}
                   className={inputClass}
                 />
               </div>
-            </Field>
+            </div>
 
-            {/* UNT Points */}
+            {/* UNT Points — by grant type (rows) and year (columns) */}
             <div>
-              <label className="block text-[0.68rem] font-medium text-gray-500 mb-1">UNT Points</label>
-              <div className="space-y-2">
-                {Object.entries(points).map(([key, values]) => (
-                  <div key={key} className="bg-white rounded-lg border border-gray-100 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <input
-                        type="text"
-                        defaultValue={key}
-                        onBlur={(e) => {
-                          const newKey = e.target.value.trim();
-                          if (newKey && newKey !== key) {
-                            const newPoints = { ...points };
-                            const vals = newPoints[key];
-                            delete newPoints[key];
-                            newPoints[newKey] = vals;
-                            updateParams({ points: newPoints });
-                          }
-                        }}
-                        className="text-xs text-gray-600 font-medium bg-transparent border-b border-gray-200 focus:border-teal-400 outline-none px-1 py-0.5 w-24"
-                      />
-                      <button type="button" onClick={() => removePointRow(key)} className="text-gray-300 hover:text-red-400 transition-colors ml-auto">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.28 7.22a.75.75 0 0 0-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 1 0 1.06 1.06L10 11.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L11.06 10l1.72-1.72a.75.75 0 0 0-1.06-1.06L10 8.94 8.28 7.22Z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                    <div className="flex gap-1.5">
-                      {values.map((v, i) => (
-                        <input
-                          key={i}
-                          type="number"
-                          value={v}
-                          onChange={(e) => updatePointValue(key, i, e.target.value)}
-                          onBlur={() => saveAll()}
-                          className="w-14 rounded border border-gray-200 px-1.5 py-1 text-xs text-center text-gray-700 focus:border-teal-400 outline-none"
-                        />
-                      ))}
-                    </div>
+              <label className="block text-[0.68rem] font-medium text-gray-500 mb-2">
+                UNT minimum points (by type &amp; year)
+              </label>
+
+              {UNT_TYPES.some((tp) => points[tp.key]) ? (
+                <>
+                  {/* Year header */}
+                  <div className="mb-1 flex items-center gap-1.5 pl-[84px]">
+                    {UNT_YEARS.map((y) => (
+                      <div key={y} className="w-14 text-center text-[0.6rem] font-semibold uppercase tracking-wider text-gray-400">
+                        {y}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <button type="button" onClick={() => { addPointRow(); }} className="mt-2 text-xs font-medium text-teal-600 hover:text-teal-700 transition-colors">
-                + {t("common.add")}
-              </button>
+                  {/* One row per grant type */}
+                  <div className="space-y-1.5">
+                    {UNT_TYPES.filter((tp) => points[tp.key]).map((tp) => (
+                      <div key={tp.key} className="flex items-center gap-2">
+                        <span className="w-[80px] shrink-0 text-xs font-medium text-gray-600">{tp.label}</span>
+                        <div className="flex gap-1.5">
+                          {UNT_YEARS.map((_, i) => (
+                            <input
+                              key={i}
+                              type="number"
+                              value={points[tp.key]?.[i] ?? 0}
+                              onChange={(e) => updatePointValue(tp.key, i, e.target.value)}
+                              onBlur={() => saveAll()}
+                              className="w-14 rounded border border-gray-200 px-1.5 py-1 text-xs text-center text-gray-700 focus:border-teal-400 outline-none"
+                            />
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removePointRow(tp.key)}
+                          className="text-gray-300 transition-colors hover:text-red-400"
+                          title="Remove"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.28 7.22a.75.75 0 0 0-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 1 0 1.06 1.06L10 11.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L11.06 10l1.72-1.72a.75.75 0 0 0-1.06-1.06L10 8.94 8.28 7.22Z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="mb-1 text-xs text-gray-300">No UNT points yet — add a grant type below.</div>
+              )}
+
+              {/* Add a grant type */}
+              {UNT_TYPES.some((tp) => !points[tp.key]) && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {UNT_TYPES.filter((tp) => !points[tp.key]).map((tp) => (
+                    <button
+                      key={tp.key}
+                      type="button"
+                      onClick={() => addPointType(tp.key)}
+                      className="rounded border border-dashed border-gray-300 px-2 py-1 text-xs font-medium text-teal-600 transition-colors hover:border-teal-400 hover:text-teal-700"
+                    >
+                      + {tp.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Universities */}
@@ -374,41 +374,146 @@ export default function UniverProgramEditorPage({
             </div>
 
             <div className="border-t border-gray-100 my-1" />
-
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-xs text-gray-400">{saving ? "Saving..." : ""}</span>
-              <button onClick={handleDelete} className="text-xs text-red-500 hover:text-red-700 transition-colors">
-                Delete program
-              </button>
-            </div>
           </div>
         }
-        preview={
-          <div className="text-sm text-gray-500">
-            <div className="font-bold text-gray-900 mb-1">{title || "—"}</div>
-            {prog.code && <div className="font-mono text-xs text-gray-400 mb-2">{prog.code}</div>}
-            {prog.subjects && <div className="text-xs text-gray-500 mb-3">{prog.subjects[loc] || prog.subjects.en}</div>}
-            {universities.length > 0 && (
-              <div>
-                <div className="text-[0.68rem] font-bold text-gray-400 uppercase tracking-wider mb-2">{t("cm.methodic.col.universities")}</div>
-                <div className="space-y-1">
-                  {universities.map((entry) => {
-                    const u = uniMap.get(entry.id);
-                    return (
-                      <div key={entry.id} className="flex items-center gap-2 text-xs">
-                        <span className={u ? "text-gray-900" : "text-red-400 italic"}>{getUniName(entry.id)}</span>
-                        {entry.grant && <span className="text-[0.6rem] bg-green-50 text-green-700 px-1.5 py-0.5 rounded font-semibold">{t("cm.methodic.col.grant")}</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        }
+        preview={<UniverProgramPreview prog={prog} uniMap={uniMap} cityMap={cityMap} />}
       />
+  );
+
+  return (
+    <CatalogDetailScaffold
+      breadcrumb={
+        <Breadcrumb
+          items={[
+            { label: t("cm.methodic.heading"), href: "/admin/catalogs" },
+            { label: t("cm.methodic.tabs.univerPrograms"), href: "/admin/catalogs#univerPrograms" },
+            { label: title || "—" },
+          ]}
+        />
+      }
+      title={title}
+      catalog="univerPrograms"
+      entityId={numId}
+      saving={saving}
+      titleField={{
+        value: prog.name,
+        onChange: (v) => setProg({ ...prog, name: v }),
+        onBlur: saveName,
+      }}
+      descriptionField={{
+        value: prog.desc ?? { en: "", ru: "", kk: "" },
+        onChange: (v) => setProg({ ...prog, desc: v }),
+        onBlur: () => {
+          if (progRef.current) save({ desc: progRef.current.desc });
+        },
+      }}
+      extras={{
+        value: (prog.params?.output as Record<string, Loc>) ?? {},
+        onChange: (next) => {
+          const newParams = { ...prog.params, output: next };
+          setProg({ ...prog, params: newParams });
+        },
+        onBlur: saveAll,
+      }}
+      onDelete={handleDelete}
+      deleteLabel="Delete program"
+      pages={[{ id: "details", label: "UNT points & universities", icon: GraduationCap, render: detailsNode }]}
+      access={{
+        editors,
+        onChange: (ids) => {
+          const newParams = { ...(prog.params ?? {}), access: ids };
+          setProg({ ...prog, params: newParams });
+          save({ params: newParams });
+        },
+      }}
+    />
+  );
+}
+
+// Preview follows the page-level editing language (useContentLocale).
+// Preview reuses the same components as the public education tab: the UNT
+// chart (unt-chart) plus the university cards (program → universities → cities).
+function UniverProgramPreview({
+  prog,
+  uniMap,
+  cityMap,
+}: {
+  prog: UniverProgramRow;
+  uniMap: Map<number, UniversityRow>;
+  cityMap: Map<number, CityRow>;
+}) {
+  const { t, locale } = useLocale();
+  const loc = locale as "en" | "ru" | "kk";
+  const title = prog.name[loc] || prog.name.en || "";
+  const points = prog.params?.points ?? {};
+  const universities = (prog.params?.universities ?? []).map((entry) => {
+    const u = uniMap.get(entry.id);
+    const cityRow = u?.city ?? (u?.cityId != null ? cityMap.get(u.cityId) ?? null : null);
+    return {
+      id: entry.id,
+      name: u ? u.name[loc] || u.name.en : t("cm.methodic.deleted"),
+      city: cityRow ? cityRow.name[loc] || cityRow.name.en : "",
+      type: u?.type === "private" ? "private" : "public",
+      grant: entry.grant,
+      exists: !!u,
+    };
+  });
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className="text-base font-bold text-gray-900">{title || "—"}</div>
+        {prog.code && <div className="mt-0.5 font-mono text-xs text-gray-400">{prog.code}</div>}
+        {prog.subjects && (
+          <div className="mt-1 text-sm text-gray-500">
+            <strong className="text-gray-600">{t("professionDetail.universities.untSubjects")}</strong>{" "}
+            {prog.subjects[loc] || prog.subjects.en}
+          </div>
+        )}
+      </div>
+
+      {Object.keys(points).length > 0 && <UntChart points={points} />}
+
+      {universities.length > 0 && (
+        <div>
+          <div className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-400">
+            {t("professionDetail.universities.subheading")}
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {universities.map((u) => (
+              <div key={u.id} className="rounded-xl border border-black/[0.04] bg-white p-4 shadow-sm">
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <span className={"text-sm font-semibold " + (u.exists ? "text-gray-800" : "italic text-red-400")}>
+                    {u.name}
+                  </span>
+                  <span
+                    className={
+                      "rounded-md px-2 py-0.5 text-xs font-semibold uppercase " +
+                      (u.type === "public" ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800")
+                    }
+                  >
+                    {u.type === "public"
+                      ? t("professionDetail.universities.type.public")
+                      : t("professionDetail.universities.type.private")}
+                  </span>
+                </div>
+                {u.city && <div className="mb-1.5 text-xs text-gray-500">{u.city}</div>}
+                <span
+                  className={
+                    "inline-block rounded-md px-2 py-0.5 text-xs font-bold " +
+                    (u.grant ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800")
+                  }
+                >
+                  {u.grant
+                    ? t("professionDetail.universities.grant.available")
+                    : t("professionDetail.universities.grant.none")}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
-    </>
+    </div>
   );
 }
 

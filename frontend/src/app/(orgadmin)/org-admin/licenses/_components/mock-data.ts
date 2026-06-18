@@ -190,6 +190,17 @@ const allTests = (s1: TestProgress, s2: TestProgress, s3: TestProgress): License
   T(3, s3),
 ];
 
+// Deterministic per-organization variation of the license pool, so each org
+// card in the admin area drills into slightly different (but stable) data.
+export function getOrgLicenses(orgId: string): OrgLicense[] {
+  let h = 0;
+  for (const ch of orgId) h = (h * 31 + ch.charCodeAt(0)) % 997;
+  const start = h % orgLicenses.length;
+  const rotated = [...orgLicenses.slice(start), ...orgLicenses.slice(0, start)];
+  const drop = h % 4;
+  return drop ? rotated.slice(0, rotated.length - drop) : rotated;
+}
+
 export const orgLicenses: OrgLicense[] = [
   { id: id(), code: "PW-7K2M-X9", login: "aibek.n", name: "Aibek Nurlanov", state: "redeemed", tests: allTests("completed", "completed", "assigned") },
   { id: id(), code: "PW-3F8N-Q2", login: "dana.s", name: "Dana Serikova", state: "redeemed", tests: allTests("completed", "assigned", "assigned") },

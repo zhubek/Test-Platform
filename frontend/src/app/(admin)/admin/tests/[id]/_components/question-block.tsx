@@ -81,7 +81,7 @@ export function QuestionBlock({
       const newChoice: AnswerChoice = {
         id: `ch${Date.now()}`,
         value: question.choices.length + 1,
-        text: { en: "", ru: "", kz: "" },
+        text: { en: "", ru: "", kk: "" },
         variables: [],
       };
       onChange({ choices: [...question.choices, newChoice] });

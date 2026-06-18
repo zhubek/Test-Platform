@@ -7,8 +7,8 @@ import type { ContentSurvey } from "../../_components/mock-data";
 
 const emptySurvey: ContentSurvey = {
   id: "new",
-  name: { en: "", ru: "", kz: "" },
-  description: { en: "", ru: "", kz: "" },
+  name: { en: "", ru: "", kk: "" },
+  description: { en: "", ru: "", kk: "" },
   format: "included",
   duration: 5,
   status: "draft",

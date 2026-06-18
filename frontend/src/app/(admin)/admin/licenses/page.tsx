@@ -3,7 +3,7 @@
 import { useProject } from "@/lib/project-context";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
-import { LicensesTable } from "@/app/(orgadmin)/org-admin/licenses/_components/licenses-table";
+import { AdminLicensesTable } from "./_components/admin-licenses-table";
 
 export default function AdminLicensesPage() {
   const { project } = useProject();
@@ -17,7 +17,7 @@ export default function AdminLicensesPage() {
           Licenses across <span className="font-medium text-foreground">{localize(project.name, locale)}</span>.
         </p>
       </div>
-      <LicensesTable />
+      <AdminLicensesTable projectId={project.id} />
     </>
   );
 }

@@ -27,8 +27,8 @@ export function SurveyQuestionsTab({ sections, onSectionsChange }: Props) {
   const handleSectionAdd = () => {
     const newSection: Section = {
       id: `sec${Date.now()}`,
-      title: { en: "", ru: "", kz: "" },
-      description: { en: "", ru: "", kz: "" },
+      title: { en: "", ru: "", kk: "" },
+      description: { en: "", ru: "", kk: "" },
       questions: [],
     };
     onSectionsChange([...sections, newSection]);

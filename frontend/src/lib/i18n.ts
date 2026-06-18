@@ -1,6 +1,9 @@
-export type Locale = "en" | "ru" | "kz";
+// A content/locale code is a dynamic BCP-47 string (en, ru, kk, tr, …). The set
+// shown in the UI is driven per-project; UI-chrome strings exist only for the
+// codes below and fall back to English for any other (see `t`).
+export type Locale = string;
 
-const translations: Record<Locale, Record<string, string>> = {
+const translations: Record<string, Record<string, string>> = {
   en: {
     // ── Topbar (shared) ──
     "topbar.brand": "ProfWise",
@@ -1797,7 +1800,7 @@ const translations: Record<Locale, Record<string, string>> = {
     "cm.catalogs.col.detail": "Детали",
   },
 
-  kz: {},
+  kk: {},
 };
 
 export function t(locale: Locale, key: string): string {

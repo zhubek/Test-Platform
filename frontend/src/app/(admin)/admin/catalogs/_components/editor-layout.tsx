@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale } from "@/lib/locale-context";
+import { PreviewLocaleScope } from "./edit-language";
 
 interface Props {
   editor: React.ReactNode;
@@ -41,7 +42,7 @@ export function EditorLayout({ editor, preview }: Props) {
             {t("cm.methodic.profession.preview")}
           </div>
           <div className="bg-gray-50/80 rounded-2xl border border-gray-100 p-6 overflow-hidden">
-            {preview}
+            <PreviewLocaleScope>{preview}</PreviewLocaleScope>
           </div>
         </div>
       </div>

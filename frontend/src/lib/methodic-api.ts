@@ -5,11 +5,8 @@
 
 import { professionDetails } from "@/app/professions/_components/mock-data";
 
-export interface Localized {
-  en: string;
-  ru: string;
-  kz: string;
-}
+import type { Localized } from "./localized";
+export type { Localized };
 
 const now = () => new Date().toISOString();
 let SEQ = 1000;
@@ -21,12 +18,18 @@ const delay = <T>(v: T): Promise<T> => Promise.resolve(clone(v));
 export interface CityRow {
   id: number;
   name: Localized;
+  desc?: Localized | null;
+  output?: Record<string, Localized>; // per-item extra variables
+  access?: number[]; // user ids allowed to edit this item
   createdAt: string;
   updatedAt: string;
   _count?: { universities: number; colleges: number };
 }
 export interface CityInput {
   name: Localized;
+  desc?: Localized | null;
+  output?: Record<string, Localized>;
+  access?: number[];
 }
 
 // ─────────────────────── University ──────────────────────
@@ -41,10 +44,12 @@ export interface UniversityParams {
   photo?: string;
   grant?: boolean;
   output?: Record<string, Localized>;
+  access?: number[]; // user ids allowed to edit this item
 }
 export interface UniversityRow {
   id: number;
   name: Localized;
+  desc?: Localized | null;
   cityId: number | null;
   city: CityRow | null;
   type: string | null;
@@ -54,6 +59,7 @@ export interface UniversityRow {
 }
 export interface UniversityInput {
   name: Localized;
+  desc?: Localized | null;
   cityId?: number;
   type?: string;
   params?: UniversityParams;
@@ -70,10 +76,12 @@ export interface CollegeParams {
   youtube?: string;
   photo?: string;
   output?: Record<string, Localized>;
+  access?: number[]; // user ids allowed to edit this item
 }
 export interface CollegeRow {
   id: number;
   name: Localized;
+  desc?: Localized | null;
   cityId: number | null;
   city: CityRow | null;
   type: string | null;
@@ -83,6 +91,7 @@ export interface CollegeRow {
 }
 export interface CollegeInput {
   name: Localized;
+  desc?: Localized | null;
   cityId?: number;
   type?: string;
   params?: CollegeParams;
@@ -98,10 +107,12 @@ export interface UniverProgramParams {
   points?: Record<string, number[]>;
   universities?: UniverProgramUniversity[];
   output?: Record<string, Localized>;
+  access?: number[]; // user ids allowed to edit this item
 }
 export interface UniverProgramRow {
   id: number;
   name: Localized;
+  desc?: Localized | null;
   code: string | null;
   subjects: Localized | null;
   params: UniverProgramParams | null;
@@ -110,6 +121,7 @@ export interface UniverProgramRow {
 }
 export interface UniverProgramInput {
   name: Localized;
+  desc?: Localized | null;
   code?: string;
   subjects?: Localized;
   params?: UniverProgramParams;
@@ -123,10 +135,12 @@ export interface CollegeProgramCollege {
 export interface CollegeProgramParams {
   colleges?: CollegeProgramCollege[];
   output?: Record<string, Localized>;
+  access?: number[]; // user ids allowed to edit this item
 }
 export interface CollegeProgramRow {
   id: number;
   name: Localized;
+  desc?: Localized | null;
   code: string | null;
   params: CollegeProgramParams | null;
   createdAt: string;
@@ -134,6 +148,7 @@ export interface CollegeProgramRow {
 }
 export interface CollegeProgramInput {
   name: Localized;
+  desc?: Localized | null;
   code?: string;
   params?: CollegeProgramParams;
 }
@@ -231,7 +246,7 @@ export interface ProfessionCharacteristicRow {
 
 // ═══════════════════════ Seed data ════════════════════════
 const ts = { createdAt: now(), updatedAt: now() };
-const L = (en: string, ru = "", kz = ""): Localized => ({ en, ru, kz });
+const L = (en: string, ru = "", kk = ""): Localized => ({ en, ru, kk });
 
 const cities: CityRow[] = [
   { id: 1, name: L("Almaty", "Алматы", "Алматы"), ...ts },
@@ -253,7 +268,7 @@ const colleges: CollegeRow[] = [
 ];
 
 const univerPrograms: UniverProgramRow[] = [
-  { id: 1, name: L("Computer Science", "Информатика", "Информатика"), code: "6B06103", subjects: L("Math, Physics", "Математика, Физика", "Математика, Физика"), params: { subjects: L("Math, Physics", "Математика, Физика"), points: { "2024": [120, 130, 140] }, universities: [{ id: 1, grant: true }, { id: 3, grant: false }] }, ...ts },
+  { id: 1, name: L("Computer Science", "Информатика", "Информатика"), code: "6B06103", subjects: L("Math, Physics", "Математика, Физика", "Математика, Физика"), params: { subjects: L("Math, Physics", "Математика, Физика"), points: { general: [120, 124, 128, 130, 133], aul: [108, 112, 115, 118, 120], serpin: [100, 103, 106, 108, 110] }, universities: [{ id: 1, grant: true }, { id: 3, grant: false }] }, ...ts },
   { id: 2, name: L("General Medicine", "Общая медицина", "Жалпы медицина"), code: "6B10101", subjects: L("Biology, Chemistry", "Биология, Химия", "Биология, Химия"), params: { subjects: L("Biology, Chemistry", "Биология, Химия"), universities: [{ id: 2, grant: true }] }, ...ts },
   { id: 3, name: L("Economics", "Экономика", "Экономика"), code: "6B04101", subjects: L("Math, Geography", "Математика, География", "Математика, География"), params: { universities: [] }, ...ts },
 ];
@@ -263,8 +278,8 @@ const collegePrograms: CollegeProgramRow[] = [
   { id: 2, name: L("Nursing", "Сестринское дело", "Мейіргер ісі"), code: "09110100", params: { colleges: [{ id: 2, duration: L("3 years 10 months", "3 года 10 месяцев", "3 жыл 10 ай") }] }, ...ts },
 ];
 
-function mkCharacteristic(id: number, typeId: number, en: string, ru: string, kz: string): CharacteristicRow {
-  return { id, characteristicTypeId: typeId, name: L(en, ru, kz), desc: null, archived: false, ...ts };
+function mkCharacteristic(id: number, typeId: number, en: string, ru: string, kk: string): CharacteristicRow {
+  return { id, characteristicTypeId: typeId, name: L(en, ru, kk), desc: null, archived: false, ...ts };
 }
 const characteristicTypes: CharacteristicTypeRow[] = [
   {

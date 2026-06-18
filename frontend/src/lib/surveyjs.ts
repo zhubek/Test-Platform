@@ -5,7 +5,7 @@ export interface SurveyJsLocalized {
   default?: string;
   en?: string;
   ru?: string;
-  kz?: string;
+  kk?: string;
 }
 
 export interface SurveyJsChoice {
@@ -21,6 +21,8 @@ export interface SurveyJsQuestion {
   title: SurveyJsLocalized;
   isRequired?: boolean;
   choices?: SurveyJsChoice[];
+  // SurveyJS choice sort order. "random" shuffles the options per respondent.
+  choicesOrder?: "none" | "asc" | "desc" | "random";
   rateMin?: number;
   rateMax?: number;
   visibleIf?: string;
@@ -34,6 +36,10 @@ export interface SurveyJsPage {
   description?: SurveyJsLocalized;
   elements: SurveyJsQuestion[];
   visibleIf?: string;
+  // SurveyJS question sort order for this page. "random" shuffles the page's
+  // questions per respondent. (Current property name; `questionsOrder` is the
+  // deprecated alias.)
+  questionOrder?: "initial" | "random";
 }
 
 export interface SurveyJsSchema {
@@ -61,10 +67,10 @@ const typeMap: Record<QuestionType, SurveyJsQuestion["type"]> = {
 
 function toLocalized(v: Localized): SurveyJsLocalized {
   return {
-    default: v.en || v.ru || v.kz || "",
+    default: v.en || v.ru || v.kk || "",
     en: v.en,
     ru: v.ru,
-    kz: v.kz,
+    kk: v.kk,
   };
 }
 
@@ -106,6 +112,8 @@ function buildQuestion(q: Question, globalIndex: number): SurveyJsQuestion {
     if (c.visibleIf?.trim()) choice.visibleIf = c.visibleIf;
     return choice;
   });
+  // Shuffle answer options at runtime when requested.
+  if (q.randomizeChoices) base.choicesOrder = "random";
   return base;
 }
 
@@ -135,6 +143,8 @@ export function sectionsToSurveyJson(
           elements: s.questions.map((q) => buildQuestion(q, gi++)),
         };
         if (s.visibleIf?.trim()) page.visibleIf = s.visibleIf;
+        // Shuffle this page's questions at runtime when requested.
+        if (s.randomizeQuestions) page.questionOrder = "random";
         return page;
       });
     })(),

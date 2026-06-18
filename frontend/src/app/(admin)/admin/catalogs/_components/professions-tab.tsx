@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { Star, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
+import { OutputHeaderCells, OutputRowCells } from "./output-columns";
 import {
   fetchProfessions,
   fetchProfessionGroups,
@@ -13,7 +14,7 @@ import {
 
 export function ProfessionsTab() {
   const { t, locale } = useLocale();
-  const loc = locale as "en" | "ru" | "kz";
+  const loc = locale as "en" | "ru" | "kk";
   const [search, setSearch] = useState("");
   const [groupFilter, setGroupFilter] = useState("");
   const [popularFilter, setPopularFilter] = useState("");
@@ -56,31 +57,10 @@ export function ProfessionsTab() {
     return list;
   }, [search, groupFilter, popularFilter, complexityFilter, professions, loc]);
 
-  const complexityBadge = (level: string) => {
-    const styles: Record<string, string> = {
-      low: "bg-green-50 text-green-700",
-      medium: "bg-amber-50 text-amber-700",
-      high: "bg-red-50 text-red-700",
-    };
-    return styles[level] ?? "bg-gray-50 text-gray-600";
-  };
-
-  const groupBadge = (groupName: string) => {
-    const colors: Record<string, string> = {
-      Technology: "bg-blue-50 text-blue-700",
-      Healthcare: "bg-rose-50 text-rose-700",
-      Education: "bg-amber-50 text-amber-700",
-      Business: "bg-emerald-50 text-emerald-700",
-      "Creative Arts": "bg-purple-50 text-purple-700",
-      Science: "bg-cyan-50 text-cyan-700",
-    };
-    return colors[groupName] ?? "bg-gray-100 text-gray-600";
-  };
-
   async function handleAdd() {
     try {
       const created = await createProfession({
-        name: { en: "", ru: "", kz: "" },
+        name: { en: "", ru: "", kk: "" },
       });
       window.location.href = `/admin/catalogs/professions/${created.id}`;
     } catch (err) {
@@ -171,73 +151,26 @@ export function ProfessionsTab() {
                   <th className="py-2.5 px-4 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wider">
                     {t("cm.methodic.col.title")}
                   </th>
-                  <th className="py-2.5 px-4 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wider">
-                    {t("cm.methodic.col.code")}
-                  </th>
-                  <th className="py-2.5 px-4 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wider">
-                    {t("cm.methodic.col.group")}
-                  </th>
-                  <th className="py-2.5 px-4 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wider">
-                    {t("cm.methodic.col.popular")}
-                  </th>
-                  <th className="py-2.5 px-4 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wider">
-                    {t("cm.methodic.col.complexity")}
-                  </th>
+                  <OutputHeaderCells type="professions" />
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((p) => {
-                  const groupName = p.profGroup?.name.en || "";
-                  return (
-                    <tr
-                      key={p.id}
-                      className="border-b border-gray-50 hover:bg-teal-50/30 transition-colors cursor-pointer"
-                      onClick={() =>
-                        (window.location.href = `/admin/catalogs/professions/${p.id}`)
-                      }
-                    >
-                      <td className="py-3 px-4">
-                        <span className="text-sm font-medium text-gray-900">
-                          {p.name[loc] || p.name.en}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="font-mono text-xs text-gray-400">
-                          {p.code}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        {groupName && (
-                          <span
-                            className={
-                              "text-[0.65rem] font-semibold px-2 py-0.5 rounded-full " +
-                              groupBadge(groupName)
-                            }
-                          >
-                            {p.profGroup?.name[loc] || groupName}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        {p.popular && (
-                          <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        {p.complexityLevel && (
-                          <span
-                            className={
-                              "text-[0.65rem] font-semibold px-2 py-0.5 rounded-full " +
-                              complexityBadge(p.complexityLevel)
-                            }
-                          >
-                            {t(`cm.methodic.complexity.${p.complexityLevel}`)}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {filtered.map((p) => (
+                  <tr
+                    key={p.id}
+                    className="border-b border-gray-50 hover:bg-teal-50/30 transition-colors cursor-pointer"
+                    onClick={() =>
+                      (window.location.href = `/admin/catalogs/professions/${p.id}`)
+                    }
+                  >
+                    <td className="py-3 px-4">
+                      <span className="text-sm font-medium text-gray-900">
+                        {p.name[loc] || p.name.en}
+                      </span>
+                    </td>
+                    <OutputRowCells type="professions" output={p.params?.output} />
+                  </tr>
+                ))}
               </tbody>
             </table>
           )}

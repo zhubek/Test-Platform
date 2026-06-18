@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useLocale } from "@/lib/locale-context";
+import { useContentLocale } from "../../../_components/edit-language";
 import { EditorLayout } from "../../../_components/editor-layout";
 import {
   fetchCharacteristicTypes,
@@ -19,8 +20,8 @@ interface Props {
 }
 
 export function CharacteristicsEditor({ professionId }: Props) {
-  const { t, locale } = useLocale();
-  const loc = locale as "en" | "ru" | "kz";
+  const { t } = useLocale();
+  const loc = useContentLocale();
 
   const [charTypes, setCharTypes] = useState<CharacteristicTypeRow[]>([]);
   const [profChars, setProfChars] = useState<ProfessionCharacteristicRow[]>([]);
@@ -217,7 +218,7 @@ function TypeSection({
 }: {
   charType: CharacteristicTypeRow;
   records: ProfessionCharacteristicRow[];
-  loc: "en" | "ru" | "kz";
+  loc: string;
   t: (key: string) => string;
   onUpdateLevel: (pcId: number, level: number) => void;
   onRemove: () => void;

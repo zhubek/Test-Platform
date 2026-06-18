@@ -8,10 +8,11 @@ import {
   type CollegeProgramRow,
 } from "@/lib/methodic-api";
 import { Plus } from "lucide-react";
+import { OutputHeaderCells, OutputRowCells } from "./output-columns";
 
 export function CollegeProgramsTab() {
   const { t, locale } = useLocale();
-  const loc = locale as "en" | "ru" | "kz";
+  const loc = locale as "en" | "ru" | "kk";
   const [search, setSearch] = useState("");
   const [programs, setPrograms] = useState<CollegeProgramRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +37,7 @@ export function CollegeProgramsTab() {
   async function handleAdd() {
     try {
       const created = await createCollegeProgram({
-        name: { en: "", ru: "", kz: "" },
+        name: { en: "", ru: "", kk: "" },
       });
       window.location.href = `/admin/catalogs/college-programs/${created.id}`;
     } catch (err) {
@@ -76,12 +77,7 @@ export function CollegeProgramsTab() {
                   <th className="py-2.5 px-4 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wider">
                     {t("cm.methodic.col.title")}
                   </th>
-                  <th className="py-2.5 px-4 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wider">
-                    {t("cm.methodic.col.code")}
-                  </th>
-                  <th className="py-2.5 px-4 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wider">
-                    {t("cm.methodic.col.colleges")}
-                  </th>
+                  <OutputHeaderCells type="collegePrograms" />
                 </tr>
               </thead>
               <tbody>
@@ -98,16 +94,7 @@ export function CollegeProgramsTab() {
                         {p.name[loc] || p.name.en}
                       </span>
                     </td>
-                    <td className="py-3 px-4">
-                      <span className="font-mono text-xs text-gray-400">
-                        {p.code}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="text-xs text-gray-400">
-                        {p.params?.colleges?.length ?? 0}
-                      </span>
-                    </td>
+                    <OutputRowCells type="collegePrograms" output={p.params?.output} />
                   </tr>
                 ))}
               </tbody>

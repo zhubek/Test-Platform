@@ -7,6 +7,7 @@ import { localize } from "@/lib/localized";
 import { LocalizedInput } from "@/components/localized-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -299,6 +300,24 @@ function AdvancedEditor({
           onChange={(next) => onQuestionUpdate({ logic: next })}
         />
       </div>
+
+      {/* Randomize answer options — maps to SurveyJS choicesOrder: "random" */}
+      {hasChoices && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2.5">
+          <div className="min-w-0">
+            <p className="text-[0.78rem] font-medium text-foreground">
+              Randomize answer options
+            </p>
+            <p className="text-[0.66rem] text-muted-foreground">
+              Shuffle the order options appear for each respondent.
+            </p>
+          </div>
+          <Switch
+            checked={!!question.randomizeChoices}
+            onCheckedChange={(checked) => onQuestionUpdate({ randomizeChoices: checked })}
+          />
+        </div>
+      )}
 
       {/* Options — editable text + value + visibleIf */}
       {hasChoices ? (

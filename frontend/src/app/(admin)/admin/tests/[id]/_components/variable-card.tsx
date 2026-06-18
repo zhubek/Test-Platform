@@ -47,7 +47,7 @@ export function VariableCard({ variable, onChange, onDelete, readOnlyValue, noFo
   const addTranslation = () => {
     const nextValue = translations.reduce((m, tr) => Math.max(m, tr.value), 0) + 1;
     onChange({
-      valueTranslations: [...translations, { value: nextValue, label: { en: "", ru: "", kz: "" } }],
+      valueTranslations: [...translations, { value: nextValue, label: { en: "", ru: "", kk: "" } }],
     });
     setTrOpen(true);
   };

@@ -19,7 +19,6 @@ import { cn } from "@/lib/utils";
 import type { Localized } from "@/lib/localized";
 import type { TestIconKey } from "../../../_components/mock-data";
 import type { VisibilityRule } from "@/lib/visibility-rule";
-import { VisibilityTagsField } from "./visibility-tags-field";
 import { VisibilityRuleBuilder } from "./visibility-rule-builder";
 
 const COLOR_SWATCHES = [
@@ -44,7 +43,6 @@ interface Props {
   color: string;
   icon: TestIconKey;
   category: Localized;
-  visibilityTags: string[];
   visibilityRule: VisibilityRule;
   duration: number;
   onNameChange: (v: Localized) => void;
@@ -52,7 +50,6 @@ interface Props {
   onColorChange: (v: string) => void;
   onIconChange: (v: TestIconKey) => void;
   onCategoryChange: (v: Localized) => void;
-  onVisibilityTagsChange: (v: string[]) => void;
   onVisibilityRuleChange: (v: VisibilityRule) => void;
   onDurationChange: (v: number) => void;
 }
@@ -63,7 +60,6 @@ export function GeneralTab({
   color,
   icon,
   category,
-  visibilityTags,
   visibilityRule,
   duration,
   onNameChange,
@@ -71,7 +67,6 @@ export function GeneralTab({
   onColorChange,
   onIconChange,
   onCategoryChange,
-  onVisibilityTagsChange,
   onVisibilityRuleChange,
   onDurationChange,
 }: Props) {
@@ -173,17 +168,6 @@ export function GeneralTab({
           />
           <span className="text-[0.78rem] text-muted-foreground">{t("cm.general.durationUnit")}</span>
         </div>
-      </div>
-
-      {/* Visibility tags */}
-      <div>
-        <label className="block text-[0.75rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-          {t("cm.general.visibilityTagsLabel")}
-        </label>
-        <VisibilityTagsField value={visibilityTags} onChange={onVisibilityTagsChange} />
-        <p className="mt-1.5 text-[0.72rem] text-muted-foreground">
-          {t("cm.general.visibilityTagsHint")}
-        </p>
       </div>
 
       {/* Parameter-based visibility rule */}

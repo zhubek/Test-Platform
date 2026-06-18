@@ -1,0 +1,45 @@
+/* Custom animations used by the landing components (ported from the AI Studio
+   build's index.html). Scoped utility classes so they don't affect the app. */
+
+@keyframes tp-fade-in-up {
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: tp-fade-in-up 0.7s ease-out forwards;
+}
+
+@keyframes tp-spin-slow {
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+  animation: tp-spin-slow 8s linear infinite;
+}
+
+/* Reveal a chart by wiping in from the left. */
+@keyframes tp-draw-chart {
+  0% { clip-path: inset(-20px 100% -20px -20px); }
+  100% { clip-path: inset(-20px -20px -20px -20px); }
+}
+.chart-reveal {
+  animation: tp-draw-chart 1.5s ease-out forwards;
+  clip-path: inset(-20px 100% -20px -20px);
+}
+
+/* Extras referenced by the original mockups. */
+@keyframes tp-pop-in {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-pop-in {
+  animation: tp-pop-in 0.4s ease-out forwards;
+}
+
+@keyframes tp-flash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.animate-flash {
+  animation: tp-flash 1s ease-out forwards;
+}

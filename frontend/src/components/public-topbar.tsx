@@ -6,7 +6,7 @@ import { useLocale } from "@/lib/locale-context";
 import { cn } from "@/lib/utils";
 import { ButtonLink } from "@/components/button-link";
 
-const locales = ["kz", "ru", "en"] as const;
+const locales = ["kk", "ru", "en"] as const;
 
 export function PublicTopbar() {
   const pathname = usePathname();

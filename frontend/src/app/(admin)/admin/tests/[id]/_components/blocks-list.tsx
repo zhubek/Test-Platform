@@ -41,6 +41,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { localize as loc } from "@/lib/localized";
 import type { Section, QuestionType } from "../../../_components/mock-data";
@@ -141,7 +142,7 @@ export function BlocksList({
     const id = String(e.active.id);
     if (isSectionId(id)) {
       const s = sections[sectionIndexById(id)];
-      setActiveDrag({ kind: "section", label: localize(s?.title ?? { en: "", ru: "", kz: "" }, locale) || "Page" });
+      setActiveDrag({ kind: "section", label: localize(s?.title ?? { en: "", ru: "", kk: "" }, locale) || "Page" });
     } else {
       const loc2 = findQuestion(id);
       const q = loc2 && sections[loc2.si].questions[loc2.qi];
@@ -282,30 +283,50 @@ export function BlocksList({
       <Dialog open={logicPage !== null} onOpenChange={(o) => !o && setLogicPage(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Page logic</DialogTitle>
+            <DialogTitle>Page settings</DialogTitle>
             <DialogDescription>
               {logicPage !== null &&
-                `Show "${loc(sections[logicPage].title, locale) || `Page ${logicPage + 1}`}" only when this condition is true. Leave empty to always show.`}
+                `Settings for "${loc(sections[logicPage].title, locale) || `Page ${logicPage + 1}`}".`}
             </DialogDescription>
           </DialogHeader>
           {logicPage !== null && (
-            <div className="space-y-1.5">
-              <label className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                Visible if
-              </label>
-              <Input
-                autoFocus
-                value={sections[logicPage].visibleIf ?? ""}
-                onChange={(e) =>
-                  onSectionUpdate(logicPage, { visibleIf: e.target.value || undefined })
-                }
-                placeholder="{q1} = 'yes'"
-                className="font-mono"
-              />
-              <p className="text-[0.7rem] text-muted-foreground">
-                e.g. <code className="font-mono">{"{age} >= 18"}</code> or{" "}
-                <code className="font-mono">{"{q1} contains 'a'"}</code>
-              </p>
+            <div className="space-y-4">
+              {/* Randomize question order — maps to SurveyJS questionOrder: "random" */}
+              <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-[0.78rem] font-medium text-foreground">
+                    Randomize question order
+                  </p>
+                  <p className="text-[0.66rem] text-muted-foreground">
+                    Shuffle this page&apos;s questions for each respondent.
+                  </p>
+                </div>
+                <Switch
+                  checked={!!sections[logicPage].randomizeQuestions}
+                  onCheckedChange={(checked) =>
+                    onSectionUpdate(logicPage, { randomizeQuestions: checked })
+                  }
+                />
+              </div>
+
+              {/* Page visibility */}
+              <div className="space-y-1.5">
+                <label className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Visible if
+                </label>
+                <Input
+                  value={sections[logicPage].visibleIf ?? ""}
+                  onChange={(e) =>
+                    onSectionUpdate(logicPage, { visibleIf: e.target.value || undefined })
+                  }
+                  placeholder="{q1} = 'yes'"
+                  className="font-mono"
+                />
+                <p className="text-[0.7rem] text-muted-foreground">
+                  Show this page only when the condition is true. Leave empty to always show — e.g.{" "}
+                  <code className="font-mono">{"{age} >= 18"}</code>
+                </p>
+              </div>
             </div>
           )}
         </DialogContent>
@@ -340,7 +361,7 @@ function SortableSection({
   isActive: boolean;
   isCollapsed: boolean;
   isEditingTitle: boolean;
-  locale: "en" | "ru" | "kz";
+  locale: string;
   tr: (key: string) => string;
   questionTypes: { value: QuestionType; key: string }[];
   onToggle: () => void;
@@ -410,8 +431,8 @@ function SortableSection({
           variant="ghost"
           size="icon-xs"
           onClick={onOpenLogic}
-          className={cn(section.visibleIf?.trim() && "text-primary")}
-          title="Page logic (visible if)"
+          className={cn((section.visibleIf?.trim() || section.randomizeQuestions) && "text-primary")}
+          title="Page settings (logic & randomization)"
         >
           <GitBranch className="h-3.5 w-3.5" />
         </Button>

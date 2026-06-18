@@ -1,826 +1,817 @@
 "use client";
 
-import { useState } from "react";
+// Result View tab — compose the page a test-taker sees after finishing: view
+// blocks (charts, tiles, text) whose props bind to the RESULT scope. Props take
+// variables the same way single-question props do (the {{ }} picker / ExprInput);
+// the variables offered are this test's declared variables + calculated values
+// (from advancedParams) and the project PARAMETERS, plus the runtime context.
+//
+// Persists to the DB: each block is a TestBlock row on the RESULT surface; the
+// live preview renders the declared variables at a sample value.
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowDown, ArrowLeft, ArrowUp, Copy, Plus, Trash2, X } from "lucide-react";
 import {
-  Plus, Trash2, Pencil, ChevronLeft, ChevronRight, X, GripVertical, Code2, Copy, Check,
-  BarChart3, Radar, PieChart, Table, LayoutGrid, AlignLeft,
-  Trophy, Gauge as GaugeIcon, ListOrdered, Award, Heading, Type, Minus,
-} from "lucide-react";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-  arrayMove,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+  fetchBlocks,
+  fetchTest,
+  fetchTestBlocks,
+  saveTestBlocks,
+  type AdminTestBlock,
+  type Block,
+  type BlockProp,
+} from "@/lib/backend";
+import { ViewRenderer } from "@/lib/view-renderer";
+import { resolvePath } from "@/lib/view-expr";
+import { SAMPLE_CONTEXT } from "@/lib/mock-sources";
+import { useProject } from "@/lib/project-context";
 import { useLocale } from "@/lib/locale-context";
-import { localize, l } from "@/lib/localized";
+import {
+  modeOf,
+  resolveBlockRef,
+  resolveInstanceProps,
+  type StoredValue,
+  type TestVar,
+} from "@/lib/question-instances";
+import { resultScopeFromStored } from "@/lib/test-runtime";
+import { parameterVars, type ResultBlockInstance } from "@/lib/result-draft";
+import { slugVar, type CalcVar, type CatalogMatch } from "@/lib/calculation-draft";
+import { useDcGroups, groupByName, loadGroupItems, type DcItem } from "@/lib/dc-catalogs";
+import {
+  buildMatchObject,
+  matchCharacteristics,
+  matchObjectFields,
+  pickRandomItems,
+  sampleScores,
+} from "@/lib/match-output";
+import { localize } from "@/lib/localized";
+import {
+  DbEditor,
+  ExprInput,
+  ModeToggle,
+  type ExprVarGroup,
+  type PropMode,
+} from "@/components/prop-source";
+import { emptyDbBinding, type DbBinding } from "@/lib/mock-sources";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LocalizedInput } from "@/components/localized-input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { findGroup, catalogFields } from "@/lib/catalog-characteristics";
-import { ResultComponentView, type ResultDatum } from "./result-component";
-import { buildResultJson } from "@/lib/result-json";
-import { VariableSelect, VariableMultiSelect } from "./variable-select";
-import type {
-  ResultComponent,
-  ResultComponentType,
-  ResultPage,
-  CatalogMapping,
-  Variable,
-} from "../../../_components/mock-data";
 
-interface Props {
-  pages: ResultPage[];
-  variables: Variable[];
-  mappings: CatalogMapping[];
-  onChange: (pages: ResultPage[]) => void;
-}
+export function ResultViewTab({ testId }: { testId?: string }) {
+  const { project } = useProject();
+  const { locale } = useLocale();
+  const [blocks, setBlocks] = useState<Block[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<ResultBlockInstance[]>([]);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [sample, setSample] = useState(3);
+  const idRef = useRef(0);
 
-type BlockBinding = ResultComponent["binding"]["kind"] | "static";
-interface BlockDef {
-  type: ResultComponentType;
-  icon: typeof BarChart3;
-  key: string; // label i18n key
-  descKey: string; // short description i18n key
-  // config group drives how the block is configured & previewed:
-  //  text    → a {var} template; single → one numeric var; multi → many numeric vars;
-  //  catalog → a mapping + a catalog parameter; divider → nothing.
-  group: "text" | "single" | "multi" | "catalog" | "divider";
-}
+  // This test's declared variables + calculated values + catalog matches, from
+  // the DB. They drive both the {{ }} picker and the preview scope.
+  const [vars, setVars] = useState<TestVar[]>([]);
+  const [calc, setCalc] = useState<CalcVar[]>([]);
+  const [matches, setMatches] = useState<CatalogMatch[]>([]);
+  const loadedRef = useRef(false);
+  const catalogs = useDcGroups();
+  // Real catalog items per matched catalog, for the preview's random samples.
+  const [itemsByCatalog, setItemsByCatalog] = useState<Record<string, DcItem[]>>({});
 
-const COMPONENT_TYPES: BlockDef[] = [
-  // Text (template with {var})
-  { type: "heading", icon: Heading, key: "cm.resultView.typeHeading", descKey: "cm.resultView.descHeading", group: "text" },
-  { type: "text", icon: Type, key: "cm.resultView.typeText", descKey: "cm.resultView.descText", group: "text" },
-  { type: "summary_text", icon: AlignLeft, key: "cm.resultView.typeSummary", descKey: "cm.resultView.descSummary", group: "text" },
-  // Single numeric variable
-  { type: "score_card", icon: Trophy, key: "cm.resultView.typeCard", descKey: "cm.resultView.descCard", group: "single" },
-  { type: "gauge", icon: GaugeIcon, key: "cm.resultView.typeGauge", descKey: "cm.resultView.descGauge", group: "single" },
-  // Multiple numeric variables (charts)
-  { type: "characteristics_bar", icon: BarChart3, key: "cm.resultView.typeBar", descKey: "cm.resultView.descBar", group: "multi" },
-  { type: "characteristics_radar", icon: Radar, key: "cm.resultView.typeRadar", descKey: "cm.resultView.descRadar", group: "multi" },
-  { type: "characteristics_pie", icon: PieChart, key: "cm.resultView.typePie", descKey: "cm.resultView.descPie", group: "multi" },
-  { type: "score_table", icon: Table, key: "cm.resultView.typeTable", descKey: "cm.resultView.descTable", group: "multi" },
-  { type: "stat_grid", icon: LayoutGrid, key: "cm.resultView.typeStatGrid", descKey: "cm.resultView.descStatGrid", group: "multi" },
-  // Catalog matching
-  { type: "matches_list", icon: ListOrdered, key: "cm.resultView.typeMatches", descKey: "cm.resultView.descMatches", group: "catalog" },
-  { type: "match_detail", icon: Award, key: "cm.resultView.typeMatchDetail", descKey: "cm.resultView.descMatchDetail", group: "catalog" },
-  // Divider (no config)
-  { type: "divider", icon: Minus, key: "cm.resultView.typeDivider", descKey: "cm.resultView.descDivider", group: "divider" },
-];
-
-const BLOCK_GROUPS: { id: BlockDef["group"]; key: string }[] = [
-  { id: "text", key: "cm.resultView.groupText" },
-  { id: "single", key: "cm.resultView.groupSingle" },
-  { id: "multi", key: "cm.resultView.groupMulti" },
-  { id: "catalog", key: "cm.resultView.groupMapping" },
-  { id: "divider", key: "cm.resultView.groupLayout" },
-];
-
-export function ResultViewTab({ pages, variables, mappings, onChange }: Props) {
-  const { t, locale } = useLocale();
-  const charVars = variables.filter((v) => v.kind === "characteristic");
-  const [active, setActive] = useState(0);
-  const [editingTitle, setEditingTitle] = useState<number | null>(null);
-  const [showJson, setShowJson] = useState(false);
-  const [jsonCopied, setJsonCopied] = useState(false);
-  const resultJson = JSON.stringify(buildResultJson(pages), null, 2);
-
-  const activePage = pages[Math.min(active, Math.max(0, pages.length - 1))];
-  // Which page's "Add block" modal is open (null = closed).
-  const [pickerPage, setPickerPage] = useState<number | null>(null);
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-
-  // ── Page handlers ───────────────────────────────────────────────
-  const addPage = () => {
-    onChange([...pages, { id: `rp_${Date.now()}`, title: { en: "", ru: "", kz: "" }, components: [] }]);
-    setActive(pages.length);
-  };
-  const updatePage = (pi: number, partial: Partial<ResultPage>) =>
-    onChange(pages.map((p, i) => (i === pi ? { ...p, ...partial } : p)));
-  const deletePage = (pi: number) => {
-    onChange(pages.filter((_, i) => i !== pi));
-    setActive((a) => Math.max(0, Math.min(a, pages.length - 2)));
-  };
-
-  // Drag handlers: page ids are "rp:<id>", block ids are "rc:<id>".
-  const onPagesDragEnd = (e: DragEndEvent) => {
-    const { active: a, over } = e;
-    if (!over || a.id === over.id) return;
-    const from = pages.findIndex((p) => `rp:${p.id}` === a.id);
-    const to = pages.findIndex((p) => `rp:${p.id}` === over.id);
-    if (from !== -1 && to !== -1) {
-      onChange(arrayMove(pages, from, to));
-      setActive(to);
+  // ── Load: RESULT library + this test's RESULT blocks + declared variables ────
+  useEffect(() => {
+    if (!testId) {
+      setLoading(false);
+      loadedRef.current = true;
+      return;
     }
-  };
-  const onBlocksDragEnd = (pi: number) => (e: DragEndEvent) => {
-    const { active: a, over } = e;
-    if (!over || a.id === over.id) return;
-    const comps = pages[pi].components;
-    const from = comps.findIndex((c) => `rc:${c.id}` === a.id);
-    const to = comps.findIndex((c) => `rc:${c.id}` === over.id);
-    if (from !== -1 && to !== -1) updatePage(pi, { components: arrayMove(comps, from, to) });
-  };
+    let active = true;
+    setLoading(true);
+    loadedRef.current = false;
+    Promise.all([fetchBlocks("RESULT"), fetchTest(testId), fetchTestBlocks(testId, "RESULT")])
+      .then(([lib, test, tbs]) => {
+        if (!active) return;
+        setBlocks(lib);
+        const ap = (test.advancedParams ?? {}) as { vars?: unknown; calc?: unknown };
+        setVars(
+          Array.isArray(ap.vars)
+            ? ap.vars.map((v) => ({
+                name: String((v as TestVar).name ?? ""),
+                initial: String((v as TestVar).initial ?? "0"),
+              }))
+            : [],
+        );
+        setCalc(Array.isArray(ap.calc) ? (ap.calc as CalcVar[]) : []);
+        setMatches(Array.isArray((ap as { matches?: unknown }).matches) ? ((ap as { matches?: CatalogMatch[] }).matches ?? []) : []);
+        setItems(
+          tbs.map((b: AdminTestBlock) => ({
+            id: b.id,
+            blockId: b.blockId,
+            blockName: b.block?.name,
+            props: (b.props ?? {}) as Record<string, StoredValue>,
+          })),
+        );
+        loadedRef.current = true;
+      })
+      .catch((e) => console.error("Failed to load result page:", e))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [testId]);
 
-  // ── Component handlers (within the active page) ─────────────────
-  const setComponents = (pi: number, components: ResultComponent[]) => updatePage(pi, { components });
-  const addComponent = (pi: number, type: ResultComponentType) => {
-    const def = COMPONENT_TYPES.find((c) => c.type === type)!;
-    const binding: ResultComponent["binding"] =
-      def.group === "catalog" ? { kind: "mapping", mappingId: mappings[0]?.id } : { kind: "characteristics" };
-    const options: ResultComponent["options"] =
-      type === "matches_list" ? { count: 5, sort: "score_desc", showValues: true } : { sort: "score_desc", showValues: true };
-    setComponents(pi, [
-      ...pages[pi].components,
-      {
-        id: `rc_${Date.now()}`,
-        type,
-        title: { en: "", ru: "", kz: "" },
-        binding,
-        variableNames: [],
-        options,
-        params: [],
-        ...(def.group === "text" ? { content: { en: "", ru: "", kz: "" } } : {}),
-        ...(def.group === "catalog" ? { catalogFieldId: "name" } : {}),
-      },
-    ]);
-  };
-  const updateComponent = (pi: number, id: string, partial: Partial<ResultComponent>) =>
-    setComponents(pi, pages[pi].components.map((c) => (c.id === id ? { ...c, ...partial } : c)));
-  const removeComponent = (pi: number, id: string) =>
-    setComponents(pi, pages[pi].components.filter((c) => c.id !== id));
+  // ── Debounced persistence to the DB (RESULT surface) ─────────────────────────
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const save = useCallback(
+    (next: ResultBlockInstance[]) => {
+      setItems(next);
+      if (!testId || !loadedRef.current) return;
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => {
+        saveTestBlocks(
+          testId,
+          "RESULT",
+          next.map((it) => ({ blockId: it.blockId, props: it.props })),
+        ).catch((e) => console.error("Failed to save result page:", e));
+      }, 600);
+    },
+    [testId],
+  );
 
-  // Fabricated sample score for a variable (stable per name), for previews.
-  const sampleScore = (i: number) => 30 + ((i * 37) % 60);
+  // Load the real items for each matched catalog (cached), for preview samples.
+  useEffect(() => {
+    const names = [...new Set(matches.map((m) => m.catalogId))];
+    let active = true;
+    Promise.all(
+      names.map((name) => loadGroupItems(name).then((rows) => [name, rows] as const).catch(() => [name, []] as const)),
+    ).then((pairs) => {
+      if (active) setItemsByCatalog(Object.fromEntries(pairs));
+    });
+    return () => {
+      active = false;
+    };
+  }, [matches]);
 
-  // Sample data for a component, honoring its variable selection / catalog param.
-  const sampleData = (c: ResultComponent): ResultDatum[] => {
-    if (c.binding.kind === "mapping") {
-      const m = mappings.find((x) => x.id === c.binding.mappingId);
-      const group = m && findGroup(m.catalogId, m.groupId);
-      const items = (group?.items ?? []).slice(0, c.options?.count ?? m?.topN ?? 5);
-      const fieldId = c.catalogFieldId ?? "name";
-      return items.map((it, i) => {
-        const score = 95 - i * 11;
-        let label: string;
-        if (fieldId === "name") label = localize(it.name, locale);
-        else if (fieldId === "description") label = it.description ? localize(it.description, locale) : "—";
-        else if (fieldId === "score") label = String(score);
-        else {
-          const f = it.fields?.[fieldId];
-          label = f == null ? "—" : typeof f === "number" ? String(f) : localize(f, locale);
-        }
-        return { label, value: score };
+  // The variables a result prop can reference. Plain calc vars exclude the
+  // derived top{r} objects — those are offered per-field under "Match" groups.
+  const charVars = useMemo(
+    () => [
+      ...vars.filter((v) => v.name.trim()).map((v) => ({ token: v.name, hint: "variable" })),
+      ...calc
+        .filter((c) => c.name?.trim() && !c.derived)
+        .map((c) => ({ token: c.name, hint: "calculated" })),
+    ],
+    [vars, calc],
+  );
+  const paramVars = useMemo(() => parameterVars(project.parameters, locale), [project.parameters, locale]);
+
+  // One picker group per match. To avoid flooding the list with rank×field
+  // tokens, only the FIRST rank is expanded into its fields (top1.name,
+  // top1.score, top1.salary, …); every other rank is a single object token
+  // (top2, top3, …) — you write top2.salary by analogy.
+  const matchGroups: ExprVarGroup[] = useMemo(() => {
+    return matches
+      .map((m) => {
+        const group = groupByName(m.catalogId);
+        const fields = matchObjectFields(group);
+        const fieldList = fields.map((f) => `.${f.token}`).join(" ");
+        const bases = calc
+          .filter((c) => c.matchId === m.id && c.derived)
+          .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0))
+          .map((c) => c.name);
+        const items = bases.flatMap((base, i) =>
+          i === 0
+            ? [
+                { token: base, hint: "match object" },
+                ...fields.map((f) => ({ token: `${base}.${f.token}`, hint: f.hint })),
+              ]
+            : [{ token: base, hint: `match object — ${fieldList}` }],
+        );
+        return { label: `Match · ${m.catalogLabel}`, items };
+      })
+      .filter((g) => g.items.length > 0);
+    // catalogs in deps so the group labels/fields refresh once catalogs load.
+  }, [matches, calc, catalogs]);
+
+  const exprGroups: ExprVarGroup[] = useMemo(() => {
+    const groups: ExprVarGroup[] = [];
+    if (charVars.length) groups.push({ label: "Variables", items: charVars });
+    groups.push(...matchGroups);
+    if (paramVars.length)
+      groups.push({ label: "Parameters", items: paramVars.map((p) => ({ token: p.name, hint: p.hint })) });
+    groups.push({
+      label: "Context",
+      items: RESULT_CONTEXT_PATHS.map((p) => ({ token: p, hint: String(resolvePath(p, SAMPLE_CONTEXT) ?? "") })),
+    });
+    return groups;
+  }, [charVars, matchGroups, paramVars]);
+
+  // Preview scope: each declared variable at the sample value, calc folded on
+  // top, parameters at a sample option, plus the runtime context (result.*).
+  const scope = useMemo(() => {
+    const stored = vars
+      .filter((v) => v.name.trim())
+      .map((v) => ({ variable: v.name, value: sample }));
+    const base = resultScopeFromStored(stored, calc, { ...SAMPLE_CONTEXT });
+    for (const p of project.parameters) {
+      const name = slugVar(localize(p.label, locale) || p.id);
+      const opts = p.options.map((o) => localize(o, locale));
+      base[name] = p.type === "multiple" ? opts.slice(0, 1) : opts[0] ?? "";
+    }
+    // Match outputs: each top{r} is an object from a random catalog item, with a
+    // sorted-descending random fit score so top1.score ≥ top2.score ≥ ….
+    for (const m of matches) {
+      const group = groupByName(m.catalogId);
+      const chars = matchCharacteristics(group, m);
+      const bases = calc
+        .filter((c) => c.matchId === m.id && c.derived)
+        .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
+      const picks = pickRandomItems(itemsByCatalog[m.catalogId] ?? [], bases.length);
+      const scores = sampleScores(bases.length);
+      bases.forEach((cv, i) => {
+        const item = picks[i];
+        base[cv.name] = item
+          ? buildMatchObject(item, cv.rank ?? i + 1, scores[i], group, chars, locale)
+          : { rank: cv.rank ?? i + 1, score: scores[i], name: `(no ${m.catalogLabel} items)` };
       });
     }
-    // single var → just that one; multi → picked subset (or all)
-    let picked = charVars;
-    if (c.binding.kind === "variable" && c.binding.variableName) {
-      picked = charVars.filter((v) => v.name === c.binding.variableName);
-    } else if (c.variableNames?.length) {
-      // preserve the author's manual order
-      const byName = new Map(charVars.map((v) => [v.name, v]));
-      picked = c.variableNames.map((n) => byName.get(n)).filter((v): v is (typeof charVars)[number] => !!v);
-    }
-    return picked.map((v) => ({ label: localize(v.label, locale) || v.name, value: sampleScore(charVars.indexOf(v)) }));
+    return base;
+  }, [vars, calc, matches, itemsByCatalog, project.parameters, locale, sample, catalogs]);
+
+  const blockById = useMemo(() => new Map(blocks.map((b) => [b.id, b])), [blocks]);
+
+  // Self-heal block refs after a library re-seed (ids change, names survive).
+  useEffect(() => {
+    if (!blocks.length || !items.length) return;
+    let changed = false;
+    const healed = items.map((it) => {
+      if (blockById.get(it.blockId)) {
+        if (!it.blockName) {
+          changed = true;
+          return { ...it, blockName: blockById.get(it.blockId)!.name };
+        }
+        return it;
+      }
+      const byName = it.blockName ? blocks.find((b) => b.name === it.blockName) : undefined;
+      if (byName) {
+        changed = true;
+        return { ...it, blockId: byName.id };
+      }
+      return it;
+    });
+    if (changed) save(healed);
+  }, [blocks, items, blockById, save]);
+
+  const uid = () => `rb-${Date.now()}-${++idRef.current}`;
+
+  const addBlock = (block: Block) => {
+    const props: Record<string, StoredValue> = {};
+    for (const p of block.props) props[p.name] = p.value;
+    const id = uid();
+    save([...items, { id, blockId: block.id, blockName: block.name, props }]);
+    setPicking(false);
+    setOpenId(id);
   };
 
-  // Resolved-variable map for text templates: {var} → label-if-translated-else-number.
-  const sampleVars = (): Record<string, { value: number; label?: string }> => {
-    const map: Record<string, { value: number; label?: string }> = {};
-    charVars.forEach((v, i) => {
-      const score = sampleScore(i);
-      const tr = v.valueTranslations?.find((t) => t.value === score);
-      map[v.name] = { value: score, label: tr ? localize(tr.label, locale) : undefined };
-    });
-    return map;
+  const patchProp = (id: string, name: string, value: StoredValue) =>
+    save(items.map((it) => (it.id === id ? { ...it, props: { ...it.props, [name]: value } } : it)));
+
+  const move = (i: number, dir: number) => {
+    const j = i + dir;
+    if (j < 0 || j >= items.length) return;
+    const next = [...items];
+    [next[i], next[j]] = [next[j], next[i]];
+    save(next);
   };
+  const duplicate = (i: number) => {
+    const src = items[i];
+    const copy = { ...src, id: uid(), props: { ...src.props } };
+    const next = [...items];
+    next.splice(i + 1, 0, copy);
+    save(next);
+  };
+  const remove = (i: number) => save(items.filter((_, j) => j !== i));
+
+  const open = openId ? items.find((it) => it.id === openId) : undefined;
+  const openBlock = open ? resolveBlockRef(open, blocks) : undefined;
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      {/* ── Left: constructor (pages + component forms) ── */}
+      {/* Constructor */}
       <div className="rounded-xl border bg-card">
         <div className="flex items-center gap-2 border-b px-3 py-2">
-          <span className="text-sm font-semibold">
-            {showJson ? t("cm.resultView.jsonHeading") : t("cm.resultView.heading")}
+          <span className="text-sm font-semibold">{open ? "Block" : "Result page"}</span>
+          <span className="text-[0.7rem] text-muted-foreground">
+            {items.length} block{items.length !== 1 && "s"}
           </span>
-          {!showJson && (
-            <span className="text-[0.7rem] text-muted-foreground">
-              {pages.length} page{pages.length !== 1 && "s"}
-            </span>
+        </div>
+
+        <div className="max-h-[70vh] overflow-auto">
+          {loading ? (
+            <p className="p-6 text-center text-sm text-muted-foreground">Loading view blocks…</p>
+          ) : picking ? (
+            <BlockPicker blocks={blocks} onPick={addBlock} onCancel={() => setPicking(false)} />
+          ) : open && openBlock ? (
+            <BlockInstanceEditor
+              block={openBlock}
+              item={open}
+              scope={scope}
+              groups={exprGroups}
+              onPatchProp={(name, v) => patchProp(open.id, name, v)}
+              onBack={() => setOpenId(null)}
+            />
+          ) : (
+            <div className="space-y-2 p-3">
+              {items.length === 0 && (
+                <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                  No blocks yet. Add a view block and bind its props to characteristics or parameters.
+                </p>
+              )}
+              {items.map((it, i) => {
+                const block = resolveBlockRef(it, blocks);
+                const bound = Object.values(it.props).filter((v) => modeOf(v) !== "static").length;
+                return (
+                  <div
+                    key={it.id}
+                    className="group flex cursor-pointer items-center gap-3 rounded-lg border bg-background px-3 py-2.5 hover:border-teal-300"
+                    onClick={() => block && setOpenId(it.id)}
+                  >
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+                      {i + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {block?.name ?? (
+                          <span className="rounded bg-amber-50 px-1 py-px font-medium text-amber-700">
+                            block missing — re-add this block
+                          </span>
+                        )}
+                      </p>
+                      <p className="truncate text-[0.68rem] text-muted-foreground">
+                        {block?.description || "View block"}
+                        {bound > 0 && (
+                          <span className="ml-1.5 rounded bg-teal-50 px-1 py-px font-medium text-teal-700">
+                            {bound} bound
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div
+                      className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Button variant="ghost" size="icon-sm" onClick={() => move(i, -1)} title="Move up">
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon-sm" onClick={() => move(i, 1)} title="Move down">
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon-sm" onClick={() => duplicate(i)} title="Duplicate">
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => remove(i)}
+                        title="Delete"
+                        className="text-muted-foreground hover:text-red-500"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+              <Button variant="outline" size="sm" onClick={() => setPicking(true)} className="mt-1">
+                <Plus className="mr-1 h-3.5 w-3.5" /> Add block
+              </Button>
+            </div>
           )}
-          <div className="ml-auto flex items-center gap-1">
-            {showJson ? (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    navigator.clipboard?.writeText(resultJson);
-                    setJsonCopied(true);
-                    setTimeout(() => setJsonCopied(false), 1500);
-                  }}
-                >
-                  {jsonCopied ? <Check className="mr-1 h-3.5 w-3.5" /> : <Copy className="mr-1 h-3.5 w-3.5" />}
-                  {jsonCopied ? t("common.copied") : t("common.copy")}
-                </Button>
-                <Button variant="ghost" size="icon-sm" onClick={() => setShowJson(false)} title={t("cm.resultView.closeJson")}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button variant="ghost" size="sm" onClick={addPage} className="text-primary hover:text-teal-700">
-                  <Plus className="h-3.5 w-3.5" /> {t("cm.resultView.addPage")}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setShowJson(true)}
-                  title={t("cm.resultView.viewJson")}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <Code2 className="h-4 w-4" />
-                </Button>
-              </>
-            )}
+        </div>
+      </div>
+
+      {/* Live preview */}
+      <div className="rounded-xl border bg-card">
+        <div className="flex items-center gap-2 border-b px-3 py-2">
+          <span className="text-sm font-medium text-muted-foreground">Live preview</span>
+          <div className="ml-auto flex items-center gap-1.5 text-[0.66rem] text-muted-foreground">
+            answers ={" "}
+            <Input
+              type="number"
+              value={sample}
+              onChange={(e) => setSample(Number(e.target.value) || 0)}
+              className="h-6 w-14 text-xs"
+            />
           </div>
         </div>
-
-        {showJson ? (
-          <pre className="max-h-[72vh] overflow-auto bg-muted/20 p-4 font-mono text-[0.72rem] leading-relaxed text-foreground">
-            {resultJson}
-          </pre>
-        ) : (
-        <div className="max-h-[72vh] space-y-3 overflow-auto p-3">
-          {pages.length === 0 ? (
-            <div className="rounded-xl border border-dashed py-10 text-center text-[0.78rem] text-muted-foreground">
-              {t("cm.resultView.empty")}
-            </div>
+        <div className="max-h-[70vh] space-y-4 overflow-auto bg-gray-50/50 p-5">
+          {items.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">The result page renders here.</p>
           ) : (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onPagesDragEnd}>
-            <SortableContext items={pages.map((p) => `rp:${p.id}`)} strategy={verticalListSortingStrategy}>
-            {pages.map((page, pi) => (
-              <SortablePageCard
-                key={page.id}
-                id={`rp:${page.id}`}
-                isActive={pi === active}
-              >
-                {(pageHandle) => (
-                <>
-                {/* Page header */}
-                <div className="flex items-center gap-1.5 border-b px-2.5 py-2">
-                  {pageHandle}
-                  {editingTitle === pi ? (
-                    <LocalizedInput
-                      value={page.title}
-                      onChange={(v) => updatePage(pi, { title: v })}
-                      placeholder={t("cm.resultView.pageTitle")}
-                      className="flex-1"
-                    />
-                  ) : (
-                    <button onClick={() => setActive(pi)} className="flex-1 text-left text-sm font-semibold">
-                      <span className="text-muted-foreground">{pi + 1}. </span>
-                      {localize(page.title, locale) || `${t("cm.resultView.page")} ${pi + 1}`}
-                      <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                        ({page.components.length})
-                      </span>
-                    </button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => setEditingTitle(editingTitle === pi ? null : pi)}
-                    title={t("cm.resultView.renamePage")}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => deletePage(pi)}
-                    className="text-muted-foreground hover:text-red-500"
-                    title={t("cm.resultView.deletePage")}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+            items.map((it) => {
+              const block = resolveBlockRef(it, blocks);
+              if (!block) return null;
+              const types = new Map(block.props.map((p) => [p.name, p.type]));
+              const resolved = resolveInstanceProps(it, types, scope);
+              return (
+                <div
+                  key={it.id}
+                  className={cn("rounded-xl transition-shadow", openId === it.id && "ring-2 ring-teal-400/60")}
+                  onClick={() => setOpenId(it.id)}
+                >
+                  <ViewRenderer template={block.html} props={resolved} />
                 </div>
-
-                {/* Page body: component configs + Add block */}
-                <div className="space-y-3 p-2.5">
-                  {page.components.length === 0 ? (
-                    <p className="py-3 text-center text-[0.72rem] text-muted-foreground">
-                      {t("cm.resultView.pageEmpty")}
-                    </p>
-                  ) : (
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onBlocksDragEnd(pi)}>
-                      <SortableContext items={page.components.map((c) => `rc:${c.id}`)} strategy={verticalListSortingStrategy}>
-                        <div className="space-y-3">
-                          {page.components.map((c) => (
-                            <SortableBlock key={c.id} id={`rc:${c.id}`}>
-                              {(blockHandle) => (
-                                <ComponentConfig
-                                  component={c}
-                                  charVars={charVars}
-                                  mappings={mappings}
-                                  onUpdate={(partial) => updateComponent(pi, c.id, partial)}
-                                  onRemove={() => removeComponent(pi, c.id)}
-                                  handle={blockHandle}
-                                />
-                              )}
-                            </SortableBlock>
-                          ))}
-                        </div>
-                      </SortableContext>
-                    </DndContext>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPickerPage(pi)}
-                    className="w-full border-dashed text-muted-foreground hover:border-teal-300 hover:text-primary"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> {t("cm.resultView.addBlock")}
-                  </Button>
-                </div>
-                </>
-                )}
-              </SortablePageCard>
-            ))}
-            </SortableContext>
-            </DndContext>
-          )}
-        </div>
-        )}
-      </div>
-
-      {/* ── Right: live preview (one page at a time, with pills) ── */}
-      <div className="rounded-xl border bg-card">
-        <div className="border-b px-3 py-2 text-sm font-medium text-muted-foreground">
-          {t("cm.resultView.preview")}
-        </div>
-        <div className="max-h-[72vh] overflow-auto p-5">
-          {pages.length === 0 || !activePage ? (
-            <p className="py-10 text-center text-[0.78rem] text-muted-foreground">
-              {t("cm.resultView.previewEmpty")}
-            </p>
-          ) : (
-            <>
-              {/* Page pills */}
-              {pages.length > 1 && (
-                <div className="mb-5 flex flex-wrap gap-1.5">
-                  {pages.map((p, i) => (
-                    <button
-                      key={p.id}
-                      onClick={() => setActive(i)}
-                      className={cn(
-                        "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
-                        i === active ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {i + 1}. {localize(p.title, locale) || `${t("cm.resultView.page")} ${i + 1}`}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              <h2 className="mb-4 text-lg font-bold tracking-tight">
-                {localize(activePage.title, locale) || `${t("cm.resultView.page")} ${active + 1}`}
-              </h2>
-
-              {activePage.components.length === 0 ? (
-                <p className="py-10 text-center text-[0.78rem] text-muted-foreground">
-                  {t("cm.resultView.pageEmpty")}
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {activePage.components.map((c) => {
-                    const def = COMPONENT_TYPES.find((x) => x.type === c.type)!;
-                    return (
-                      <ResultComponentView
-                        key={c.id}
-                        component={{ ...c, title: c.title.en || c.title.ru || c.title.kz ? c.title : l(t(def.key)) }}
-                        data={sampleData(c)}
-                        vars={sampleVars()}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Prev / next */}
-              {pages.length > 1 && (
-                <div className="mt-6 flex items-center justify-between border-t pt-4">
-                  <Button variant="outline" size="sm" disabled={active === 0} onClick={() => setActive(active - 1)}>
-                    <ChevronLeft className="mr-1 h-4 w-4" /> {t("cm.resultView.prev")}
-                  </Button>
-                  <span className="text-xs text-muted-foreground">
-                    {active + 1} / {pages.length}
-                  </span>
-                  <Button variant="outline" size="sm" disabled={active === pages.length - 1} onClick={() => setActive(active + 1)}>
-                    {t("cm.resultView.next")} <ChevronRight className="ml-1 h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </>
+              );
+            })
           )}
         </div>
       </div>
-
-      {/* Add-block picker modal */}
-      {pickerPage !== null && (
-        <BlockPicker
-          onCancel={() => setPickerPage(null)}
-          onPick={(type) => {
-            addComponent(pickerPage, type);
-            setPickerPage(null);
-          }}
-        />
-      )}
     </div>
   );
 }
 
-// ── Add-block picker modal (grid of block cards by group) ───────
-function BlockPicker({ onCancel, onPick }: { onCancel: () => void; onPick: (type: ResultComponentType) => void }) {
-  const { t } = useLocale();
+// Result-time context: result.* exists now (unlike during the test).
+const RESULT_CONTEXT_PATHS = [
+  "user.name",
+  "user.org",
+  "result.total",
+  "result.topScale",
+  "result.completedAt",
+  "today",
+];
+
+// --------------------------------------------------------------------------
+
+function BlockPicker({
+  blocks,
+  onPick,
+  onCancel,
+}: {
+  blocks: Block[];
+  onPick: (b: Block) => void;
+  onCancel: () => void;
+}) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/30" onClick={onCancel} />
-      <div className="relative mx-4 max-h-[85vh] w-full max-w-2xl space-y-4 overflow-auto rounded-xl bg-card p-5 shadow-xl">
-        <div className="flex items-center justify-between">
-          <h3 className="text-[0.9rem] font-semibold">{t("cm.resultView.addBlock")}</h3>
-          <Button variant="ghost" size="icon-sm" onClick={onCancel} className="text-muted-foreground hover:text-foreground">
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        {BLOCK_GROUPS.map((g) => (
-          <div key={g.id}>
-            <p className="mb-1.5 text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
-              {t(g.key)}
-            </p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {COMPONENT_TYPES.filter((b) => b.group === g.id).map((b) => (
-                <button
-                  key={b.type}
-                  onClick={() => onPick(b.type)}
-                  className="flex flex-col items-start gap-1 rounded-xl border bg-card p-3 text-left transition-colors hover:border-foreground hover:bg-muted/40"
-                >
-                  <b.icon className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-[0.8rem] font-medium">{t(b.key)}</span>
-                  <span className="text-[0.68rem] leading-snug text-muted-foreground">{t(b.descKey)}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+    <div className="p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-sm font-semibold">Pick a view block</span>
+        <Button variant="ghost" size="icon-sm" onClick={onCancel}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {blocks.map((b) => (
+          <button
+            key={b.id}
+            type="button"
+            onClick={() => onPick(b)}
+            className="rounded-lg border bg-background p-3 text-left transition-colors hover:border-teal-400 hover:bg-teal-50/40"
+          >
+            <p className="text-sm font-semibold">{b.name}</p>
+            <p className="mt-0.5 line-clamp-2 text-[0.68rem] text-muted-foreground">{b.description || "—"}</p>
+          </button>
         ))}
       </div>
     </div>
   );
 }
 
-// ── Per-component configuration form (no preview — that's on the right) ──
-function ComponentConfig({
-  component: c,
-  charVars,
-  mappings,
-  onUpdate,
-  onRemove,
-  handle,
+function BlockInstanceEditor({
+  block,
+  item,
+  scope,
+  groups,
+  onPatchProp,
+  onBack,
 }: {
-  component: ResultComponent;
-  charVars: Variable[];
-  mappings: CatalogMapping[];
-  onUpdate: (partial: Partial<ResultComponent>) => void;
-  onRemove: () => void;
-  handle?: React.ReactNode;
+  block: Block;
+  item: ResultBlockInstance;
+  scope: Record<string, unknown>;
+  groups: ExprVarGroup[];
+  onPatchProp: (name: string, v: StoredValue) => void;
+  onBack: () => void;
 }) {
-  const { t, locale } = useLocale();
-  const def = COMPONENT_TYPES.find((x) => x.type === c.type)!;
-  const updateOptions = (partial: Partial<NonNullable<ResultComponent["options"]>>) =>
-    onUpdate({ options: { ...c.options, ...partial } });
+  return (
+    <div>
+      <div className="border-b px-3 py-2.5">
+        <button
+          onClick={onBack}
+          className="mb-1 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Result page
+        </button>
+        <p className="text-sm font-semibold">{block.name}</p>
+      </div>
+      <div className="space-y-4 p-4">
+        {block.props.map((p) => (
+          <ResultPropEditor
+            key={p.name}
+            def={p}
+            value={item.props[p.name]}
+            scope={scope}
+            groups={groups}
+            onChange={(v) => onPatchProp(p.name, v)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
-  const header = (
-    <div className="mb-3 flex flex-wrap items-end gap-3">
-      {handle && <div className="flex h-8 items-center">{handle}</div>}
-      <Param label={t("cm.resultView.component")}>
-        <span className="flex h-8 items-center gap-1.5 rounded-md border bg-card px-2.5 text-[0.78rem]">
-          <def.icon className="h-3.5 w-3.5 text-muted-foreground" />
-          {t(def.key)}
-        </span>
-      </Param>
-      {def.group !== "text" && def.group !== "divider" && (
-        <LocalizedInput
-          label={t("cm.resultView.title")}
-          value={c.title}
-          onChange={(v) => onUpdate({ title: v })}
-          placeholder={t("cm.resultView.titlePlaceholder")}
-          className="flex-1"
+function ResultPropEditor({
+  def,
+  value,
+  scope,
+  groups,
+  onChange,
+}: {
+  def: BlockProp;
+  value: StoredValue;
+  scope: Record<string, unknown>;
+  groups: ExprVarGroup[];
+  onChange: (v: StoredValue) => void;
+}) {
+  const mode = modeOf(value);
+  const isCollection = def.type === "json" || def.type === "list";
+  // Collections have only two forms — Static (rows, with {{variables}} per cell)
+  // or Database. They never use the number-only Expression form, so a legacy
+  // {$expr}/{$ctx} value is shown as Static (the rows editor seeds from the
+  // block's sample).
+  const effMode: PropMode = isCollection ? (mode === "db" ? "db" : "static") : mode;
+
+  const setMode = (m: PropMode) => {
+    if (m === effMode) return;
+    if (m === "db") onChange({ $db: emptyDbBinding() });
+    else if (m === "expr") onChange({ $expr: "" });
+    else onChange(def.value);
+  };
+
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <label className="block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
+          {def.name}
+        </label>
+        {isCollection ? (
+          <ModeToggle mode={effMode} onChange={setMode} modes={["static", "db"]} />
+        ) : def.type === "number" ? (
+          <ModeToggle mode={mode === "ctx" ? "static" : mode} onChange={setMode} modes={["static", "expr"]} />
+        ) : null}
+      </div>
+
+      {effMode === "db" && (
+        <DbEditor
+          binding={(value as { $db: DbBinding }).$db}
+          scalar={!isCollection}
+          onChange={(b) => onChange({ $db: b })}
         />
       )}
-      <Button variant="ghost" size="icon-sm" onClick={onRemove} className="ml-auto text-muted-foreground hover:text-red-500 hover:bg-red-50">
-        <Trash2 className="h-3.5 w-3.5" />
+      {effMode === "expr" && (
+        <ExprInput
+          bare
+          value={(value as { $expr: string }).$expr}
+          scope={scope}
+          groups={groups}
+          placeholder="e.g. round(realistic)"
+          onChange={(expr) => onChange({ $expr: expr })}
+        />
+      )}
+      {effMode === "static" && (
+        <StaticResultControl def={def} value={value} scope={scope} groups={groups} onChange={onChange} />
+      )}
+    </div>
+  );
+}
+
+// Static controls. Text carries inline {{variables}} via ExprInput (exactly like
+// single-question prompts); other primitives use plain controls.
+function StaticResultControl({
+  def,
+  value,
+  scope,
+  groups,
+  onChange,
+}: {
+  def: BlockProp;
+  value: StoredValue;
+  scope: Record<string, unknown>;
+  groups: ExprVarGroup[];
+  onChange: (v: StoredValue) => void;
+}) {
+  if (def.type === "text") {
+    return (
+      <ExprInput
+        value={typeof value === "string" ? value : ""}
+        scope={scope}
+        groups={groups}
+        onChange={(v) => onChange(v)}
+      />
+    );
+  }
+  if (def.type === "number") {
+    return (
+      <Input
+        type="number"
+        value={String(value ?? "")}
+        onChange={(e) => onChange(Number(e.target.value) || 0)}
+        className="h-8 w-32"
+      />
+    );
+  }
+  if (def.type === "color") {
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={String(value ?? "#0d9488")}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-8 w-10 cursor-pointer rounded border"
+        />
+        <Input value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} className="h-8 w-28 font-mono text-xs" />
+      </div>
+    );
+  }
+  if (def.type === "boolean") {
+    return (
+      <button
+        type="button"
+        onClick={() => onChange(!value)}
+        className={cn(
+          "rounded-md border px-3 py-1.5 text-xs font-medium",
+          value ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted",
+        )}
+      >
+        {value ? "true" : "false"}
+      </button>
+    );
+  }
+  // json / list — a structured rows editor where each cell takes inline
+  // {{variables}} (falls back to raw JSON for non-tabular shapes).
+  return (
+    <CollectionRowsEditor
+      value={value}
+      fallbackSample={def.value}
+      scope={scope}
+      groups={groups}
+      onChange={onChange}
+    />
+  );
+}
+
+// An array whose every item is a flat object (primitive-valued fields only) —
+// the shape the rows table can edit. Anything else uses the raw JSON editor.
+function isFlatRowArray(v: unknown): boolean {
+  return (
+    Array.isArray(v) &&
+    v.length > 0 &&
+    v.every(
+      (r) =>
+        r != null &&
+        typeof r === "object" &&
+        !Array.isArray(r) &&
+        Object.values(r as object).every((x) => x === null || typeof x !== "object"),
+    )
+  );
+}
+
+const cellToInput = (v: unknown): string => (v == null ? "" : typeof v === "string" ? v : String(v));
+
+// Keep the type for plain literals (numbers stay numbers, so charts work); keep
+// the raw string when it carries {{expressions}} — deepInterpolate resolves a
+// lone {{expr}} back to its typed value at render.
+function coerceCell(input: string): unknown {
+  const t = input.trim();
+  if (t === "") return "";
+  if (t.includes("{{")) return input;
+  if (t === "true") return true;
+  if (t === "false") return false;
+  if (t === "null") return null;
+  if (/^-?\d*\.?\d+$/.test(t)) return Number(t);
+  return input;
+}
+
+// A static collection edited as a table: each cell is an ExprInput, so authors
+// can drop {{variables}} (e.g. value = {{realistic}}) the same way text props do.
+function CollectionRowsEditor({
+  value,
+  fallbackSample,
+  scope,
+  groups,
+  onChange,
+}: {
+  value: StoredValue;
+  fallbackSample: unknown;
+  scope: Record<string, unknown>;
+  groups: ExprVarGroup[];
+  onChange: (v: StoredValue) => void;
+}) {
+  // Use the stored array; for a non-array value (e.g. a legacy {$expr}) or an
+  // empty array, seed the editor from the block's sample so real rows show.
+  const stored = Array.isArray(value) ? (value as Record<string, unknown>[]) : null;
+  const sample = Array.isArray(fallbackSample) ? (fallbackSample as Record<string, unknown>[]) : [];
+  const rows = stored && stored.length ? stored : sample;
+  const tabular = isFlatRowArray(rows);
+
+  // Columns from the (effective) rows.
+  const columns = useMemo(() => {
+    const cols: string[] = [];
+    for (const r of rows as unknown[]) {
+      if (r && typeof r === "object" && !Array.isArray(r)) {
+        for (const k of Object.keys(r as object)) if (!cols.includes(k)) cols.push(k);
+      }
+    }
+    return cols;
+  }, [rows]);
+
+  if (!tabular || columns.length === 0) {
+    return <JsonControl value={value} onChange={onChange} />;
+  }
+
+  const setCell = (ri: number, col: string, input: string) =>
+    onChange(rows.map((r, i) => (i === ri ? { ...r, [col]: coerceCell(input) } : r)));
+  const addRow = () => onChange([...rows, Object.fromEntries(columns.map((c) => [c, ""]))]);
+  const removeRow = (ri: number) => onChange(rows.filter((_, i) => i !== ri));
+
+  return (
+    <div className="space-y-1.5">
+      <div className="overflow-hidden rounded-lg border">
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr className="bg-muted/50">
+              {columns.map((c) => (
+                <th key={c} className="px-2 py-1 text-left font-mono text-[0.66rem] font-semibold text-muted-foreground">
+                  {c}
+                </th>
+              ))}
+              <th className="w-8" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, ri) => (
+              <tr key={ri} className="border-t align-top">
+                {columns.map((c) => (
+                  <td key={c} className="p-1">
+                    <ExprInput
+                      value={cellToInput(r?.[c])}
+                      scope={scope}
+                      groups={groups}
+                      onChange={(v) => setCell(ri, c, v)}
+                    />
+                  </td>
+                ))}
+                <td className="p-1">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-muted-foreground hover:text-red-500"
+                    onClick={() => removeRow(ri)}
+                    title="Remove row"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={addRow}
+        className="h-6 px-1.5 text-[0.68rem] text-primary hover:text-teal-700"
+      >
+        <Plus className="h-3 w-3" /> Add row
       </Button>
     </div>
   );
-
-  // ── Divider: just the header ──
-  if (def.group === "divider") {
-    return (
-      <div className="rounded-xl border bg-muted/30 p-3">
-        <div className="flex items-center gap-3">
-          {handle && <div className="flex h-8 items-center">{handle}</div>}
-          <Param label={t("cm.resultView.component")}>
-            <span className="flex h-8 items-center gap-1.5 rounded-md border bg-card px-2.5 text-[0.78rem]">
-              <def.icon className="h-3.5 w-3.5 text-muted-foreground" />
-              {t(def.key)}
-            </span>
-          </Param>
-          <span className="flex-1 text-[0.72rem] text-muted-foreground">{t("cm.resultView.descDivider")}</span>
-          <Button variant="ghost" size="icon-sm" onClick={onRemove} className="ml-auto text-muted-foreground hover:text-red-500 hover:bg-red-50">
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Text: a {var} template ──
-  if (def.group === "text") {
-    return (
-      <div className="rounded-xl border bg-muted/30 p-3">
-        {header}
-        <LocalizedInput
-          label={c.type === "heading" ? t("cm.resultView.headingText") : t("cm.resultView.template")}
-          value={c.content ?? { en: "", ru: "", kz: "" }}
-          onChange={(v) => onUpdate({ content: v })}
-          placeholder={t("cm.resultView.templatePlaceholder")}
-        />
-        <p className="mt-1 text-[0.66rem] text-muted-foreground">
-          {t("cm.resultView.templateHint")} — {charVars.slice(0, 4).map((v) => `{${v.name}}`).join(" ")}
-        </p>
-      </div>
-    );
-  }
-
-  // ── Catalog matching: mapping + which parameter ──
-  if (def.group === "catalog") {
-    const fields = c.binding.mappingId
-      ? (() => {
-          const m = mappings.find((x) => x.id === c.binding.mappingId);
-          return m ? catalogFields(m.catalogId) : [];
-        })()
-      : [];
-    return (
-      <div className="rounded-xl border bg-muted/30 p-3">
-        {header}
-        <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
-          <Param label={t("cm.resultView.fromMapping")}>
-            <Select
-              value={c.binding.mappingId ?? ""}
-              onValueChange={(v) => onUpdate({ binding: { kind: "mapping", mappingId: v ?? undefined } })}
-            >
-              <SelectTrigger size="sm" className="w-48">
-                <SelectValue>
-                  {() => {
-                    const m = mappings.find((x) => x.id === c.binding.mappingId);
-                    const g = m && findGroup(m.catalogId, m.groupId);
-                    return g ? localize(g.name, locale) : t("cm.resultView.noMapping");
-                  }}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {mappings.length === 0 ? (
-                  <SelectItem value="" disabled>{t("cm.resultView.noMapping")}</SelectItem>
-                ) : (
-                  mappings.map((m) => {
-                    const g = findGroup(m.catalogId, m.groupId);
-                    return (
-                      <SelectItem key={m.id} value={m.id}>
-                        {g ? localize(g.name, locale) : m.id} · top {m.topN}
-                      </SelectItem>
-                    );
-                  })
-                )}
-              </SelectContent>
-            </Select>
-          </Param>
-
-          <Param label={t("cm.resultView.parameter")}>
-            <Select value={c.catalogFieldId ?? "name"} onValueChange={(v) => onUpdate({ catalogFieldId: v ?? "name" })}>
-              <SelectTrigger size="sm" className="w-40">
-                <SelectValue>
-                  {() => localize(fields.find((f) => f.id === (c.catalogFieldId ?? "name"))?.label ?? { en: "Name", ru: "", kz: "" }, locale)}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {fields.map((f) => (
-                  <SelectItem key={f.id} value={f.id}>{localize(f.label, locale)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Param>
-
-          {c.type === "matches_list" && (
-            <Param label={t("cm.resultView.count")}>
-              <Input
-                type="number"
-                min={1}
-                max={50}
-                value={c.options?.count ?? 5}
-                onChange={(e) => updateOptions({ count: Math.max(1, Math.min(50, parseInt(e.target.value) || 1)) })}
-                className="h-8 w-20"
-              />
-            </Param>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // ── Single numeric variable ──
-  if (def.group === "single") {
-    return (
-      <div className="rounded-xl border bg-muted/30 p-3">
-        {header}
-        <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
-          <Param label={t("cm.resultView.variable")}>
-            <VariableSelect
-              variables={charVars}
-              numericOnly
-              value={c.binding.kind === "variable" ? c.binding.variableName : undefined}
-              onChange={(name) =>
-                onUpdate({ binding: name ? { kind: "variable", variableName: name } : { kind: "characteristics" } })
-              }
-              placeholder={t("cm.resultView.topAuto")}
-            />
-          </Param>
-          {c.type === "gauge" && (
-            <Param label={t("cm.resultView.maxScale")}>
-              <Input
-                type="number"
-                min={0}
-                value={c.options?.maxScale ?? 0}
-                onChange={(e) => updateOptions({ maxScale: Math.max(0, parseInt(e.target.value) || 0) })}
-                placeholder="100"
-                className="h-8 w-20"
-              />
-            </Param>
-          )}
-          <button
-            onClick={() => updateOptions({ showValues: c.options?.showValues === false })}
-            className={cn(
-              "h-8 self-end rounded-md border px-2.5 text-[0.72rem] font-medium transition-colors",
-              c.options?.showValues !== false ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted",
-            )}
-          >
-            {t("cm.resultView.showValues")}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Multi numeric variables (charts) ──
-  return (
-    <div className="rounded-xl border bg-muted/30 p-3">
-      {header}
-      <div className="space-y-2">
-        <div>
-          <label className="mb-1 block text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("cm.resultView.variables")}
-          </label>
-          <VariableMultiSelect
-            variables={charVars}
-            numericOnly
-            value={c.variableNames ?? []}
-            onChange={(names) => onUpdate({ variableNames: names })}
-            onReorder={() => updateOptions({ sort: "as_is" })}
-          />
-        </div>
-        <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
-          <Param label={t("cm.resultView.sort")}>
-            <Select
-              value={c.options?.sort ?? "score_desc"}
-              onValueChange={(v) => updateOptions({ sort: (v as "score_desc" | "score_asc" | "as_is") ?? "score_desc" })}
-            >
-              <SelectTrigger size="sm" className="w-36">
-                <SelectValue>{() => t(`cm.resultView.sort.${c.options?.sort ?? "score_desc"}`)}</SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="score_desc">{t("cm.resultView.sort.score_desc")}</SelectItem>
-                <SelectItem value="score_asc">{t("cm.resultView.sort.score_asc")}</SelectItem>
-                <SelectItem value="as_is">{t("cm.resultView.sort.as_is")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </Param>
-          <button
-            onClick={() => updateOptions({ showValues: c.options?.showValues === false })}
-            className={cn(
-              "h-8 self-end rounded-md border px-2.5 text-[0.72rem] font-medium transition-colors",
-              c.options?.showValues !== false ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:bg-muted",
-            )}
-          >
-            {t("cm.resultView.showValues")}
-          </button>
-          {(c.type === "characteristics_bar" || c.type === "characteristics_radar") && (
-            <Param label={t("cm.resultView.maxScale")}>
-              <Input
-                type="number"
-                min={0}
-                value={c.options?.maxScale ?? 0}
-                onChange={(e) => updateOptions({ maxScale: Math.max(0, parseInt(e.target.value) || 0) })}
-                placeholder="auto"
-                className="h-8 w-20"
-              />
-            </Param>
-          )}
-        </div>
-      </div>
-    </div>
-  );
 }
 
-// Sortable page card — renders children with a drag handle injected into the header.
-function SortablePageCard({
-  id,
-  isActive,
-  children,
-}: {
-  id: string;
-  isActive: boolean;
-  children: (handle: React.ReactNode) => React.ReactNode;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const style: React.CSSProperties = { transform: CSS.Transform.toString(transform), transition };
-  const handle = (
-    <button
-      {...attributes}
-      {...listeners}
-      className="shrink-0 cursor-grab text-muted-foreground/40 hover:text-muted-foreground active:cursor-grabbing"
-      title="Drag to reorder page"
-      aria-label="Drag to reorder page"
-    >
-      <GripVertical className="h-4 w-4" />
-    </button>
-  );
+function JsonControl({ value, onChange }: { value: StoredValue; onChange: (v: StoredValue) => void }) {
+  const [text, setText] = useState(() => {
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return "[]";
+    }
+  });
+  const [error, setError] = useState<string | null>(null);
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={cn("rounded-lg border", isActive ? "border-primary/40" : "border-border", isDragging && "opacity-50")}
-    >
-      {children(handle)}
-    </div>
-  );
-}
-
-// Sortable block wrapper — injects a drag handle into the ComponentConfig header.
-function SortableBlock({ id, children }: { id: string; children: (handle: React.ReactNode) => React.ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const style: React.CSSProperties = { transform: CSS.Transform.toString(transform), transition };
-  const handle = (
-    <button
-      {...attributes}
-      {...listeners}
-      className="shrink-0 cursor-grab text-muted-foreground/40 hover:text-muted-foreground active:cursor-grabbing"
-      title="Drag to reorder block"
-      aria-label="Drag to reorder block"
-    >
-      <GripVertical className="h-3.5 w-3.5" />
-    </button>
-  );
-  return (
-    <div ref={setNodeRef} style={style} className={cn(isDragging && "opacity-50")}>
-      {children(handle)}
-    </div>
-  );
-}
-
-// Small labeled wrapper for a parameter control.
-function Param({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">{label}</label>
-      {children}
+    <div>
+      <textarea
+        value={text}
+        spellCheck={false}
+        onChange={(e) => {
+          setText(e.target.value);
+          try {
+            onChange(JSON.parse(e.target.value));
+            setError(null);
+          } catch (err) {
+            setError((err as Error).message);
+          }
+        }}
+        className="h-28 w-full resize-y rounded-md border bg-gray-50 p-2 font-mono text-[0.72rem] leading-relaxed outline-none focus:border-ring"
+      />
+      {error && <p className="mt-1 text-[0.66rem] text-red-500">Invalid JSON: {error}</p>}
     </div>
   );
 }

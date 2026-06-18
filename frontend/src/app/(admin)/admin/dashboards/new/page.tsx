@@ -7,8 +7,8 @@ import type { ContentDashboard } from "../../_components/mock-data";
 
 const emptyDashboard: ContentDashboard = {
   id: "new",
-  name: { en: "", ru: "", kz: "" },
-  description: { en: "", ru: "", kz: "" },
+  name: { en: "", ru: "", kk: "" },
+  description: { en: "", ru: "", kk: "" },
   status: "draft",
   createdAt: new Date().toISOString().split("T")[0],
   updatedAt: new Date().toISOString().split("T")[0],

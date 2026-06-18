@@ -9,13 +9,13 @@ import { FlatLight } from "survey-core/themes";
 import "survey-core/survey-core.css";
 import { submitTestResult, type TestRow } from "@/lib/api";
 import type { Locale } from "@/lib/i18n";
-import { localize } from "@/lib/localized";
+import { localize, type Localized } from "@/lib/localized";
 import { cn } from "@/lib/utils";
 
-const localeMap: Record<Locale, string> = { en: "en", ru: "ru", kz: "kk" };
+const localeMap: Record<Locale, string> = { en: "en", ru: "ru", kk: "kk" };
 
-function toSurveyText(v: { en: string; ru: string; kz: string }) {
-  return { default: v.en, ru: v.ru || undefined, kk: v.kz || undefined };
+function toSurveyText(v: Localized) {
+  return { default: v.en, ru: v.ru || undefined, kk: v.kk || undefined };
 }
 
 function buildModel(test: TestRow) {

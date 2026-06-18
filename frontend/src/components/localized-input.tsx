@@ -2,6 +2,8 @@
 
 import { useState, useRef, useLayoutEffect } from "react";
 import type { Localized } from "@/lib/localized";
+import type { Locale } from "@/lib/i18n";
+import { useContentLanguages } from "@/lib/project-context";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -13,12 +15,12 @@ interface Props {
   autoFocus?: boolean;
 }
 
-const LANGS = ["kz", "ru", "en"] as const;
-
 // Localized text field with the language switch ABOVE the field (so it
 // doesn't eat input space) and an auto-growing textarea (expandable).
 export function LocalizedInput({ value, onChange, label, placeholder, className, autoFocus }: Props) {
-  const [activeLang, setActiveLang] = useState<"kz" | "ru" | "en">("kz");
+  const { codes, default: defaultLang } = useContentLanguages();
+  const [lang, setLang] = useState<Locale>(defaultLang);
+  const activeLang = codes.includes(lang) ? lang : codes[0];
   const ref = useRef<HTMLTextAreaElement>(null);
 
   // Auto-grow to fit content.
@@ -39,20 +41,20 @@ export function LocalizedInput({ value, onChange, label, placeholder, className,
           </span>
         )}
         <div className="ml-auto flex items-center gap-0.5">
-        {LANGS.map((lang) => (
+        {codes.map((code) => (
           <button
-            key={lang}
+            key={code}
             type="button"
-            onClick={() => setActiveLang(lang)}
+            onClick={() => setLang(code)}
             className={cn(
               "rounded px-1.5 py-0.5 text-[0.6rem] font-bold uppercase transition-colors",
-              activeLang === lang
+              activeLang === code
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground/40 hover:text-muted-foreground",
             )}
           >
-            {lang}
-            {lang !== activeLang && !value[lang] && (
+            {code}
+            {code !== activeLang && !value[code] && (
               <span className="ml-0.5 inline-block h-1 w-1 rounded-full bg-amber-400 align-middle" />
             )}
           </button>
@@ -63,7 +65,7 @@ export function LocalizedInput({ value, onChange, label, placeholder, className,
       <textarea
         ref={ref}
         rows={1}
-        value={value[activeLang]}
+        value={value[activeLang] ?? ""}
         onChange={(e) => onChange({ ...value, [activeLang]: e.target.value })}
         placeholder={placeholder}
         autoFocus={autoFocus}

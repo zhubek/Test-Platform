@@ -190,7 +190,7 @@ export function VariableMultiSelect({
               <VarChip
                 key={name}
                 id={name}
-                label={localize(byName.get(name)?.label ?? { en: name, ru: "", kz: "" }, locale) || name}
+                label={localize(byName.get(name)?.label ?? { en: name, ru: "", kk: "" }, locale) || name}
                 onRemove={() => toggle(name)}
               />
             ))}

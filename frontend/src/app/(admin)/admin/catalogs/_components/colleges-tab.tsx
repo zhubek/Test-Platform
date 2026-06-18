@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useLocale } from "@/lib/locale-context";
 import { fetchColleges, createCollege, type CollegeRow } from "@/lib/methodic-api";
 import { Plus } from "lucide-react";
+import { OutputHeaderCells, OutputRowCells } from "./output-columns";
 
 export function CollegesTab() {
   const { locale, t } = useLocale();
@@ -21,7 +22,7 @@ export function CollegesTab() {
   async function handleAdd() {
     try {
       const created = await createCollege({
-        name: { en: "", ru: "", kz: "" },
+        name: { en: "", ru: "", kk: "" },
       });
       window.location.href = `/admin/catalogs/colleges/${created.id}`;
     } catch (err) {
@@ -71,9 +72,7 @@ export function CollegesTab() {
                   <th className="py-2.5 px-4 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wider">
                     {t("cm.methodic.col.name")}
                   </th>
-                  <th className="py-2.5 px-4 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wider">
-                    {t("cm.methodic.col.city")}
-                  </th>
+                  <OutputHeaderCells type="colleges" />
                 </tr>
               </thead>
               <tbody>
@@ -90,9 +89,7 @@ export function CollegesTab() {
                         {c.name[locale] || c.name.en}
                       </span>
                     </td>
-                    <td className="py-3 px-4">
-                      <span className="text-sm text-gray-500">{c.city?.name[locale] || c.city?.name.en || ""}</span>
-                    </td>
+                    <OutputRowCells type="colleges" output={c.params?.output} />
                   </tr>
                 ))}
               </tbody>

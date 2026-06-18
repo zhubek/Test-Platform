@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/button-link";
 
-const locales = ["kz", "ru", "en"] as const;
+const locales = ["kk", "ru", "en"] as const;
 
 const nav = [
   { label: "Licenses", href: "/org-admin/licenses" },

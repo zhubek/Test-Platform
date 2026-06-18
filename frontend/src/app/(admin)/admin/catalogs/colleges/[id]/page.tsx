@@ -14,10 +14,11 @@ import {
   type CityRow,
   type Localized,
 } from "@/lib/methodic-api";
-import { LocalizedInput } from "../../_components/localized-input";
-import { OutputVariablesTab } from "../../_components/output-variables-tab";
+import { CatalogDetailScaffold } from "../../_components/catalog-detail-scaffold";
+import { ContactDetailsForm } from "../../_components/contact-details-form";
+import { useContentLocale } from "../../_components/edit-language";
 import type { Localized as Loc } from "@/lib/localized";
-import { Mail, Phone, Globe } from "lucide-react";
+import { Mail, Phone, Globe, Building2 } from "lucide-react";
 
 const inputClass =
   "w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all";
@@ -35,7 +36,7 @@ export default function CollegeEditorPage({
   const [cities, setCities] = useState<CityRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"general" | "output">("general");
+  const [cityText, setCityText] = useState("");
   const colRef = useRef(col);
   colRef.current = col;
 
@@ -48,6 +49,14 @@ export default function CollegeEditorPage({
       .catch((err) => console.error("Failed to load:", err))
       .finally(() => setLoading(false));
   }, [numId]);
+
+  // Sync the plain-text City mirror when the college loads.
+  useEffect(() => {
+    if (!col) return;
+    const cityRow = col.city ?? (col.cityId != null ? cities.find((c) => c.id === col.cityId) ?? null : null);
+    setCityText(cityRow ? cityRow.name[locale] || cityRow.name.en : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [col?.id]);
 
   const save = useCallback(
     async (patch: Record<string, any>) => {
@@ -98,205 +107,106 @@ export default function CollegeEditorPage({
   const name = col.name[locale] || col.name.en || "";
   const address: Localized =
     p.address && typeof p.address === "object"
-      ? { en: (p.address as any).en || "", ru: (p.address as any).ru || "", kz: (p.address as any).kz || "" }
-      : { en: typeof p.address === "string" ? p.address : "", ru: "", kz: "" };
+      ? { en: (p.address as any).en || "", ru: (p.address as any).ru || "", kk: (p.address as any).kk || "" }
+      : { en: typeof p.address === "string" ? p.address : "", ru: "", kk: "" };
 
-  function updateParam(key: keyof CollegeParams, val: any) {
-    if (!col) return;
-    const newParams = { ...col.params, [key]: val || undefined };
-    setCol({ ...col, params: newParams });
-  }
+  const editors: number[] = Array.isArray(col.params?.access) ? col.params!.access : [];
+
+  const detailsNode = (
+    <EditorLayout
+      editor={
+        <div className="space-y-4">
+          <Field label={t("cm.methodic.col.city")}>
+            <input
+              type="text"
+              value={cityText}
+              onChange={(e) => setCityText(e.target.value)}
+              onBlur={() => {
+                const q = cityText.trim().toLowerCase();
+                const c = cities.find((ci) => [ci.name.en, ci.name.ru, ci.name.kk].some((n) => (n || "").toLowerCase() === q));
+                setCol({ ...col, cityId: c?.id ?? null, city: c ?? null });
+                save({ cityId: c?.id ?? null });
+              }}
+              placeholder="Almaty"
+              className={inputClass}
+            />
+          </Field>
+          <ContactDetailsForm
+            address={address}
+            email={p.email ?? ""}
+            phone={p.phone ?? ""}
+            website={p.website ?? ""}
+            instagram={p.instagram ?? ""}
+            facebook={p.facebook ?? ""}
+            youtube={p.youtube ?? ""}
+            photo={p.photo ?? ""}
+            onChange={(patch) => setCol({ ...col, params: { ...col.params, ...patch } })}
+            onBlur={saveParams}
+          />
+        </div>
+      }
+      preview={<CollegePreview col={col} t={t} />}
+    />
+  );
 
   return (
-    <>
-      <Breadcrumb
-        items={[
-          { label: t("cm.methodic.heading"), href: "/admin/catalogs" },
-          {
-            label: t("cm.methodic.tabs.colleges"),
-            href: "/admin/catalogs#colleges",
-          },
-          { label: name || "—" },
-        ]}
-      />
-
-      <div className="flex gap-1 mb-6 border-b border-gray-100 overflow-x-auto">
-        {(["general", "output"] as const).map((tb) => (
-          <button
-            key={tb}
-            onClick={() => setTab(tb)}
-            className={
-              "relative shrink-0 px-4 py-2.5 text-[0.82rem] font-medium transition-colors " +
-              (tab === tb ? "text-gray-900" : "text-gray-400 hover:text-gray-600")
-            }
-          >
-            {tb === "general" ? t("cm.methodic.tab.general") : t("cm.methodic.tab.output")}
-            {tab === tb && (
-              <span className="absolute bottom-0 left-4 right-4 h-[2px] rounded-full bg-gray-900" />
-            )}
-          </button>
-        ))}
-      </div>
-
-      {tab === "output" && (
-        <OutputVariablesTab
-          type="colleges"
-          output={(col.params?.output as Record<string, Loc>) ?? {}}
-          onChange={(next) => {
-            const newParams = { ...col.params, output: next };
-            setCol({ ...col, params: newParams });
-          }}
-          onBlur={saveParams}
+    <CatalogDetailScaffold
+      breadcrumb={
+        <Breadcrumb
+          items={[
+            { label: t("cm.methodic.heading"), href: "/admin/catalogs" },
+            { label: t("cm.methodic.tabs.colleges"), href: "/admin/catalogs#colleges" },
+            { label: name || "—" },
+          ]}
         />
-      )}
-
-      {tab === "general" && (
-      <EditorLayout
-        editor={
-          <div className="space-y-3">
-            <Field label={t("cm.methodic.col.name")}>
-              <div onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) saveName(); }}>
-                <LocalizedInput
-                  value={col.name}
-                  onChange={(val) => setCol({ ...col, name: val })}
-                  className={inputClass}
-                />
-              </div>
-            </Field>
-            <Field label={t("cm.methodic.col.city")}>
-              <select
-                value={col.cityId ?? ""}
-                onChange={(e) => {
-                  const cityId = e.target.value ? Number(e.target.value) : null;
-                  const city = cities.find((c) => c.id === cityId) ?? null;
-                  setCol({ ...col, cityId, city });
-                  save({ cityId });
-                }}
-                className={inputClass}
-              >
-                <option value="">— {t("cm.methodic.col.city")} —</option>
-                {cities.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name[locale] || c.name.en}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            <Divider />
-
-            <Field label={t("cm.methodic.field.address")}>
-              <div onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) saveParams(); }}>
-                <LocalizedInput
-                  value={address}
-                  onChange={(val) => updateParam("address", val)}
-                  className={inputClass}
-                />
-              </div>
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label={t("cm.methodic.field.email")}>
-                <input
-                  type="text"
-                  value={p.email ?? ""}
-                  onChange={(e) => updateParam("email", e.target.value)}
-                  onBlur={saveParams}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label={t("cm.methodic.field.phone")}>
-                <input
-                  type="text"
-                  value={p.phone ?? ""}
-                  onChange={(e) => updateParam("phone", e.target.value)}
-                  onBlur={saveParams}
-                  className={inputClass}
-                />
-              </Field>
-            </div>
-            <Field label={t("cm.methodic.field.website")}>
-              <input
-                type="text"
-                value={p.website ?? ""}
-                onChange={(e) => updateParam("website", e.target.value)}
-                onBlur={saveParams}
-                className={inputClass}
-              />
-            </Field>
-
-            <Divider />
-
-            <div className="grid grid-cols-3 gap-3">
-              <Field label={t("cm.methodic.field.instagram")}>
-                <input
-                  type="text"
-                  value={p.instagram ?? ""}
-                  onChange={(e) => updateParam("instagram", e.target.value)}
-                  onBlur={saveParams}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label={t("cm.methodic.field.facebook")}>
-                <input
-                  type="text"
-                  value={p.facebook ?? ""}
-                  onChange={(e) => updateParam("facebook", e.target.value)}
-                  onBlur={saveParams}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label={t("cm.methodic.field.youtube")}>
-                <input
-                  type="text"
-                  value={p.youtube ?? ""}
-                  onChange={(e) => updateParam("youtube", e.target.value)}
-                  onBlur={saveParams}
-                  className={inputClass}
-                />
-              </Field>
-            </div>
-            <Field label={t("cm.methodic.field.photo")}>
-              <input
-                type="text"
-                value={p.photo ?? ""}
-                onChange={(e) => updateParam("photo", e.target.value)}
-                onBlur={saveParams}
-                className={inputClass + " max-w-xs"}
-              />
-            </Field>
-
-            <Divider />
-
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-xs text-gray-400">
-                {saving ? "Saving..." : ""}
-              </span>
-              <button
-                onClick={handleDelete}
-                className="text-xs text-red-500 hover:text-red-700 transition-colors"
-              >
-                Delete college
-              </button>
-            </div>
-          </div>
-        }
-        preview={<CollegePreview col={col} locale={locale} t={t} />}
-      />
-      )}
-    </>
+      }
+      title={name}
+      catalog="colleges"
+      entityId={numId}
+      saving={saving}
+      titleField={{
+        value: col.name,
+        onChange: (v) => setCol({ ...col, name: v }),
+        onBlur: saveName,
+      }}
+      descriptionField={{
+        value: col.desc ?? { en: "", ru: "", kk: "" },
+        onChange: (v) => setCol({ ...col, desc: v }),
+        onBlur: () => {
+          if (colRef.current) save({ desc: colRef.current.desc });
+        },
+      }}
+      extras={{
+        value: (col.params?.output as Record<string, Loc>) ?? {},
+        onChange: (next) => {
+          const newParams = { ...col.params, output: next };
+          setCol({ ...col, params: newParams });
+        },
+        onBlur: saveParams,
+      }}
+      onDelete={handleDelete}
+      deleteLabel="Delete college"
+      pages={[{ id: "details", label: "Details & contacts", icon: Building2, render: detailsNode }]}
+      access={{
+        editors,
+        onChange: (ids) => {
+          const newParams = { ...(col.params ?? {}), access: ids };
+          setCol({ ...col, params: newParams });
+          save({ params: newParams });
+        },
+      }}
+    />
   );
 }
 
 function CollegePreview({
   col,
-  locale,
   t,
 }: {
   col: CollegeRow;
-  locale: string;
   t: (key: string) => string;
 }) {
-  const loc = locale as "en" | "ru" | "kz";
+  const loc = useContentLocale();
   const name = col.name[loc] || col.name.en || "";
   const p = col.params ?? {};
   const cityName = col.city?.name[loc] || col.city?.name.en || "";
@@ -387,6 +297,3 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function Divider() {
-  return <div className="border-t border-gray-100 my-1" />;
-}

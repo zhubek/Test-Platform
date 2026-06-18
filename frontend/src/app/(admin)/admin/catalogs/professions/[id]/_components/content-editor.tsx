@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useLocale } from "@/lib/locale-context";
+import { useContentLocale } from "../../../_components/edit-language";
 import { EditorLayout } from "../../../_components/editor-layout";
 import { LocalizedInput } from "../../../_components/localized-input";
 import type { ContentData, VideoData } from "@/app/professions/_components/mock-data";
@@ -19,8 +20,8 @@ interface Props {
 }
 
 export function ContentEditor({ data: initial }: Props) {
-  const { t, locale } = useLocale();
-  const loc = locale as "en" | "ru" | "kz";
+  const { t } = useLocale();
+  const loc = useContentLocale();
 
   const [videos, setVideos] = useState<VideoData[]>(
     (initial ?? emptyData).videos.map((v) => ({
@@ -150,7 +151,7 @@ function VideoListPreview({
   locale,
 }: {
   videos: VideoData[];
-  locale: "en" | "ru" | "kz";
+  locale: string;
 }) {
   if (videos.length === 0) {
     return (

@@ -1,13 +1,572 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Prisma schema for the Test-Platform backend (NestJS + Prisma 7).
+// The connection URL lives in prisma.config.ts (DATABASE_URL) and the runtime
+// PrismaClient is constructed with a pg driver adapter (see prisma.service.ts).
+//
+// TABLE NAMING — the database is split into modules by table prefix:
+//   core_*  identity & tenancy (users, projects, organizations, licenses, …)
+//   uc_*    authored UI components (blocks)
+//   dc_*    Data Catalogs (groups, items, extra variables, page templates)
+// Prisma model names stay clean (PascalCase); @@map carries the prefix.
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────────────────
+
+enum UserStatus {
+  PENDING // created by the tier above; not yet activated (no password set)
+  ACTIVE
+  DISABLED
+}
+
+enum LicenseState {
+  ISSUED
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum ParamType {
+  STRING
+  NUMBER
+  BOOLEAN
+  DATE
+  SELECT
+}
+
+// The four kinds of authored building blocks. A block's `type` decides which
+// builder tab it appears under and where it can be dropped (test / result /
+// dashboard / catalog views).
+enum BlockType {
+  TEST
+  RESULT
+  DASHBOARD
+  CATALOG
+}
+
+// A user's role WITHIN their project (scope-level role), alongside the global
+// Role/UserRole. super_admin has no project, so projectRole is null for them.
+enum ProjectRole {
+  SUPER_ADMIN
+  PROJECT_ADMIN
+  ORG_ADMIN
+  LICENSE_HOLDER
+}
+
+// A test's publish lifecycle (authoring -> live -> retired).
+enum TestState {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// Which builder surface a test's block instance belongs to: the question flow,
+// the result page, or the dashboard. (Added beyond the ERD: a single TestBlock
+// table needs this to tell a question block from a result/dashboard block.)
+enum TestSurface {
+  QUESTION
+  RESULT
+  DASHBOARD
+}
+
+// A license holder's attempt at a test.
+enum LicenseTestState {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  EXPIRED
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// core_ — Identity. ONE table for all four principals (super_admin,
+// project_admin, org_admin, license_holder). Level comes from roles; scope from
+// the columns below. org_admin/license_holder accounts start PENDING and are
+// turned ACTIVE by redeeming an activation code (Organization.code /
+// License.licenseCode), which sets their passwordHash.
+// ─────────────────────────────────────────────────────────────────────────
+
+model User {
+  id             String        @id @default(cuid())
+  login          String        @unique
+  email          String?       @unique // staff only (super/project_admin); null for org_admin/license_holder
+  name           String?
+  passwordHash   String? // null until activated (A)
+  status         UserStatus    @default(PENDING)
+  roles          UserRole[] // GLOBAL level/roles (kept as-is)
+  projectId      String? // the single project this user belongs to (null = global super_admin)
+  project        Project?      @relation("ProjectMembers", fields: [projectId], references: [id], onDelete: SetNull)
+  projectRole    ProjectRole? // the user's role within that project
+  organizationId String? // org_admin & license_holder belong to an org
+  organization   Organization? @relation("OrgMembers", fields: [organizationId], references: [id])
+  licenses       License[]     @relation("LicenseHolder") // a user can hold many licenses (across projects)
+  issued         License[]     @relation("LicenseIssuedBy")
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@map("core_users")
+}
+
+model Role {
+  id    String     @id @default(cuid())
+  name  String     @unique // SUPER_ADMIN | PROJECT_ADMIN | ORG_ADMIN | LICENSE_HOLDER
+  users UserRole[]
+
+  @@map("core_roles")
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("core_user_roles")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// core_ — Tenant: Project (data-scoping boundary)
+// ─────────────────────────────────────────────────────────────────────────
+
+model Project {
+  id                String            @id @default(cuid())
+  name              String
+  description       String?
+  licenseLimit      Int               @default(0)
+  licenseUsed       Int               @default(0)
+  defaultLanguageId String? // the source/fallback language for authored content
+  defaultLanguage   Language?         @relation("ProjectDefaultLanguage", fields: [defaultLanguageId], references: [id])
+  languages         ProjectLanguage[]
+  params        ProjectParam[]
+  organizations Organization[]
+  licenses      License[]
+  members       User[]            @relation("ProjectMembers")
+  tests         Test[]
+  blocks        Block[]
+  catalogGroups DataCatalogGroup[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@map("core_projects")
+}
+
+model Language {
+  id                 String            @id @default(cuid())
+  name               String            @unique // BCP-47 code (en, ru, kk, tr, …) — used as the JSON key in Localized
+  label              String? // human display name (English, Русский, Türkçe, …)
+  projects           ProjectLanguage[]
+  defaultForProjects Project[]         @relation("ProjectDefaultLanguage")
+
+  @@map("core_languages")
+}
+
+model ProjectLanguage {
+  projectId  String
+  languageId String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  language   Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, languageId])
+  @@map("core_project_languages")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// uc_ — Blocks: reusable, authored UI components (HTML + Tailwind). One
+// polymorphic table discriminated by `type`; `html` holds the template, `props`
+// the declared prop schema (name/type/default) the editor renders as fields.
+// ─────────────────────────────────────────────────────────────────────────
+
+model Block {
+  id          String         @id @default(cuid())
+  type        BlockType
+  name        String
+  description String?
+  html        String         @default("")
+  props       Json           @default("[]") // declared prop schema: [{ name, type, value }]
+  // The author's sample values keyed by prop name (saved from the editor's
+  // controls). Used wherever a block renders without chosen props — group
+  // page previews, library thumbnails, freshly picked blocks.
+  sampleProps Json           @default("{}") @map("sample_props")
+  projectId   String? // the project this block belongs to (null = shared/global)
+  project     Project?       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  pageBlocks  DcgPageBlock[]
+  testBlocks  TestBlock[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([type])
+  @@index([projectId])
+  @@map("uc_blocks")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// core_ — Per-project custom attributes (cohort tags attached to licenses)
+// ─────────────────────────────────────────────────────────────────────────
+
+model ProjectParam {
+  id         String               @id @default(cuid())
+  name       String
+  type       ParamType            @default(STRING)
+  projectId  String
+  project    Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  options    ProjectParamOption[]
+  testParams TestProjectParam[]
+
+  @@map("core_project_params")
+}
+
+model ProjectParamOption {
+  id             String               @id @default(cuid())
+  valueText      String               @map("value_text")
+  projectParamId String
+  param          ProjectParam         @relation(fields: [projectParamId], references: [id], onDelete: Cascade)
+  licenses       LicenseParamOption[]
+
+  @@map("core_project_param_options")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// core_ — Organizations: sub-group inside a project. `code` activates its
+// org_admin.
+// ─────────────────────────────────────────────────────────────────────────
+
+model Organization {
+  id           String    @id @default(cuid())
+  projectId    String
+  name         String
+  description  String?
+  code         String    @unique // one-time activation code for this org's org_admin
+  licenseCount Int       @default(0)
+  licenseUsed  Int       @default(0)
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  licenses     License[]
+  members      User[]    @relation("OrgMembers")
+
+  @@index([projectId])
+  @@map("core_organizations")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// core_ — Licenses: an issued entitlement (lifecycle -> transitions).
+// `licenseCode` activates the holder's account; identity lives on User.
+// ─────────────────────────────────────────────────────────────────────────
+
+model License {
+  id             String               @id @default(cuid())
+  licenseCode    String               @unique // one-time activation code for the holder
+  state          LicenseState         @default(ISSUED)
+  issuedDate     DateTime             @default(now())
+  expirationDate DateTime?
+  issuedById     String? // staff user who issued it
+  issuedBy       User?                @relation("LicenseIssuedBy", fields: [issuedById], references: [id])
+  projectId      String
+  project        Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId String?
+  organization   Organization?        @relation(fields: [organizationId], references: [id])
+  holderId       String? // the registered user who claimed this license (null = unclaimed)
+  holder         User?                @relation("LicenseHolder", fields: [holderId], references: [id], onDelete: SetNull)
+  paramOptions   LicenseParamOption[]
+  licenseTests   LicenseTest[]
+
+  @@index([projectId])
+  @@index([organizationId])
+  @@index([holderId])
+  @@map("core_licenses")
+}
+
+model LicenseParamOption {
+  licenseId            String
+  projectParamOptionId String
+  license              License            @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  option               ProjectParamOption @relation(fields: [projectParamOptionId], references: [id], onDelete: Cascade)
+
+  @@id([licenseId, projectParamOptionId])
+  @@map("core_license_param_options")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// dc_ — Data Catalogs. The GROUP owns the schema: extra-variable definitions
+// and block page templates. ITEMS own only data: title, description, extra-
+// variable values, and structured relations in `params`. Template block props
+// hold design values or { $bind: "path" } data bindings resolved per item.
+// ─────────────────────────────────────────────────────────────────────────
+
+model DataCatalogGroup {
+  id              String                        @id @default(cuid())
+  name            String                        @unique // also used as the catalog id/slug on the FE
+  info            Json? // free-form group metadata (icon, descriptions, …)
+  isPublic        Boolean                       @default(false) // exposed on the public site
+  cardPageId      String? // when public, which page template renders as the card view (a DataCatalogGroupPage id)
+  projectId       String? // the project this catalog group belongs to (null = shared/global)
+  project         Project?                      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  variables       ExtraVariable[]
+  characteristics DcGroupCharacteristicGroup[] // attached characteristic groups → numeric item variables
+  items           DataCatalog[]
+  pages           DataCatalogGroupPage[]
+  createdAt       DateTime                      @default(now())
+  updatedAt       DateTime                      @updatedAt
+
+  @@index([projectId])
+  @@map("dc_catalog_groups")
+}
+
+// A named extra-variable SLOT of a group. Values live per item in
+// DataCatalogExtraValue. `hasOptions` marks select-type variables whose
+// allowed values are enumerated in ExtraVariableOption.
+model ExtraVariable {
+  id         String                  @id @default(cuid())
+  groupId    String
+  group      DataCatalogGroup        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  varName    String
+  hasOptions Boolean                 @default(false)
+  type       String                  @default("text") // value kind: text | number | boolean | date
+  filterable Boolean                 @default(false) // when the group is public, expose as a filter
+  order      Int                     @default(0) // first five render as table columns
+  options    ExtraVariableOption[]
+  values     DataCatalogExtraValue[]
+
+  @@unique([groupId, varName])
+  @@map("dc_extra_variables")
+}
+
+model ExtraVariableOption {
+  id          String        @id @default(cuid())
+  variableId  String
+  variable    ExtraVariable @relation(fields: [variableId], references: [id], onDelete: Cascade)
+  optionValue Json // Localized { en, ru, kk }
+
+  @@map("dc_extra_variable_options")
+}
+
+// One catalog item (Data Scientist, Nazarbayev University, …).
+model DataCatalog {
+  id                  String                           @id @default(cuid())
+  groupId             String
+  group               DataCatalogGroup                 @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  title               Json // Localized { en, ru, kk }
+  description         Json? // Localized
+  params              Json? // structured data & relations (e.g. education program ids, access)
+  values              DataCatalogExtraValue[]
+  characteristicValues DataCatalogCharacteristicValue[]
+  pageProps           DataCatalogPageProp[]
+  createdAt           DateTime                         @default(now())
+  updatedAt           DateTime                         @updatedAt
+
+  @@index([groupId])
+  @@map("dc_catalogs")
+}
+
+// An item's value for one of its group's extra variables.
+model DataCatalogExtraValue {
+  id         String        @id @default(cuid())
+  catalogId  String
+  catalog    DataCatalog   @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  variableId String
+  variable   ExtraVariable @relation(fields: [variableId], references: [id], onDelete: Cascade)
+  value      Json // Localized { en, ru, kk }
+
+  @@unique([catalogId, variableId])
+  @@map("dc_catalog_extra_values")
+}
+
+// A page TEMPLATE of a group — every item renders through these.
+model DataCatalogGroupPage {
+  id       String           @id @default(cuid())
+  groupId  String
+  group    DataCatalogGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  pageName Json // Localized { en, ru, kk }
+  order    Int              @default(0)
+  blocks   DcgPageBlock[]
+
+  @@index([groupId])
+  @@map("dc_group_pages")
+}
+
+// One block instance inside a page template. `props` holds the template's
+// prop values: design literals or { $bind } data bindings.
+model DcgPageBlock {
+  id        String                @id @default(cuid())
+  pageId    String
+  page      DataCatalogGroupPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  blockId   String
+  block     Block                 @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  order     Int                   @default(0)
+  props     Json                  @default("{}")
+  itemProps DataCatalogPageProp[]
+
+  @@index([pageId])
+  @@map("dc_group_page_blocks")
+}
+
+// Per-ITEM prop overrides for one template block — the inheritance escape
+// hatch (one item needing something extra). Not used by the UI yet.
+model DataCatalogPageProp {
+  id          String       @id @default(cuid())
+  catalogId   String
+  catalog     DataCatalog  @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  pageBlockId String
+  pageBlock   DcgPageBlock @relation(fields: [pageBlockId], references: [id], onDelete: Cascade)
+  props       Json         @default("{}")
+
+  @@unique([catalogId, pageBlockId])
+  @@map("dc_catalog_page_props")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// dc_ — Characteristics. A characteristic GROUP (Interests/RIASEC, Skills, …)
+// is a reusable set of named numeric dimensions. A catalog group can ATTACH
+// characteristic groups; every item then gets a numeric variable per
+// characteristic (filled on the item's General tab, under extra variables).
+// ─────────────────────────────────────────────────────────────────────────
+
+// Names/descriptions are plain single-language strings — translation is handled
+// separately, not stored per-field.
+model CharacteristicGroup {
+  id              String                       @id @default(cuid())
+  name            String                       @default("")
+  description     String?
+  color           String?
+  archived        Boolean                      @default(false)
+  characteristics Characteristic[]
+  catalogGroups   DcGroupCharacteristicGroup[]
+  createdAt       DateTime                     @default(now())
+  updatedAt       DateTime                     @updatedAt
+
+  @@map("dc_characteristic_groups")
+}
+
+model Characteristic {
+  id          String                          @id @default(cuid())
+  groupId     String
+  group       CharacteristicGroup             @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name        String                          @default("")
+  description String?
+  order       Int                             @default(0)
+  archived    Boolean                         @default(false)
+  values      DataCatalogCharacteristicValue[]
+
+  @@index([groupId])
+  @@map("dc_characteristics")
+}
+
+// Which characteristic GROUPS a catalog group attaches.
+model DcGroupCharacteristicGroup {
+  catalogGroupId        String
+  characteristicGroupId String
+  catalogGroup          DataCatalogGroup    @relation(fields: [catalogGroupId], references: [id], onDelete: Cascade)
+  characteristicGroup   CharacteristicGroup @relation(fields: [characteristicGroupId], references: [id], onDelete: Cascade)
+
+  @@id([catalogGroupId, characteristicGroupId])
+  @@map("dc_group_characteristic_groups")
+}
+
+// An item's numeric value for one characteristic.
+model DataCatalogCharacteristicValue {
+  id               String         @id @default(cuid())
+  catalogId        String
+  catalog          DataCatalog    @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  characteristicId String
+  characteristic   Characteristic @relation(fields: [characteristicId], references: [id], onDelete: Cascade)
+  value            Float
+
+  @@unique([catalogId, characteristicId])
+  @@map("dc_catalog_characteristic_values")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// test_ — Tests: an authored assessment composed of blocks, its assignments
+// to license holders (attempts), and the variables computed per attempt.
+// (IDs, FKs, timestamps and the publish/attempt state enums are added beyond
+// the source ERD as must-haves.)
+// ─────────────────────────────────────────────────────────────────────────
+
+model Test {
+  id             String             @id @default(cuid())
+  projectId      String
+  project        Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name           Json               @default("{}") // localized { en, ru, kk }
+  category       Json               @default("{}") // localized
+  state          TestState          @default(DRAFT)
+  info           Json               @default("{}") // color, icon, duration, description, surveyLogic…
+  advancedParams Json               @default("{}") @map("advanced_params") // calculation vars, visibility rule, …
+  blocks         TestBlock[]
+  licenseTests   LicenseTest[]
+  projectParams  TestProjectParam[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([projectId])
+  @@map("test_tests")
+}
+
+// One block instance placed into a test on a given surface (question flow /
+// result page / dashboard). `props` are the per-instance prop values/bindings;
+// `advancedParams` carries instance logic (field, visibleIf, onAnswer ops, …).
+model TestBlock {
+  id             String      @id @default(cuid())
+  testId         String
+  test           Test        @relation(fields: [testId], references: [id], onDelete: Cascade)
+  blockId        String
+  block          Block       @relation(fields: [blockId], references: [id], onDelete: Restrict)
+  surface        TestSurface @default(QUESTION)
+  order          Int         @default(0)
+  props          Json        @default("{}")
+  advancedParams Json        @default("{}") @map("advanced_params")
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([testId, surface, order])
+  @@index([blockId])
+  @@map("test_blocks")
+}
+
+// A license holder's attempt at a test (one row per license+test).
+model LicenseTest {
+  id          String                @id @default(cuid())
+  licenseId   String
+  license     License               @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  testId      String
+  test        Test                  @relation(fields: [testId], references: [id], onDelete: Cascade)
+  state       LicenseTestState      @default(NOT_STARTED)
+  startTime   DateTime?
+  endTime     DateTime?
+  progress    Json                  @default("{}") // in-progress answers keyed by question field
+  variables   LicenseTestVariable[]
+  createdAt   DateTime              @default(now())
+  updatedTime DateTime              @updatedAt
+
+  @@unique([licenseId, testId])
+  @@index([testId])
+  @@map("test_license_tests")
+}
+
+// A computed variable value for one attempt (a characteristic/score output).
+model LicenseTestVariable {
+  id            String      @id @default(cuid())
+  licenseTestId String
+  licenseTest   LicenseTest @relation(fields: [licenseTestId], references: [id], onDelete: Cascade)
+  variable      String
+  value         Float
+
+  @@unique([licenseTestId, variable])
+  @@map("test_license_test_variables")
+}
+
+// Which project parameters apply to a test, and whether the field is shown.
+model TestProjectParam {
+  testId         String
+  test           Test         @relation(fields: [testId], references: [id], onDelete: Cascade)
+  projectParamId String
+  projectParam   ProjectParam @relation(fields: [projectParamId], references: [id], onDelete: Cascade)
+  isVisible      Boolean      @default(true)
+
+  @@id([testId, projectParamId])
+  @@map("test_project_params")
 }

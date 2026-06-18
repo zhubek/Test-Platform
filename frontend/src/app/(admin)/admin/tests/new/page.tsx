@@ -4,16 +4,17 @@ import { useCallback } from "react";
 import { Breadcrumb } from "../../_components/breadcrumb";
 import { TestEditorShell } from "../[id]/_components/test-editor-shell";
 import { useLocale } from "@/lib/locale-context";
-import { createTest } from "@/lib/api";
+import { useProject } from "@/lib/project-context";
+import { createTest, editorPatchToWrite } from "@/lib/backend";
 import type { ContentTest } from "../../_components/mock-data";
 
 const emptyTest: ContentTest = {
   id: "new",
-  name: { en: "", ru: "", kz: "" },
-  description: { en: "", ru: "", kz: "" },
+  name: { en: "", ru: "", kk: "" },
+  description: { en: "", ru: "", kk: "" },
   color: "#4f46e5",
   icon: "compass",
-  category: { en: "", ru: "", kz: "" },
+  category: { en: "", ru: "", kk: "" },
   format: "test-only",
   visibilityTags: [],
   visibilityRule: { combinator: "all", items: [] },
@@ -35,15 +36,21 @@ const emptyTest: ContentTest = {
 
 export default function NewTestPage() {
   const { t } = useLocale();
+  const { project } = useProject();
 
-  const handleSave = useCallback(async (patch: Record<string, any>) => {
-    try {
-      const created = await createTest(patch);
-      window.location.href = `/admin/tests/${created.id}`;
-    } catch (err) {
-      console.error("Failed to create test:", err);
-    }
-  }, []);
+  const handleSave = useCallback(
+    async (patch: Record<string, any>) => {
+      if (!project.id) return;
+      try {
+        const created = await createTest(project.id, editorPatchToWrite(patch as never));
+        window.location.href = `/admin/tests/${created.id}`;
+      } catch (err) {
+        console.error("Failed to create test:", err);
+        alert("Failed to create test. See console for details.");
+      }
+    },
+    [project.id],
+  );
 
   return (
     <>

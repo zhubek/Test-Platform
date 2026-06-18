@@ -7,11 +7,8 @@
 
 // ── Shared types ────────────────────────────────────────────────────────
 
-export interface Localized {
-  en: string;
-  ru: string;
-  kz: string;
-}
+import type { Localized } from "./localized";
+export type { Localized };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface AnswerRow {
@@ -34,6 +31,7 @@ export interface QuestionRow {
   type: string;
   rateMax?: number;
   logic?: any;
+  randomizeChoices?: boolean;
   answers: AnswerRow[];
   createdAt: string;
   updatedAt: string;
@@ -45,6 +43,7 @@ export interface SectionRow {
   testId: number;
   order: number;
   visibleIf?: string;
+  randomizeQuestions?: boolean;
   questions: QuestionRow[];
   createdAt: string;
   updatedAt: string;
@@ -94,7 +93,7 @@ const nextId = () => ++seq;
 const delay = <T>(value: T, ms = 120): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), ms));
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
-const L = (en: string, ru = en, kz = en): Localized => ({ en, ru, kz });
+const L = (en: string, ru = en, kk = en): Localized => ({ en, ru, kk });
 
 function seedTest(
   id: number,
@@ -399,7 +398,7 @@ export function createSection(data: {
 
 export function updateSection(
   id: number,
-  data: { title?: Localized; order?: number },
+  data: { title?: Localized; order?: number; visibleIf?: string; randomizeQuestions?: boolean },
 ): Promise<SectionRow> {
   for (const t of tests) {
     const s = t.sections?.find((x) => x.id === id);
@@ -448,7 +447,7 @@ export function createQuestion(data: {
 
 export function updateQuestion(
   id: number,
-  data: { text?: Localized; type?: string; order?: number },
+  data: { text?: Localized; type?: string; order?: number; randomizeChoices?: boolean },
 ): Promise<QuestionRow> {
   for (const t of tests) {
     for (const s of t.sections ?? []) {

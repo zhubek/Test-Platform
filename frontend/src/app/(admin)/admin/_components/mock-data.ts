@@ -105,6 +105,9 @@ export interface Question {
   choices: AnswerChoice[];
   rateMax?: number; // for rating questions (default 5)
   logic?: QuestionLogic;
+  // Shuffle the answer options when the test is taken. Maps to SurveyJS
+  // `choicesOrder: "random"` (choice-based question types only).
+  randomizeChoices?: boolean;
 }
 
 export interface SurveyLogic {
@@ -119,6 +122,9 @@ export interface Section {
   description: Localized;
   questions: Question[];
   visibleIf?: string; // show this page only if the expression holds
+  // Shuffle the order of questions on this page when the test is taken. Maps to
+  // SurveyJS page-level `questionOrder: "random"`.
+  randomizeQuestions?: boolean;
 }
 
 // Classic 5-point Likert labels, used to seed a likert question's choices.

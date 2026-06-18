@@ -8,6 +8,7 @@ import {
   type UniversityRow,
 } from "@/lib/methodic-api";
 import { Plus } from "lucide-react";
+import { OutputHeaderCells, OutputRowCells } from "./output-columns";
 
 export function UniversitiesTab() {
   const { locale, t } = useLocale();
@@ -25,7 +26,7 @@ export function UniversitiesTab() {
   async function handleAdd() {
     try {
       const created = await createUniversity({
-        name: { en: "", ru: "", kz: "" },
+        name: { en: "", ru: "", kk: "" },
         type: "public",
       });
       window.location.href = `/admin/catalogs/universities/${created.id}`;
@@ -76,12 +77,7 @@ export function UniversitiesTab() {
                   <th className="py-2.5 px-4 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wider">
                     {t("cm.methodic.col.name")}
                   </th>
-                  <th className="py-2.5 px-4 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wider">
-                    {t("cm.methodic.col.city")}
-                  </th>
-                  <th className="py-2.5 px-4 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wider">
-                    {t("cm.methodic.col.type")}
-                  </th>
+                  <OutputHeaderCells type="universities" />
                 </tr>
               </thead>
               <tbody>
@@ -98,25 +94,7 @@ export function UniversitiesTab() {
                         {u.name[locale] || u.name.en}
                       </span>
                     </td>
-                    <td className="py-3 px-4">
-                      <span className="text-sm text-gray-500">
-                        {u.city?.name[locale] || u.city?.name.en || ""}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      {u.type && (
-                        <span
-                          className={
-                            "text-[0.65rem] font-semibold px-2 py-0.5 rounded-full " +
-                            (u.type === "public"
-                              ? "bg-blue-50 text-blue-700"
-                              : "bg-violet-50 text-violet-700")
-                          }
-                        >
-                          {t(`cm.methodic.type.${u.type}`)}
-                        </span>
-                      )}
-                    </td>
+                    <OutputRowCells type="universities" output={u.params?.output} />
                   </tr>
                 ))}
               </tbody>

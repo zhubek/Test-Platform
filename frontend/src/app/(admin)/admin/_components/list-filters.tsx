@@ -2,6 +2,7 @@
 
 import { Search, X } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
+import { DateRangePresets } from "@/components/date-range-picker";
 
 interface DateFilter {
   label: string;
@@ -89,9 +90,16 @@ export function ListFilters({
           {dateFilters.map((df) => (
             <div key={df.label} className="flex items-center gap-1.5">
               <span className="text-[0.72rem] text-gray-400 font-medium whitespace-nowrap">{df.label}:</span>
+              <DateRangePresets
+                onPick={(from, to) => {
+                  df.onFromChange(from);
+                  df.onToChange(to);
+                }}
+              />
               <input
                 type="date"
                 value={df.from}
+                max={df.to || undefined}
                 onChange={(e) => df.onFromChange(e.target.value)}
                 className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs text-gray-700 bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all"
               />
@@ -99,6 +107,7 @@ export function ListFilters({
               <input
                 type="date"
                 value={df.to}
+                min={df.from || undefined}
                 onChange={(e) => df.onToChange(e.target.value)}
                 className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs text-gray-700 bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all"
               />

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AdminTopbar } from "@/components/admin-topbar";
+import { ChatWidget } from "@/components/chat-widget";
 import { ProjectProvider } from "@/lib/project-context";
 
 export const metadata: Metadata = {
@@ -19,6 +20,7 @@ export default function AdminLayout({
         <main className="flex-1">
           <div className="mx-auto max-w-6xl px-4 py-8 md:px-8">{children}</div>
         </main>
+        <ChatWidget />
       </div>
     </ProjectProvider>
   );

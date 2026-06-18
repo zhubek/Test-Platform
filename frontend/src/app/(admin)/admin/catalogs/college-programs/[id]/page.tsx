@@ -5,7 +5,9 @@ import { useLocale } from "@/lib/locale-context";
 import { Breadcrumb } from "../../../_components/breadcrumb";
 import { EditorLayout } from "../../_components/editor-layout";
 import { LocalizedInput } from "../../_components/localized-input";
-import { OutputVariablesTab } from "../../_components/output-variables-tab";
+import { CatalogDetailScaffold } from "../../_components/catalog-detail-scaffold";
+import { useContentLocale } from "../../_components/edit-language";
+import { GraduationCap } from "lucide-react";
 import {
   fetchCollegeProgram,
   updateCollegeProgram,
@@ -28,13 +30,12 @@ export default function CollegeProgramEditorPage({
   const { id } = use(params);
   const numId = Number(id);
   const { t, locale } = useLocale();
-  const loc = locale as "en" | "ru" | "kz";
+  const loc = locale as "en" | "ru" | "kk";
 
   const [prog, setProg] = useState<CollegeProgramRow | null>(null);
   const [allCols, setAllCols] = useState<CollegeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"general" | "output">("general");
   const progRef = useRef(prog);
   progRef.current = prog;
 
@@ -130,7 +131,7 @@ export default function CollegeProgramEditorPage({
   function addCollege(col: CollegeRow) {
     updateColleges([
       ...colleges,
-      { id: col.id, duration: { en: "", ru: "", kz: "" } },
+      { id: col.id, duration: { en: "", ru: "", kk: "" } },
     ]);
     setShowColPicker(false);
     setColSearch("");
@@ -148,68 +149,25 @@ export default function CollegeProgramEditorPage({
 
   const title = prog.name[loc] || prog.name.en || "";
 
-  return (
-    <>
-      <Breadcrumb
-        items={[
-          { label: t("cm.methodic.heading"), href: "/admin/catalogs" },
-          { label: t("cm.methodic.tabs.collegePrograms"), href: "/admin/catalogs#collegePrograms" },
-          { label: title || "—" },
-        ]}
-      />
+  const editors: number[] = Array.isArray(prog.params?.access) ? prog.params!.access : [];
 
-      <div className="flex gap-1 mb-6 border-b border-gray-100 overflow-x-auto">
-        {(["general", "output"] as const).map((tb) => (
-          <button
-            key={tb}
-            onClick={() => setTab(tb)}
-            className={
-              "relative shrink-0 px-4 py-2.5 text-[0.82rem] font-medium transition-colors " +
-              (tab === tb ? "text-gray-900" : "text-gray-400 hover:text-gray-600")
-            }
-          >
-            {tb === "general" ? t("cm.methodic.tab.general") : t("cm.methodic.tab.output")}
-            {tab === tb && (
-              <span className="absolute bottom-0 left-4 right-4 h-[2px] rounded-full bg-gray-900" />
-            )}
-          </button>
-        ))}
-      </div>
-
-      {tab === "output" && (
-        <OutputVariablesTab
-          type="collegePrograms"
-          output={(prog.params?.output as Record<string, Localized>) ?? {}}
-          onChange={(next) => {
-            const newParams = { ...prog.params, output: next };
-            setProg({ ...prog, params: newParams });
-          }}
-          onBlur={saveAll}
-        />
-      )}
-
-      {tab === "general" && (
+  const detailsNode = (
       <EditorLayout
         editor={
           <div className="space-y-3">
-            <Field label={t("cm.methodic.col.title")}>
-              <div onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) saveName(); }}>
-                <LocalizedInput
-                  value={prog.name}
-                  onChange={(v) => setProg({ ...prog, name: v })}
-                  className={inputClass}
-                />
-              </div>
-            </Field>
-            <Field label={t("cm.methodic.col.code")}>
+            {/* Program identity */}
+            <div>
+              <label className="block text-[0.68rem] font-medium text-gray-500 mb-1">
+                {t("cm.methodic.col.code")}
+              </label>
               <input
                 type="text"
                 value={prog.code ?? ""}
                 onChange={(e) => setProg({ ...prog, code: e.target.value })}
-                onBlur={() => save({ code: prog.code })}
-                className={inputClass + " font-mono text-xs max-w-xs"}
+                onBlur={() => save({ code: progRef.current?.code ?? null })}
+                className={inputClass}
               />
-            </Field>
+            </div>
 
             {/* Colleges */}
             <div>
@@ -294,41 +252,101 @@ export default function CollegeProgramEditorPage({
             </div>
 
             <div className="border-t border-gray-100 my-1" />
-
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-xs text-gray-400">{saving ? "Saving..." : ""}</span>
-              <button onClick={handleDelete} className="text-xs text-red-500 hover:text-red-700 transition-colors">
-                Delete program
-              </button>
-            </div>
           </div>
         }
-        preview={
-          <div className="text-sm text-gray-500">
-            <div className="font-bold text-gray-900 mb-1">{title || "—"}</div>
-            {prog.code && <div className="font-mono text-xs text-gray-400 mb-3">{prog.code}</div>}
-            {colleges.length > 0 && (
-              <div>
-                <div className="text-[0.68rem] font-bold text-gray-400 uppercase tracking-wider mb-2">{t("cm.methodic.col.colleges")}</div>
-                <div className="space-y-1.5">
-                  {colleges.map((entry) => {
-                    const c = colMap.get(entry.id);
-                    const dur = entry.duration[loc] || entry.duration.en || "";
-                    return (
-                      <div key={entry.id} className="text-xs">
-                        <span className={c ? "text-gray-900 font-medium" : "text-red-400 italic"}>{getColName(entry.id)}</span>
-                        {dur && <span className="text-gray-400 ml-2">{dur}</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        }
+        preview={<CollegeProgramPreview prog={prog} colMap={colMap} />}
       />
+  );
+
+  return (
+    <CatalogDetailScaffold
+      breadcrumb={
+        <Breadcrumb
+          items={[
+            { label: t("cm.methodic.heading"), href: "/admin/catalogs" },
+            { label: t("cm.methodic.tabs.collegePrograms"), href: "/admin/catalogs#collegePrograms" },
+            { label: title || "—" },
+          ]}
+        />
+      }
+      title={title}
+      catalog="collegePrograms"
+      entityId={numId}
+      saving={saving}
+      titleField={{
+        value: prog.name,
+        onChange: (v) => setProg({ ...prog, name: v }),
+        onBlur: saveName,
+      }}
+      descriptionField={{
+        value: prog.desc ?? { en: "", ru: "", kk: "" },
+        onChange: (v) => setProg({ ...prog, desc: v }),
+        onBlur: () => {
+          if (progRef.current) save({ desc: progRef.current.desc });
+        },
+      }}
+      extras={{
+        value: (prog.params?.output as Record<string, Localized>) ?? {},
+        onChange: (next) => {
+          const newParams = { ...prog.params, output: next };
+          setProg({ ...prog, params: newParams });
+        },
+        onBlur: saveAll,
+      }}
+      onDelete={handleDelete}
+      deleteLabel="Delete program"
+      pages={[{ id: "details", label: "Colleges", icon: GraduationCap, render: detailsNode }]}
+      access={{
+        editors,
+        onChange: (ids) => {
+          const newParams = { ...(prog.params ?? {}), access: ids };
+          setProg({ ...prog, params: newParams });
+          save({ params: newParams });
+        },
+      }}
+    />
+  );
+}
+
+// Preview follows the page-level editing language (useContentLocale).
+function CollegeProgramPreview({
+  prog,
+  colMap,
+}: {
+  prog: CollegeProgramRow;
+  colMap: Map<number, CollegeRow>;
+}) {
+  const { t } = useLocale();
+  const loc = useContentLocale();
+  const title = prog.name[loc] || prog.name.en || "";
+  const colleges = prog.params?.colleges ?? [];
+  const getColName = (colId: number) => {
+    const c = colMap.get(colId);
+    if (!c) return t("cm.methodic.deleted");
+    return c.name[loc] || c.name.en || `#${colId}`;
+  };
+  return (
+    <div className="text-sm text-gray-500">
+      <div className="font-bold text-gray-900 mb-1">{title || "—"}</div>
+      {prog.code && <div className="font-mono text-xs text-gray-400 mb-3">{prog.code}</div>}
+      {colleges.length > 0 && (
+        <div>
+          <div className="text-[0.68rem] font-bold text-gray-400 uppercase tracking-wider mb-2">{t("cm.methodic.col.colleges")}</div>
+          <div className="space-y-1.5">
+            {colleges.map((entry) => {
+              const c = colMap.get(entry.id);
+              const dur = entry.duration[loc] || entry.duration.en || "";
+              return (
+                <div key={entry.id} className="text-xs">
+                  <span className={c ? "text-gray-900 font-medium" : "text-red-400 italic"}>{getColName(entry.id)}</span>
+                  {dur && <span className="text-gray-400 ml-2">{dur}</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
-    </>
+    </div>
   );
 }
 

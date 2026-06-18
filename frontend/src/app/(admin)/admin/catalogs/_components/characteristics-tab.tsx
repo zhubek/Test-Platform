@@ -1,49 +1,42 @@
 "use client";
 
+// The Characteristics tab — lists characteristic groups (RIASEC, Skills, …)
+// from the dc backend. Names are plain single-language strings.
+
 import { useState, useMemo, useEffect } from "react";
-import { useLocale } from "@/lib/locale-context";
-import {
-  fetchCharacteristicTypes,
-  createCharacteristicType,
-  type CharacteristicTypeRow,
-} from "@/lib/methodic-api";
 import { Plus } from "lucide-react";
+import {
+  createCharacteristicGroup,
+  loadAllCharacteristicGroups,
+  type DcCharacteristicGroup,
+} from "@/lib/dc-catalogs";
 
 export function CharacteristicsTab() {
-  const { t, locale } = useLocale();
-  const loc = locale as "en" | "ru" | "kz";
   const [search, setSearch] = useState("");
-  const [types, setTypes] = useState<CharacteristicTypeRow[]>([]);
+  const [groups, setGroups] = useState<DcCharacteristicGroup[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchCharacteristicTypes()
-      .then(setTypes)
-      .catch((err) => console.error("Failed to load characteristic types:", err))
+    loadAllCharacteristicGroups(true)
+      .then(setGroups)
+      .catch((err) => console.error("Failed to load characteristic groups:", err))
       .finally(() => setLoading(false));
   }, []);
 
   const filtered = useMemo(() => {
-    if (!search) return types;
+    if (!search) return groups;
     const q = search.toLowerCase();
-    return types.filter((t) => {
-      const name = t.name[loc] || t.name.en || "";
-      const desc = t.desc?.[loc] || t.desc?.en || "";
-      return (
-        name.toLowerCase().includes(q) ||
-        desc.toLowerCase().includes(q) ||
-        t.characteristics.some((c) =>
-          (c.name[loc] || c.name.en || "").toLowerCase().includes(q)
-        )
-      );
-    });
-  }, [search, types, loc]);
+    return groups.filter(
+      (g) =>
+        g.name.toLowerCase().includes(q) ||
+        (g.description ?? "").toLowerCase().includes(q) ||
+        g.characteristics.some((c) => c.name.toLowerCase().includes(q)),
+    );
+  }, [search, groups]);
 
   async function handleAdd() {
     try {
-      const created = await createCharacteristicType({
-        name: { en: "", ru: "", kz: "" },
-      });
+      const created = await createCharacteristicGroup();
       window.location.href = `/admin/catalogs/characteristics/${created.id}`;
     } catch (err) {
       console.error("Failed to create:", err);
@@ -57,71 +50,63 @@ export function CharacteristicsTab() {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder={t("cm.characteristics.searchPlaceholder")}
-          className="w-full max-w-md rounded-lg border border-gray-200 pl-3 pr-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all"
+          placeholder="Search characteristics…"
+          className="w-full max-w-md rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
         />
         <button
           onClick={handleAdd}
-          className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-teal-600 text-white hover:bg-teal-700 transition-colors whitespace-nowrap"
+          className="flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700"
         >
-          <Plus className="w-4 h-4" />
-          {t("cm.characteristics.addType")}
+          <Plus className="h-4 w-4" />
+          Add group
         </button>
       </div>
 
       {loading ? (
-        <div className="text-center py-10 text-sm text-gray-400">Loading...</div>
+        <div className="py-10 text-center text-sm text-gray-400">Loading...</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map((ct, i) => (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {filtered.map((cg) => (
             <a
-              key={ct.id}
-              href={`/admin/catalogs/characteristics/${ct.id}`}
-              className="block bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:border-teal-200 hover:shadow-md transition-all group animate-stagger-fade-up"
-              style={{ "--stagger-index": i } as React.CSSProperties}
+              key={cg.id}
+              href={`/admin/catalogs/characteristics/${cg.id}`}
+              className="group block rounded-xl border border-gray-100 bg-white p-5 shadow-sm transition-all hover:border-teal-200 hover:shadow-md"
             >
-              <div className="flex items-start gap-3 mb-3">
+              <div className="mb-3 flex items-start gap-3">
                 <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ background: (ct.color ?? "#6b7280") + "14" }}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                  style={{ background: (cg.color ?? "#6b7280") + "14" }}
                 >
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ background: ct.color ?? "#6b7280" }}
-                  />
+                  <div className="h-3 w-3 rounded-full" style={{ background: cg.color ?? "#6b7280" }} />
                 </div>
                 <div>
-                  <h3 className="text-[0.92rem] font-semibold text-gray-900 group-hover:text-teal-700 transition-colors">
-                    {ct.name[loc] || ct.name.en || "—"}
+                  <h3 className="text-[0.92rem] font-semibold text-gray-900 transition-colors group-hover:text-teal-700">
+                    {cg.name || <span className="italic text-gray-400">Untitled group</span>}
                   </h3>
-                  <p className="text-[0.72rem] text-gray-400 mt-0.5">
-                    {ct.characteristics.length} {t("cm.characteristics.items")}
+                  <p className="mt-0.5 text-[0.72rem] text-gray-400">
+                    {cg.characteristics.length} characteristics
                   </p>
                 </div>
               </div>
 
-              {ct.desc && (ct.desc[loc] || ct.desc.en) && (
-                <p className="text-[0.78rem] text-gray-500 line-clamp-2 mb-3">
-                  {ct.desc[loc] || ct.desc.en}
-                </p>
+              {cg.description && (
+                <p className="mb-3 line-clamp-2 text-[0.78rem] text-gray-500">{cg.description}</p>
               )}
 
               <div className="flex flex-wrap gap-1.5">
-                {ct.characteristics.map((c) => (
+                {cg.characteristics.map((c) => (
                   <span
                     key={c.id}
-                    className="text-[0.65rem] font-medium px-2 py-0.5 rounded-full bg-gray-50 text-gray-500"
+                    className="rounded-full bg-gray-50 px-2 py-0.5 text-[0.65rem] font-medium text-gray-500"
                   >
-                    {c.name[loc] || c.name.en}
+                    {c.name}
                   </span>
                 ))}
               </div>
             </a>
           ))}
           {filtered.length === 0 && (
-            <div className="col-span-2 text-center py-12 text-sm text-gray-400">
-              {t("cm.filters.noResults")}
-            </div>
+            <div className="col-span-2 py-12 text-center text-sm text-gray-400">No results.</div>
           )}
         </div>
       )}

@@ -30,7 +30,7 @@ export function DashboardEditorShell({ initialData }: Props) {
   const handleWidgetAdd = useCallback(() => {
     const newWidget: DashboardWidget = {
       id: `w${Date.now()}`,
-      title: { en: "", ru: "", kz: "" },
+      title: { en: "", ru: "", kk: "" },
       type: "bar" as VisualizationType,
       sql: "",
     };

@@ -8,10 +8,11 @@ import {
   type UniverProgramRow,
 } from "@/lib/methodic-api";
 import { Plus } from "lucide-react";
+import { OutputHeaderCells, OutputRowCells } from "./output-columns";
 
 export function UniverProgramsTab() {
   const { t, locale } = useLocale();
-  const loc = locale as "en" | "ru" | "kz";
+  const loc = locale as "en" | "ru" | "kk";
   const [search, setSearch] = useState("");
   const [programs, setPrograms] = useState<UniverProgramRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +42,7 @@ export function UniverProgramsTab() {
   async function handleAdd() {
     try {
       const created = await createUniverProgram({
-        name: { en: "", ru: "", kz: "" },
+        name: { en: "", ru: "", kk: "" },
       });
       window.location.href = `/admin/catalogs/univer-programs/${created.id}`;
     } catch (err) {
@@ -81,15 +82,7 @@ export function UniverProgramsTab() {
                   <th className="py-2.5 px-4 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wider">
                     {t("cm.methodic.col.title")}
                   </th>
-                  <th className="py-2.5 px-4 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wider">
-                    {t("cm.methodic.col.code")}
-                  </th>
-                  <th className="py-2.5 px-4 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wider">
-                    {t("cm.methodic.col.subjects")}
-                  </th>
-                  <th className="py-2.5 px-4 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wider">
-                    {t("cm.methodic.col.universities")}
-                  </th>
+                  <OutputHeaderCells type="univerPrograms" />
                 </tr>
               </thead>
               <tbody>
@@ -106,21 +99,7 @@ export function UniverProgramsTab() {
                         {p.name[loc] || p.name.en}
                       </span>
                     </td>
-                    <td className="py-3 px-4">
-                      <span className="font-mono text-xs text-gray-400">
-                        {p.code}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="text-sm text-gray-500">
-                        {p.subjects?.[loc] || p.subjects?.en || ""}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="text-xs text-gray-400">
-                        {p.params?.universities?.length ?? 0}
-                      </span>
-                    </td>
+                    <OutputRowCells type="univerPrograms" output={p.params?.output} />
                   </tr>
                 ))}
               </tbody>

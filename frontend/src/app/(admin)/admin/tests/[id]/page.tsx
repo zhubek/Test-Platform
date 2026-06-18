@@ -1,97 +1,47 @@
 "use client";
 
-import { use, useState, useEffect, useCallback, useRef } from "react";
+import { use, useState, useEffect, useCallback } from "react";
 import { Breadcrumb } from "../../_components/breadcrumb";
 import { TestEditorShell } from "./_components/test-editor-shell";
 import { useLocale } from "@/lib/locale-context";
-import { fetchTest, updateTest, type TestRow } from "@/lib/api";
+import {
+  fetchTest,
+  updateTest,
+  setTestState,
+  editorPatchToWrite,
+  type AdminTest,
+} from "@/lib/backend";
 import type { ContentTest } from "../../_components/mock-data";
 import type { VisibilityRule } from "@/lib/visibility-rule";
 
-function apiTestToContentTest(t: TestRow): ContentTest {
-  const toLoc = (x: any): { en: string; ru: string; kz: string } =>
-    x && typeof x === "object"
-      ? { en: x.en ?? "", ru: x.ru ?? "", kz: x.kz ?? "" }
-      : { en: x ?? "", ru: "", kz: "" };
-  const vars = (t.vars?.variables ?? []).map((v: any) => ({
-    id: v.id,
-    name: v.name,
-    label: v.label ? toLoc(v.label) : toLoc(v.description),
-    kind: v.kind ?? "custom",
-    formula: v.formula ?? "",
-    scope: v.scope ?? "both",
-    valueTranslations: v.valueTranslations,
-    source: v.source,
-    mappingId: v.mappingId,
-    rank: v.rank,
-  }));
-  const mappings = t.calcLogic?.mappings ?? [];
-  const calcLogic = t.calcLogic?.characteristicSections ?? [];
-  const resultWidgets = t.resultViewLogic?.widgets ?? [];
-  // Prefer pages; fall back to legacy flat components wrapped in one page.
-  const legacyComponents = t.resultViewLogic?.components ?? [];
-  const resultPages =
-    t.resultViewLogic?.pages ??
-    (legacyComponents.length
-      ? [{ id: "rp_legacy", title: { en: "Results", ru: "Результаты", kz: "Нәтижелер" }, components: legacyComponents }]
-      : []);
-  const dashboardWidgets = t.dashboardViewLogic?.widgets ?? [];
-  const dashboardPages = t.dashboardViewLogic?.pages ?? [];
-
+// Backend Test → the rich ContentTest the editor shell consumes. The shell only
+// edits the General-tab fields; the block-based tabs (Questions/Calc/Result)
+// load their own localStorage drafts keyed by this test's id.
+function toContentTest(t: AdminTest): ContentTest {
+  const ap = t.advancedParams as Record<string, any>;
   return {
-    id: String(t.id),
+    id: t.id,
     name: t.name,
-    description: t.desc ?? { en: "", ru: "", kz: "" },
-    color: t.color ?? "#6b7280",
-    icon: (t.icon as any) ?? "compass",
-    category: typeof t.category === "string"
-      ? { en: t.category, ru: t.category, kz: t.category }
-      : (t.category ?? { en: "", ru: "", kz: "" }),
+    description: t.description,
+    color: t.color,
+    icon: (t.icon as ContentTest["icon"]) ?? "compass",
+    category: t.category,
     format: "test-only",
-    visibilityTags: Array.isArray((t as { visibilityTags?: string[] }).visibilityTags)
-      ? (t as { visibilityTags?: string[] }).visibilityTags!
-      : [],
-    visibilityRule: (t as { visibilityRule?: VisibilityRule }).visibilityRule ?? {
-      combinator: "all",
-      items: [],
-    },
-    duration: t.duration ?? 0,
-    status: t.state === "published" ? "published" : "draft",
+    visibilityTags: Array.isArray(ap.visibilityTags) ? ap.visibilityTags : [],
+    visibilityRule: (ap.visibilityRule as VisibilityRule) ?? { combinator: "all", items: [] },
+    duration: t.duration,
+    status: t.state === "PUBLISHED" ? "published" : "draft",
     createdAt: t.createdAt?.slice(0, 10) ?? "",
     updatedAt: t.updatedAt?.slice(0, 10) ?? "",
-    sections: (t.sections ?? []).map((s) => ({
-      id: String(s.id),
-      title: s.title,
-      description: { en: "", ru: "", kz: "" },
-      visibleIf: s.visibleIf,
-      questions: (s.questions ?? []).map((q) => ({
-        id: String(q.id),
-        text: q.text,
-        name: q.name,
-        type: (q.type as any) ?? "single",
-        rateMax: q.rateMax,
-        logic: q.logic,
-        choices: (q.answers ?? []).map((a) => ({
-          id: String(a.id),
-          text: a.text,
-          value: a.value,
-          visibleIf: a.visibleIf,
-          variables: Array.isArray(a.vars)
-            ? a.vars
-            : a.vars?.variableId
-              ? [{ variableId: a.vars.variableId, value: a.vars.value ?? 0 }]
-              : [],
-        })),
-      })),
-    })),
-    mappings,
-    variables: vars,
+    sections: [],
+    mappings: ap.mappings ?? [],
+    variables: ap.vars ?? [],
     surveyLogic: (t.surveyLogic as ContentTest["surveyLogic"]) ?? {},
-    characteristicSections: calcLogic,
-    resultPages,
-    resultWidgets,
-    dashboardPages,
-    orgDashboardWidgets: dashboardWidgets,
+    characteristicSections: ap.characteristicSections ?? [],
+    resultPages: ap.result?.pages ?? [],
+    resultWidgets: [],
+    dashboardPages: [],
+    orgDashboardWidgets: [],
     regionDashboardWidgets: [],
   };
 }
@@ -102,30 +52,44 @@ export default function TestEditorPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const numId = Number(id);
   const { t, locale } = useLocale();
-  const loc = locale as "en" | "ru" | "kz";
+  const loc = locale as "en" | "ru" | "kk";
 
-  const [test, setTest] = useState<TestRow | null>(null);
+  const [test, setTest] = useState<AdminTest | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchTest(numId)
-      .then(setTest)
+    let cancelled = false;
+    setLoading(true);
+    fetchTest(id)
+      .then((x) => { if (!cancelled) setTest(x); })
       .catch((err) => console.error("Failed to load test:", err))
-      .finally(() => setLoading(false));
-  }, [numId]);
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [id]);
 
   const handleSave = useCallback(
     async (patch: Record<string, any>) => {
       try {
-        const updated = await updateTest(numId, patch);
-        setTest(updated);
+        // Merge against the SERVER's current bags, not the page's load-time copy
+        // — the Questions/Calculation/Result tabs save advancedParams directly, so
+        // a stale base here would revert their work (vars/calc/matches/result).
+        const fresh = await fetchTest(id).catch(() => test ?? undefined);
+        // Persist the General-tab fields, merging into the existing bags.
+        let next = await updateTest(id, editorPatchToWrite(patch as never, fresh ?? undefined));
+        // The published/draft toggle goes through the lifecycle endpoint, and
+        // only when it actually changed (the backend rejects a same-state move).
+        const desired = patch.state === "published" ? "PUBLISHED" : "DRAFT";
+        if (test && desired !== test.state) {
+          next = await setTestState(id, desired);
+        }
+        setTest(next);
       } catch (err) {
         console.error("Failed to save:", err);
+        alert("Failed to save test. See console for details.");
       }
     },
-    [numId],
+    [id, test],
   );
 
   if (loading) {
@@ -137,7 +101,6 @@ export default function TestEditorPage({
   }
 
   const name = test.name[loc] || test.name.en || "—";
-  const contentTest = apiTestToContentTest(test);
 
   return (
     <>
@@ -147,7 +110,7 @@ export default function TestEditorPage({
           { label: name },
         ]}
       />
-      <TestEditorShell initialData={contentTest} testId={numId} onSave={handleSave} />
+      <TestEditorShell initialData={toContentTest(test)} testId={test.id} onSave={handleSave} />
     </>
   );
 }

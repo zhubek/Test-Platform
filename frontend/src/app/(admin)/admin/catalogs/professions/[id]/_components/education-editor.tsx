@@ -2,13 +2,29 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useLocale } from "@/lib/locale-context";
+import { useContentLocale } from "../../../_components/edit-language";
 import { EditorLayout } from "../../../_components/editor-layout";
+import { localize } from "@/lib/localized";
 import {
   fetchUniverPrograms,
   fetchCollegePrograms,
+  fetchUniversities,
+  fetchColleges,
+  fetchCities,
   type UniverProgramRow,
   type CollegeProgramRow,
+  type UniversityRow,
+  type CollegeRow,
+  type CityRow,
 } from "@/lib/methodic-api";
+import { EducationTab, type SubTab } from "@/app/professions/[id]/_components/education-tab";
+import type {
+  EducationData,
+  SpecializationData,
+  CollegeSpecData,
+  UniversityData,
+  CollegeData,
+} from "@/app/professions/_components/mock-data";
 
 interface EducationParams {
   specializations?: number[];
@@ -20,20 +36,40 @@ interface Props {
   onSave?: (data: EducationParams) => void;
 }
 
-export function EducationEditor({ data: initial, onSave }: Props) {
-  const { t, locale } = useLocale();
-  const loc = locale as "en" | "ru" | "kz";
+const emptyLoc = { en: "", ru: "", kk: "" };
 
+export function EducationEditor({ data: initial, onSave }: Props) {
+  const { t } = useLocale();
+  const loc = useContentLocale();
+
+  // Reference data: education → university programs → universities → cities
+  // (and college programs → colleges → cities).
   const [allUniProgs, setAllUniProgs] = useState<UniverProgramRow[]>([]);
   const [allColProgs, setAllColProgs] = useState<CollegeProgramRow[]>([]);
+  const [allUnis, setAllUnis] = useState<UniversityRow[]>([]);
+  const [allCols, setAllCols] = useState<CollegeRow[]>([]);
+  const [allCities, setAllCities] = useState<CityRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [specIds, setSpecIds] = useState<number[]>(initial?.specializations ?? []);
   const [colSpecIds, setColSpecIds] = useState<number[]>(initial?.collegeSpecs ?? []);
+  const [sub, setSub] = useState<SubTab>("universities");
 
   useEffect(() => {
-    Promise.all([fetchUniverPrograms(), fetchCollegePrograms()])
-      .then(([u, c]) => { setAllUniProgs(u); setAllColProgs(c); })
+    Promise.all([
+      fetchUniverPrograms(),
+      fetchCollegePrograms(),
+      fetchUniversities(),
+      fetchColleges(),
+      fetchCities(),
+    ])
+      .then(([up, cp, u, c, ci]) => {
+        setAllUniProgs(up);
+        setAllColProgs(cp);
+        setAllUnis(u);
+        setAllCols(c);
+        setAllCities(ci);
+      })
       .catch((err) => console.error("Failed to load programs:", err))
       .finally(() => setLoading(false));
   }, []);
@@ -43,12 +79,26 @@ export function EducationEditor({ data: initial, onSave }: Props) {
     allUniProgs.forEach((p) => m.set(p.id, p));
     return m;
   }, [allUniProgs]);
-
   const colProgMap = useMemo(() => {
     const m = new Map<number, CollegeProgramRow>();
     allColProgs.forEach((p) => m.set(p.id, p));
     return m;
   }, [allColProgs]);
+  const uniMap = useMemo(() => {
+    const m = new Map<number, UniversityRow>();
+    allUnis.forEach((u) => m.set(u.id, u));
+    return m;
+  }, [allUnis]);
+  const colMap = useMemo(() => {
+    const m = new Map<number, CollegeRow>();
+    allCols.forEach((c) => m.set(c.id, c));
+    return m;
+  }, [allCols]);
+  const cityMap = useMemo(() => {
+    const m = new Map<number, CityRow>();
+    allCities.forEach((c) => m.set(c.id, c));
+    return m;
+  }, [allCities]);
 
   const availableUniProgs = useMemo(() => {
     const selected = new Set(specIds);
@@ -60,21 +110,64 @@ export function EducationEditor({ data: initial, onSave }: Props) {
     return allColProgs.filter((p) => !selected.has(p.id));
   }, [allColProgs, colSpecIds]);
 
-  function addSpec(id: number) {
-    setSpecIds((prev) => [...prev, id]);
+  function addSpec(id: number) { setSpecIds((prev) => [...prev, id]); }
+  function removeSpec(id: number) { setSpecIds((prev) => prev.filter((i) => i !== id)); }
+  function addColSpec(id: number) { setColSpecIds((prev) => [...prev, id]); }
+  function removeColSpec(id: number) { setColSpecIds((prev) => prev.filter((i) => i !== id)); }
+
+  // Resolve a university-program id into the public SpecializationData shape:
+  // program → universities → cities, plus the program's UNT points.
+  function resolveSpec(id: number): SpecializationData | null {
+    const prog = uniProgMap.get(id);
+    if (!prog) return null;
+    const universities: UniversityData[] = (prog.params?.universities ?? []).map((entry) => {
+      const uni = uniMap.get(entry.id);
+      const cityRow = uni?.city ?? (uni?.cityId != null ? cityMap.get(uni.cityId) ?? null : null);
+      return {
+        id: String(entry.id),
+        name: uni ? localize(uni.name, loc) : "—",
+        city: cityRow ? localize(cityRow.name, loc) : "",
+        type: uni?.type === "private" ? "private" : "public",
+        grant: entry.grant,
+      };
+    });
+    return {
+      id: String(prog.id),
+      title: prog.name,
+      code: prog.code ?? "",
+      subjects: prog.subjects ?? emptyLoc,
+      points: prog.params?.points,
+      universities,
+    };
   }
 
-  function removeSpec(id: number) {
-    setSpecIds((prev) => prev.filter((i) => i !== id));
+  // Resolve a college-program id: program → colleges → cities.
+  function resolveColSpec(id: number): CollegeSpecData | null {
+    const prog = colProgMap.get(id);
+    if (!prog) return null;
+    const colleges: CollegeData[] = (prog.params?.colleges ?? []).map((entry) => {
+      const col = colMap.get(entry.id);
+      const cityRow = col?.city ?? (col?.cityId != null ? cityMap.get(col.cityId) ?? null : null);
+      return {
+        id: String(entry.id),
+        name: col ? localize(col.name, loc) : "—",
+        city: cityRow ? localize(cityRow.name, loc) : "",
+        duration: entry.duration ?? emptyLoc,
+      };
+    });
+    return {
+      id: String(prog.id),
+      title: prog.name,
+      code: prog.code ?? "",
+      colleges,
+    };
   }
 
-  function addColSpec(id: number) {
-    setColSpecIds((prev) => [...prev, id]);
-  }
-
-  function removeColSpec(id: number) {
-    setColSpecIds((prev) => prev.filter((i) => i !== id));
-  }
+  const liveData: EducationData = {
+    specializations: specIds.map(resolveSpec).filter((s): s is SpecializationData => s !== null),
+    collegeSpecs: colSpecIds.map(resolveColSpec).filter((s): s is CollegeSpecData => s !== null),
+    courses: [],
+  };
 
   if (loading) {
     return <div className="text-center py-10 text-sm text-gray-400">Loading...</div>;
@@ -167,45 +260,7 @@ export function EducationEditor({ data: initial, onSave }: Props) {
           )}
         </>
       }
-      preview={
-        <div className="text-sm text-gray-500">
-          <div className="text-[0.68rem] font-bold text-gray-400 uppercase tracking-wider mb-2">
-            {t("professionDetail.education.universities")}
-          </div>
-          {specIds.length === 0 && <div className="text-xs text-gray-300 mb-3">—</div>}
-          <div className="space-y-1 mb-4">
-            {specIds.map((id) => {
-              const p = uniProgMap.get(id);
-              return (
-                <div key={id} className="text-xs">
-                  <span className={p ? "text-gray-900 font-medium" : "text-red-400 italic"}>
-                    {p ? (p.name[loc] || p.name.en) : t("cm.methodic.deleted")}
-                  </span>
-                  {p?.code && <span className="text-gray-400 font-mono ml-2">{p.code}</span>}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="text-[0.68rem] font-bold text-gray-400 uppercase tracking-wider mb-2">
-            {t("professionDetail.education.colleges")}
-          </div>
-          {colSpecIds.length === 0 && <div className="text-xs text-gray-300">—</div>}
-          <div className="space-y-1">
-            {colSpecIds.map((id) => {
-              const p = colProgMap.get(id);
-              return (
-                <div key={id} className="text-xs">
-                  <span className={p ? "text-gray-900 font-medium" : "text-red-400 italic"}>
-                    {p ? (p.name[loc] || p.name.en) : t("cm.methodic.deleted")}
-                  </span>
-                  {p?.code && <span className="text-gray-400 font-mono ml-2">{p.code}</span>}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      }
+      preview={<EducationTab data={liveData} activeSub={sub} onSubChange={setSub} />}
     />
   );
 }

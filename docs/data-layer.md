@@ -13,7 +13,7 @@ Both expose `fetch* / create* / update* / delete*` functions that **resolve from
 
 ### Core types
 
-- `Localized` — `{ en, ru, kz }` (the authored-content string type; see [i18n.md](./i18n.md)).
+- `Localized` — `Record<string, string>` keyed by BCP-47 code (e.g. `{ en, ru, kk }`; the authored-content string type; see [i18n.md](./i18n.md)).
 - `TestRow` — a test: `name`, `desc`, `color`, `icon`, `category`, `state` (draft/published), plus the four authored logic blobs: `vars`, `calcLogic`, `surveyLogic`, `resultViewLogic`, `dashboardViewLogic`, and nested `sections`.
 - `SectionRow` → `QuestionRow` → `AnswerRow` — the question tree.
 - `PublicTestSummary` — the trimmed shape the public site lists.

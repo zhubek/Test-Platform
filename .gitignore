@@ -34,3 +34,9 @@ backend/prisma/migrations/dev/
 # turbo / next cache
 .turbo/
 .next/cache/
+
+# automation + scratch artifacts
+.playwright-mcp/
+take-kk.png
+# AI Studio landing reference export (ported into frontend/src/components/landing)
+frontend/landing/

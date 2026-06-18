@@ -1,12 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, Trash2, X, Save, GripVertical } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, Trash2, X, Save, GripVertical, Star } from "lucide-react";
 import {
   useProject,
   MAX_PARAMETERS,
   type ProjectParameter,
 } from "@/lib/project-context";
+import {
+  fetchLanguages,
+  assignProjectLanguage,
+  unassignProjectLanguage,
+  setProjectDefaultLanguage,
+  type BeLanguage,
+} from "@/lib/backend";
 import { useLocale } from "@/lib/locale-context";
 import { localize, l, type Localized } from "@/lib/localized";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +45,13 @@ export default function ParametersPage() {
   const [params, setParams] = useState<ProjectParameter[]>(project.parameters);
   const [saved, setSaved] = useState(false);
 
+  // Global language catalog (every language the platform knows about).
+  const [catalog, setCatalog] = useState<BeLanguage[]>([]);
+  useEffect(() => {
+    fetchLanguages().then(setCatalog).catch((e) => console.error("Failed to load languages:", e));
+  }, []);
+  const codeToId = useMemo(() => new Map(catalog.map((x) => [x.name, x.id])), [catalog]);
+
   useEffect(() => {
     setName(project.name);
     setDescription(project.description);
@@ -45,6 +59,44 @@ export default function ParametersPage() {
     setOrgLimit(project.organizationLimit);
     setParams(project.parameters);
   }, [project]);
+
+  // Language assignment persists immediately (separate from the Save button).
+  const assigned = project.languages;
+  const defaultCode = project.defaultLanguage;
+  const available = catalog.filter((x) => !assigned.includes(x.name));
+
+  const addLanguage = async (code: string) => {
+    const id = codeToId.get(code);
+    if (!id || assigned.includes(code)) return;
+    try {
+      await assignProjectLanguage(project.id, id);
+      updateProject(project.id, { languages: [...assigned, code] });
+    } catch (e) {
+      console.error("Failed to add language:", e);
+    }
+  };
+
+  const removeLanguage = async (code: string) => {
+    const id = codeToId.get(code);
+    if (!id || code === defaultCode || assigned.length <= 1) return;
+    try {
+      await unassignProjectLanguage(project.id, id);
+      updateProject(project.id, { languages: assigned.filter((c) => c !== code) });
+    } catch (e) {
+      console.error("Failed to remove language:", e);
+    }
+  };
+
+  const makeDefault = async (code: string) => {
+    const id = codeToId.get(code);
+    if (!id || code === defaultCode) return;
+    try {
+      await setProjectDefaultLanguage(project.id, id);
+      updateProject(project.id, { defaultLanguage: code });
+    } catch (e) {
+      console.error("Failed to set default language:", e);
+    }
+  };
 
   const addParam = () => {
     if (params.length >= MAX_PARAMETERS) return;
@@ -90,9 +142,9 @@ export default function ParametersPage() {
       parameters: params
         .map((p) => ({
           ...p,
-          options: p.options.filter((o) => (o.en || o.ru || o.kz).trim() !== ""),
+          options: p.options.filter((o) => (o.en || o.ru || o.kk).trim() !== ""),
         }))
-        .filter((p) => (p.label.en || p.label.ru || p.label.kz).trim() !== ""),
+        .filter((p) => (p.label.en || p.label.ru || p.label.kk).trim() !== ""),
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 1800);
@@ -160,6 +212,76 @@ export default function ParametersPage() {
                 />
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Languages */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Languages</CardTitle>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              The content languages this project uses. Editors show a translation chip per
+              language here and hide all others. The starred one is the source/fallback.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {assigned.map((code) => {
+                const lang = catalog.find((x) => x.name === code);
+                const isDefault = code === defaultCode;
+                return (
+                  <div
+                    key={code}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm",
+                      isDefault ? "border-teal-300 bg-teal-50" : "border-gray-200",
+                    )}
+                  >
+                    <span className="font-semibold uppercase text-gray-700">{code}</span>
+                    {lang?.label && <span className="text-xs text-gray-400">{lang.label}</span>}
+                    <button
+                      type="button"
+                      onClick={() => makeDefault(code)}
+                      title={isDefault ? "Source language" : "Make source language"}
+                      className={cn(
+                        "ml-1 transition-colors",
+                        isDefault ? "text-teal-600" : "text-gray-300 hover:text-amber-500",
+                      )}
+                    >
+                      <Star className={cn("h-3.5 w-3.5", isDefault && "fill-teal-500")} />
+                    </button>
+                    {!isDefault && assigned.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeLanguage(code)}
+                        title="Remove language"
+                        className="text-gray-300 hover:text-red-500"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {available.length > 0 && (
+              <div className="w-56">
+                <Select value="" onValueChange={(v) => v && addLanguage(v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="+ Add language" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {available.map((lang) => (
+                      <SelectItem key={lang.id} value={lang.name}>
+                        <span className="font-semibold uppercase">{lang.name}</span>
+                        {lang.label && <span className="ml-2 text-muted-foreground">{lang.label}</span>}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </CardContent>
         </Card>
 

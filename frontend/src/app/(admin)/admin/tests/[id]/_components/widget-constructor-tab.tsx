@@ -280,7 +280,7 @@ export function WidgetConstructorTab({ heading, subheading, widgets, onChange, d
     const newWidget: Widget = {
       id: `w${Date.now()}`,
       componentType,
-      title: { en: "", ru: "", kz: "" },
+      title: { en: "", ru: "", kk: "" },
       sql: defaultSql ?? DEFAULT_TEST_SQL,
       params: def.params.map((p) => ({ key: p.key, value: "" })),
     };

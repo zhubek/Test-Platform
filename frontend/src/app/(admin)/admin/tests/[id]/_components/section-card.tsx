@@ -74,7 +74,7 @@ export function SectionCard({
     } else if (onChange) {
       const newQ: Question = {
         id: `q${Date.now()}`,
-        text: { en: "", ru: "", kz: "" },
+        text: { en: "", ru: "", kk: "" },
         type: "single",
         choices: [],
       };
@@ -88,7 +88,7 @@ export function SectionCard({
     } else if (onChange) {
       const newChoice: AnswerChoice = {
         id: `ch${Date.now()}`,
-        text: { en: "", ru: "", kz: "" },
+        text: { en: "", ru: "", kk: "" },
         variables: [],
       };
       const next = section.questions.map((q, i) =>

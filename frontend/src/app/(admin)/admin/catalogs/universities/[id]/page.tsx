@@ -14,15 +14,16 @@ import {
   type CityRow,
   type Localized,
 } from "@/lib/methodic-api";
-import { LocalizedInput } from "../../_components/localized-input";
-import { OutputVariablesTab } from "../../_components/output-variables-tab";
-import { Mail, Phone, Globe } from "lucide-react";
+import { CatalogDetailScaffold } from "../../_components/catalog-detail-scaffold";
+import { ContactDetailsForm } from "../../_components/contact-details-form";
+import { useContentLocale } from "../../_components/edit-language";
+import { Mail, Phone, Globe, Building2 } from "lucide-react";
 import type { Localized as Loc } from "@/lib/localized";
 
 const inputClass =
   "w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all";
 
-const emptyLocalized: Localized = { en: "", ru: "", kz: "" };
+const emptyLocalized: Localized = { en: "", ru: "", kk: "" };
 
 export default function UniversityEditorPage({
   params,
@@ -37,7 +38,7 @@ export default function UniversityEditorPage({
   const [cities, setCities] = useState<CityRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"general" | "output">("general");
+  const [cityText, setCityText] = useState("");
   const uniRef = useRef(uni);
   uniRef.current = uni;
 
@@ -50,6 +51,14 @@ export default function UniversityEditorPage({
       .catch((err) => console.error("Failed to load:", err))
       .finally(() => setLoading(false));
   }, [numId]);
+
+  // Sync the plain-text City mirror when the university loads.
+  useEffect(() => {
+    if (!uni) return;
+    const cityRow = uni.city ?? (uni.cityId != null ? cities.find((c) => c.id === uni.cityId) ?? null : null);
+    setCityText(cityRow ? cityRow.name[locale] || cityRow.name.en : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uni?.id]);
 
   const save = useCallback(
     async (patch: Record<string, any>) => {
@@ -100,219 +109,116 @@ export default function UniversityEditorPage({
   const name = uni.name[locale] || uni.name.en || "";
   const address: Localized =
     p.address && typeof p.address === "object"
-      ? { en: (p.address as any).en || "", ru: (p.address as any).ru || "", kz: (p.address as any).kz || "" }
-      : { en: typeof p.address === "string" ? p.address : "", ru: "", kz: "" };
+      ? { en: (p.address as any).en || "", ru: (p.address as any).ru || "", kk: (p.address as any).kk || "" }
+      : { en: typeof p.address === "string" ? p.address : "", ru: "", kk: "" };
 
-  function updateParam(key: keyof UniversityParams, val: any) {
-    if (!uni) return;
-    const newParams = { ...uni.params, [key]: val || undefined };
-    setUni({ ...uni, params: newParams });
-  }
+  const editors: number[] = Array.isArray(uni.params?.access) ? uni.params!.access : [];
+
+  const detailsNode = (
+    <EditorLayout
+      editor={
+        <div className="space-y-4">
+          <Field label={t("cm.methodic.col.city")}>
+            <input
+              type="text"
+              value={cityText}
+              onChange={(e) => setCityText(e.target.value)}
+              onBlur={() => {
+                const q = cityText.trim().toLowerCase();
+                const c = cities.find((ci) => [ci.name.en, ci.name.ru, ci.name.kk].some((n) => (n || "").toLowerCase() === q));
+                setUni({ ...uni, cityId: c?.id ?? null, city: c ?? null });
+                save({ cityId: c?.id ?? null });
+              }}
+              placeholder="Almaty"
+              className={inputClass}
+            />
+          </Field>
+          <Field label={t("cm.methodic.col.type")}>
+            <input
+              type="text"
+              value={uni.type ?? ""}
+              onChange={(e) => setUni({ ...uni, type: e.target.value })}
+              onBlur={() => save({ type: uniRef.current?.type ?? null })}
+              placeholder="public / private"
+              className={inputClass}
+            />
+          </Field>
+          <ContactDetailsForm
+          address={address}
+          email={p.email ?? ""}
+          phone={p.phone ?? ""}
+          website={p.website ?? ""}
+          instagram={p.instagram ?? ""}
+          facebook={p.facebook ?? ""}
+          youtube={p.youtube ?? ""}
+          photo={p.photo ?? ""}
+          onChange={(patch) => setUni({ ...uni, params: { ...uni.params, ...patch } })}
+          onBlur={saveParams}
+          />
+        </div>
+      }
+      preview={<UniversityPreview uni={uni} t={t} />}
+    />
+  );
 
   return (
-    <>
-      <Breadcrumb
-        items={[
-          { label: t("cm.methodic.heading"), href: "/admin/catalogs" },
-          {
-            label: t("cm.methodic.tabs.universities"),
-            href: "/admin/catalogs#universities",
-          },
-          { label: name || "—" },
-        ]}
-      />
-
-      <div className="flex gap-1 mb-6 border-b border-gray-100 overflow-x-auto">
-        {(["general", "output"] as const).map((tb) => (
-          <button
-            key={tb}
-            onClick={() => setTab(tb)}
-            className={
-              "relative shrink-0 px-4 py-2.5 text-[0.82rem] font-medium transition-colors " +
-              (tab === tb ? "text-gray-900" : "text-gray-400 hover:text-gray-600")
-            }
-          >
-            {tb === "general" ? t("cm.methodic.tab.general") : t("cm.methodic.tab.output")}
-            {tab === tb && (
-              <span className="absolute bottom-0 left-4 right-4 h-[2px] rounded-full bg-gray-900" />
-            )}
-          </button>
-        ))}
-      </div>
-
-      {tab === "output" && (
-        <OutputVariablesTab
-          type="universities"
-          output={(uni.params?.output as Record<string, Loc>) ?? {}}
-          onChange={(next) => {
-            const newParams = { ...uni.params, output: next };
-            setUni({ ...uni, params: newParams });
-          }}
-          onBlur={saveParams}
+    <CatalogDetailScaffold
+      breadcrumb={
+        <Breadcrumb
+          items={[
+            { label: t("cm.methodic.heading"), href: "/admin/catalogs" },
+            { label: t("cm.methodic.tabs.universities"), href: "/admin/catalogs#universities" },
+            { label: name || "—" },
+          ]}
         />
-      )}
-
-      {tab === "general" && (
-      <EditorLayout
-        editor={
-          <div className="space-y-3">
-            <Field label={t("cm.methodic.col.name")}>
-              <div onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) saveName(); }}>
-                <LocalizedInput
-                  value={uni.name}
-                  onChange={(val) => setUni({ ...uni, name: val })}
-                  className={inputClass}
-                />
-              </div>
-            </Field>
-            <Field label={t("cm.methodic.col.city")}>
-              <select
-                value={uni.cityId ?? ""}
-                onChange={(e) => {
-                  const cityId = e.target.value ? Number(e.target.value) : null;
-                  const city = cities.find((c) => c.id === cityId) ?? null;
-                  setUni({ ...uni, cityId, city });
-                  save({ cityId });
-                }}
-                className={inputClass}
-              >
-                <option value="">— {t("cm.methodic.col.city")} —</option>
-                {cities.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name[locale] || c.name.en}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label={t("cm.methodic.col.type")}>
-              <select
-                value={uni.type ?? "public"}
-                onChange={(e) => {
-                  const newType = e.target.value;
-                  setUni({ ...uni, type: newType });
-                  save({ type: newType });
-                }}
-                className={inputClass}
-              >
-                <option value="public">{t("cm.methodic.type.public")}</option>
-                <option value="private">{t("cm.methodic.type.private")}</option>
-              </select>
-            </Field>
-
-            <Divider />
-
-            <Field label={t("cm.methodic.field.address")}>
-              <div onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) saveParams(); }}>
-                <LocalizedInput
-                  value={address}
-                  onChange={(val) => updateParam("address", val)}
-                  className={inputClass}
-                />
-              </div>
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label={t("cm.methodic.field.email")}>
-                <input
-                  type="text"
-                  value={p.email ?? ""}
-                  onChange={(e) => updateParam("email", e.target.value)}
-                  onBlur={saveParams}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label={t("cm.methodic.field.phone")}>
-                <input
-                  type="text"
-                  value={p.phone ?? ""}
-                  onChange={(e) => updateParam("phone", e.target.value)}
-                  onBlur={saveParams}
-                  className={inputClass}
-                />
-              </Field>
-            </div>
-            <Field label={t("cm.methodic.field.website")}>
-              <input
-                type="text"
-                value={p.website ?? ""}
-                onChange={(e) => updateParam("website", e.target.value)}
-                onBlur={saveParams}
-                className={inputClass}
-              />
-            </Field>
-
-            <Divider />
-
-            <div className="grid grid-cols-3 gap-3">
-              <Field label={t("cm.methodic.field.instagram")}>
-                <input
-                  type="text"
-                  value={p.instagram ?? ""}
-                  onChange={(e) => updateParam("instagram", e.target.value)}
-                  onBlur={saveParams}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label={t("cm.methodic.field.facebook")}>
-                <input
-                  type="text"
-                  value={p.facebook ?? ""}
-                  onChange={(e) => updateParam("facebook", e.target.value)}
-                  onBlur={saveParams}
-                  className={inputClass}
-                />
-              </Field>
-              <Field label={t("cm.methodic.field.youtube")}>
-                <input
-                  type="text"
-                  value={p.youtube ?? ""}
-                  onChange={(e) => updateParam("youtube", e.target.value)}
-                  onBlur={saveParams}
-                  className={inputClass}
-                />
-              </Field>
-            </div>
-            <Field label={t("cm.methodic.field.photo")}>
-              <input
-                type="text"
-                value={p.photo ?? ""}
-                onChange={(e) => updateParam("photo", e.target.value)}
-                onBlur={saveParams}
-                className={inputClass + " max-w-xs"}
-              />
-            </Field>
-
-            <Divider />
-
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-xs text-gray-400">
-                {saving ? "Saving..." : ""}
-              </span>
-              <button
-                onClick={handleDelete}
-                className="text-xs text-red-500 hover:text-red-700 transition-colors"
-              >
-                Delete university
-              </button>
-            </div>
-          </div>
-        }
-        preview={<UniversityPreview uni={uni} locale={locale} t={t} />}
-      />
-      )}
-    </>
+      }
+      title={name}
+      catalog="universities"
+      entityId={numId}
+      saving={saving}
+      titleField={{
+        value: uni.name,
+        onChange: (v) => setUni({ ...uni, name: v }),
+        onBlur: saveName,
+      }}
+      descriptionField={{
+        value: uni.desc ?? emptyLocalized,
+        onChange: (v) => setUni({ ...uni, desc: v }),
+        onBlur: () => {
+          if (uniRef.current) save({ desc: uniRef.current.desc });
+        },
+      }}
+      extras={{
+        value: (uni.params?.output as Record<string, Loc>) ?? {},
+        onChange: (next) => {
+          const newParams = { ...uni.params, output: next };
+          setUni({ ...uni, params: newParams });
+        },
+        onBlur: saveParams,
+      }}
+      onDelete={handleDelete}
+      deleteLabel="Delete university"
+      pages={[{ id: "details", label: "Details & contacts", icon: Building2, render: detailsNode }]}
+      access={{
+        editors,
+        onChange: (ids) => {
+          const newParams = { ...(uni.params ?? {}), access: ids };
+          setUni({ ...uni, params: newParams });
+          save({ params: newParams });
+        },
+      }}
+    />
   );
 }
 
 function UniversityPreview({
   uni,
-  locale,
   t,
 }: {
   uni: UniversityRow;
-  locale: string;
   t: (key: string) => string;
 }) {
-  const loc = locale as "en" | "ru" | "kz";
+  const loc = useContentLocale();
   const name = uni.name[loc] || uni.name.en || "";
   const p = uni.params ?? {};
   const cityName = uni.city?.name[loc] || uni.city?.name.en || "";
@@ -416,6 +322,3 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function Divider() {
-  return <div className="border-t border-gray-100 my-1" />;
-}

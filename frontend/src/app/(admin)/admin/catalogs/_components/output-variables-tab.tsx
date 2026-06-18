@@ -8,7 +8,7 @@ import { LocalizedInput } from "./localized-input";
 const inputClass =
   "w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all";
 
-const empty: Localized = { en: "", ru: "", kz: "" };
+const empty: Localized = { en: "", ru: "", kk: "" };
 
 interface Props {
   type: CatalogType;
@@ -22,7 +22,7 @@ interface Props {
 // variables (single texts) that are pickable when building dashboards.
 export function OutputVariablesTab({ type, output, onChange, onBlur }: Props) {
   const { t, locale } = useLocale();
-  const loc = locale as "en" | "ru" | "kz";
+  const loc = locale as "en" | "ru" | "kk";
   const fields = outputFields(type);
 
   function set(id: string, val: Localized) {

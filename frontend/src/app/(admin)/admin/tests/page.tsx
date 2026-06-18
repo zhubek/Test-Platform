@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Clock, ListChecks } from "lucide-react";
+import { Plus, Clock, Layers } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
+import { useProject } from "@/lib/project-context";
 import { localize } from "@/lib/localized";
 import { getTestIcon } from "@/lib/test-icon";
-import { fetchTests, createTest, type TestRow } from "@/lib/api";
+import { fetchTests, createTest, type AdminTest } from "@/lib/backend";
 import {
   Card,
   CardContent,
@@ -29,41 +30,51 @@ import {
 export default function TestsPage() {
   const { t, locale } = useLocale();
   const router = useRouter();
+  const { project } = useProject();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [tests, setTests] = useState<TestRow[]>([]);
+  const [tests, setTests] = useState<AdminTest[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Tests are project-scoped — list the ones in the project picked in the menu.
   useEffect(() => {
-    fetchTests()
-      .then(setTests)
-      .finally(() => setLoading(false));
-  }, []);
+    if (!project.id) return; // wait for the active project to resolve
+    let cancelled = false;
+    setLoading(true);
+    fetchTests(project.id)
+      .then((rows) => { if (!cancelled) setTests(rows); })
+      .catch((err) => console.error("Failed to load tests:", err))
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [project.id]);
 
   const filtered = useMemo(() => {
     let list = tests;
     if (search) {
       const q = search.toLowerCase();
-      list = list.filter((t) => {
-        const name = localize(t.name, locale);
-        const desc = t.desc ? localize(t.desc, locale) : "";
+      list = list.filter((tt) => {
+        const name = localize(tt.name, locale);
+        const desc = localize(tt.description, locale);
         return name.toLowerCase().includes(q) || desc.toLowerCase().includes(q);
       });
     }
-    if (statusFilter !== "all") list = list.filter((t) => t.state === statusFilter);
+    if (statusFilter !== "all") {
+      list = list.filter((tt) => tt.state === statusFilter.toUpperCase());
+    }
     return list;
   }, [tests, search, statusFilter, locale]);
 
-  async function handleAdd() {
-    const created = await createTest({
-      name: { en: "Untitled test", ru: "", kz: "" },
-      state: "draft",
-    });
-    router.push(`/admin/tests/${created.id}`);
-  }
-
-  const questionCount = (t: TestRow) =>
-    (t.sections ?? []).reduce((n, s) => n + s.questions.length, 0);
+  const handleAdd = useCallback(async () => {
+    if (!project.id) return;
+    try {
+      const created = await createTest(project.id, {
+        name: { en: "Untitled test", ru: "", kk: "" },
+      });
+      router.push(`/admin/tests/${created.id}`);
+    } catch (err) {
+      console.error("Failed to create test:", err);
+    }
+  }, [project.id, router]);
 
   return (
     <>
@@ -73,10 +84,10 @@ export default function TestsPage() {
             {t("cm.tests.heading")}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Build and manage assessments.
+            Build and manage assessments in {localize(project.name, locale) || "this project"}.
           </p>
         </div>
-        <Button onClick={handleAdd}>
+        <Button onClick={handleAdd} disabled={!project.id}>
           <Plus className="mr-1 h-4 w-4" />
           {t("cm.tests.create")}
         </Button>
@@ -120,7 +131,9 @@ export default function TestsPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((test) => {
             const Icon = getTestIcon(test.icon);
-            const color = test.color ?? "#6b7280";
+            const color = test.color || "#6b7280";
+            const desc = localize(test.description, locale);
+            const category = localize(test.category, locale);
             return (
               <Link key={test.id} href={`/admin/tests/${test.id}`}>
                 <Card className="h-full transition-shadow hover:shadow-md">
@@ -133,29 +146,29 @@ export default function TestsPage() {
                         <Icon className="h-5 w-5" />
                       </div>
                       <Badge
-                        variant={test.state === "published" ? "default" : "secondary"}
+                        variant={test.state === "PUBLISHED" ? "default" : "secondary"}
                       >
-                        {test.state}
+                        {test.state.toLowerCase()}
                       </Badge>
                     </div>
                     <CardTitle className="mt-3 text-base">
                       {localize(test.name, locale) || "—"}
                     </CardTitle>
-                    {test.desc && (
+                    {desc && (
                       <CardDescription className="line-clamp-2">
-                        {localize(test.desc, locale)}
+                        {desc}
                       </CardDescription>
                     )}
                   </CardHeader>
                   <CardContent className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                    {test.category && <Badge variant="outline">{test.category}</Badge>}
-                    {test.duration && (
+                    {category && <Badge variant="outline">{category}</Badge>}
+                    {test.duration > 0 && (
                       <span className="flex items-center gap-1">
                         <Clock className="h-3.5 w-3.5" /> {test.duration} min
                       </span>
                     )}
                     <span className="flex items-center gap-1">
-                      <ListChecks className="h-3.5 w-3.5" /> {questionCount(test)}
+                      <Layers className="h-3.5 w-3.5" /> {test.blockCount}
                     </span>
                   </CardContent>
                 </Card>

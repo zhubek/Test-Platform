@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Check, ChevronsUpDown, FolderKanban, ChevronDown } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
-import { useProject } from "@/lib/project-context";
+import { useProject, projectLanguages } from "@/lib/project-context";
 import { localize } from "@/lib/localized";
 import { cn } from "@/lib/utils";
 import { ButtonLink } from "@/components/button-link";
@@ -16,18 +16,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const locales = ["kz", "ru", "en"] as const;
-
 type NavItem =
   | { label: string; href: string }
   | { label: string; children: { label: string; href: string }[] };
 
 const nav: NavItem[] = [
   { label: "Tests", href: "/admin/tests" },
+  { label: "Blocks", href: "/admin/blocks" },
   { label: "Catalogs", href: "/admin/catalogs" },
   {
     label: "Access",
     children: [
+      { label: "Users", href: "/admin/users" },
       { label: "Organizations", href: "/admin/organizations" },
       { label: "Licenses", href: "/admin/licenses" },
     ],
@@ -129,7 +129,7 @@ export function AdminTopbar() {
         </nav>
 
         <div className="ml-auto flex items-center gap-0.5 rounded-full bg-muted p-0.5">
-          {locales.map((lc) => (
+          {projectLanguages(project).map((lc) => (
             <button
               key={lc}
               onClick={() => setLocale(lc)}
