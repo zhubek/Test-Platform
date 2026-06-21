@@ -27,6 +27,8 @@ export interface Project {
   name: Localized;
   description: Localized;
   licenseLimit: number;
+  // Latest date licenses in this project may expire (ISO date string, or null).
+  expirationDate?: string | null;
   organizationLimit: number;
   parameters: ProjectParameter[];
   // Content languages assigned to this project (dynamic BCP-47 codes). Drives

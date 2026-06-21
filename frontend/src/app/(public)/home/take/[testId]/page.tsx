@@ -17,7 +17,9 @@ import {
   type LibraryBlock,
   type TestBlockInstance,
 } from "@/lib/holder-api";
-import { computeScope, numericVariables, variableNames } from "@/lib/test-runtime";
+import { buildSubmitEntries, computeScope, type SubmitEntry } from "@/lib/test-runtime";
+import { computeMatchEntries, type MatchConfig } from "@/lib/match-runtime";
+import { loadGroupItems, loadAllCharacteristicGroups } from "@/lib/dc-catalogs";
 import { resolveInstanceProps } from "@/lib/question-instances";
 import { ViewRenderer } from "@/lib/view-renderer";
 import { AnswersProvider } from "@/lib/view-widgets-test";
@@ -34,6 +36,7 @@ export default function TakeTestPage({ params }: { params: Promise<{ testId: str
   const [library, setLibrary] = useState<LibraryBlock[]>([]);
   const [calc, setCalc] = useState<{ name: string; expr: string }[]>([]);
   const [vars, setVars] = useState<{ name: string; initial: string }[]>([]);
+  const [matches, setMatches] = useState<MatchConfig[]>([]);
   const [name, setName] = useState<Localized>({});
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
@@ -53,6 +56,7 @@ export default function TakeTestPage({ params }: { params: Promise<{ testId: str
         setName((test.name as Localized) ?? {});
         setCalc(test.advancedParams?.calc ?? []);
         setVars(test.advancedParams?.vars ?? []);
+        setMatches((test.advancedParams?.matches as MatchConfig[]) ?? []);
         setQuestions(qs);
         setLibrary(lib);
         setAttemptId(attempt.id);
@@ -82,9 +86,24 @@ export default function TakeTestPage({ params }: { params: Promise<{ testId: str
     setSubmitting(true);
     setError(null);
     try {
-      const scope = computeScope(questions, calc, vars, answers);
-      const variables = numericVariables(scope, variableNames(questions, calc, vars));
-      await submitAttempt(attemptId, { variables, progress: answers });
+      // Store the calc/characteristic variables + each question's answer.
+      const entries = buildSubmitEntries(questions, calc, vars, answers);
+
+      // Reference outputs: rank the configured catalog matches (e.g. professions
+      // by RIASEC) and append top1..topN as reference rows (score + item id).
+      if (matches.length) {
+        const profile = computeScope(questions, calc, vars, answers);
+        const charGroups = await loadAllCharacteristicGroups();
+        const matchEntries: SubmitEntry[] = [];
+        for (const m of matches) {
+          const items = await loadGroupItems(m.catalogId);
+          const group = charGroups.find((g) => g.id === m.groupId);
+          matchEntries.push(...computeMatchEntries(m, profile, items, group));
+        }
+        entries.push(...matchEntries);
+      }
+
+      await submitAttempt(attemptId, { entries, progress: answers });
       // Tell home to open the results drawer (designed RESULT blocks) for this test.
       sessionStorage.setItem("tp-open-results", testId);
       router.push("/home");

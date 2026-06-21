@@ -193,6 +193,8 @@ export function LicensesTab({
         orgId={org.id}
         remaining={remaining}
         api={api}
+        defaultExpiration={(org.expirationDate ?? "").slice(0, 10)}
+        maxExpiration={((org.expirationDate ?? org.projectExpirationDate) ?? "").slice(0, 10)}
         onDone={() => {
           reload();
           onOrgChanged();
@@ -208,6 +210,8 @@ function GenerateDialog({
   orgId,
   remaining,
   api,
+  defaultExpiration,
+  maxExpiration,
   onDone,
 }: {
   open: boolean;
@@ -215,13 +219,21 @@ function GenerateDialog({
   orgId: string;
   remaining: number;
   api: OrgApi;
+  defaultExpiration: string;
+  maxExpiration: string;
   onDone: () => void;
 }) {
   const [count, setCount] = useState(1);
-  const [expiration, setExpiration] = useState("");
+  // Defaults to the org's expiration; editable but capped at it.
+  const [expiration, setExpiration] = useState(defaultExpiration);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [codes, setCodes] = useState<string[] | null>(null);
+
+  // Re-seed the default whenever the dialog opens (org may have changed).
+  useEffect(() => {
+    if (open) setExpiration(defaultExpiration);
+  }, [open, defaultExpiration]);
 
   const close = (o: boolean) => {
     onOpenChange(o);
@@ -229,17 +241,21 @@ function GenerateDialog({
       setCodes(null);
       setError(null);
       setCount(1);
-      setExpiration("");
+      setExpiration(defaultExpiration);
     }
   };
 
   const generate = async () => {
+    if (!expiration) {
+      setError("Expiration date is required.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
       const res = await api.generateLicenses(orgId, {
         count,
-        expirationDate: expiration ? new Date(expiration).toISOString() : undefined,
+        expirationDate: new Date(expiration).toISOString(),
       });
       setCodes(res.codes);
       onDone();
@@ -297,9 +313,18 @@ function GenerateDialog({
               </label>
               <label className="block">
                 <span className="mb-1 block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Expiration date (optional)
+                  Expiration date
                 </span>
-                <Input type="date" value={expiration} onChange={(e) => setExpiration(e.target.value)} className="w-44" />
+                <Input
+                  type="date"
+                  value={expiration}
+                  max={maxExpiration || undefined}
+                  onChange={(e) => setExpiration(e.target.value)}
+                  className="w-44"
+                />
+                <span className="mt-1 block text-[0.66rem] text-muted-foreground">
+                  Defaults to the organization&apos;s date{maxExpiration ? `; no later than ${maxExpiration}` : ""}.
+                </span>
               </label>
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
@@ -307,7 +332,7 @@ function GenerateDialog({
               <Button variant="outline" onClick={() => close(false)}>
                 Cancel
               </Button>
-              <Button onClick={generate} disabled={busy || count < 1}>
+              <Button onClick={generate} disabled={busy || count < 1 || !expiration}>
                 {busy ? "Generating…" : `Generate ${count}`}
               </Button>
             </DialogFooter>

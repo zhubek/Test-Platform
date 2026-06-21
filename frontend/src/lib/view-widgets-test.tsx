@@ -300,8 +300,43 @@ function Rank({ data, field, className, style }: P) {
   );
 }
 
+// Label-only choice scale: options shown as buttons with text ONLY (no value
+// chip, no field footer) but each reports its own score (e.g. 0/1/2/3/5). Used
+// for Likert agree–disagree scales where the numeric weight stays hidden.
+function ScaleChoice({ data, field, className, style }: P) {
+  const items = opts(data);
+  const [sel, setSel] = useState<number | null>(null);
+  const report = useReport(field);
+  return (
+    <div className={className} style={style}>
+      <div
+        className="grid gap-2"
+        style={{ gridTemplateColumns: `repeat(${Math.max(1, items.length)}, minmax(0,1fr))` }}
+      >
+        {items.map((o, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => {
+              setSel(i);
+              report(o.value);
+            }}
+            className={cn(
+              "rounded-xl border px-2 py-3 text-center text-[0.82rem] font-medium leading-snug transition-colors",
+              sel === i ? SELECTED : IDLE,
+            )}
+          >
+            {o.text}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export const TEST_WIDGETS: Record<string, React.ComponentType<P>> = {
   "single-choice": SingleChoice,
+  "scale-choice": ScaleChoice,
   "multi-choice": MultiChoice,
   likert: Likert,
   rating: Rating,

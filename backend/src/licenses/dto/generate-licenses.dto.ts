@@ -1,4 +1,4 @@
-import { IsInt, IsISO8601, IsOptional, Max, Min } from 'class-validator';
+import { IsInt, IsISO8601, Max, Min } from 'class-validator';
 
 export class GenerateLicensesDto {
   @IsInt()
@@ -6,7 +6,7 @@ export class GenerateLicensesDto {
   @Max(200)
   count!: number;
 
-  @IsOptional()
+  /** Required: every license must carry an expiration; validated ≤ org/project. */
   @IsISO8601()
-  expirationDate?: string;
+  expirationDate!: string;
 }

@@ -169,6 +169,57 @@ export function useCatalogCards(catalog: string) {
   return { loading, resolveBlock, cards, filters, label };
 }
 
+// ── Matched cards: render only specific items' card views (e.g. a result's top
+//    matched professions), keyed by item id. ──────────────────────────────────
+
+export function useMatchedCards(catalog: string, ids: string[]) {
+  const [loading, setLoading] = useState(true);
+  const [resolveBlock, setResolveBlock] = useState<BlockResolver>(() => () => null);
+  const [cards, setCards] = useState<Map<string, RenderBlock[]>>(new Map());
+  const key = ids.join(",");
+
+  useEffect(() => {
+    if (!ids.length) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- no ids → nothing to load
+      setLoading(false);
+      return;
+    }
+    let alive = true;
+    setActiveProjectScope(undefined); // cross-project read (public)
+    Promise.all([
+      fetchBlocks(),
+      loadGroups(true).then(() => groupByName(catalog)),
+      loadGroupItems(catalog),
+    ])
+      .then(([blocks, group, items]) => {
+        if (!alive) return;
+        const blockById = new Map(blocks.map((b) => [b.id, b]));
+        const cardPage = cardPageOf(group);
+        const want = new Set(ids);
+        const m = new Map<string, RenderBlock[]>();
+        for (const item of items) {
+          if (!want.has(item.id)) continue;
+          const built = cardPage ? buildPage(cardPage, blockById, overrideMap(item)) : [];
+          for (const b of built) b.props.detailsUrl = `/explore/${catalog}/${item.id}`;
+          m.set(item.id, built);
+        }
+        setResolveBlock(() => blocksToResolver(blocks));
+        setCards(m);
+        setLoading(false);
+      })
+      .catch((e) => {
+        console.error("Failed to load matched cards:", e);
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog, key]);
+
+  return { loading, resolveBlock, cards };
+}
+
 // ── Detail: every non-Card page as a tab ─────────────────────────────────────
 
 export interface DetailTab {

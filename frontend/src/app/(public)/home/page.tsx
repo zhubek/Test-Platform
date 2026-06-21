@@ -67,17 +67,22 @@ export default function HolderHome() {
         return;
       }
 
-      // Resolve the chosen project: keep a valid stored choice; auto-pick a sole
-      // license; otherwise leave unset so the picker shows.
-      let chosen = getHolderContext();
-      if (chosen && !active.some((l) => l.id === chosen!.licenseId)) chosen = null;
-      if (!chosen && active.length === 1) {
-        await selectLicense(active[0]);
-        chosen = getHolderContext();
-      }
+      // Resolve which license to enter: a still-valid stored choice, else a sole
+      // license; many-with-no-choice → show the picker.
+      const stored = getHolderContext();
+      const validStored =
+        stored && active.some((l) => l.id === stored.licenseId)
+          ? active.find((l) => l.id === stored.licenseId)!
+          : null;
+      const target = validStored ?? (active.length === 1 ? active[0] : null);
 
-      if (chosen) {
-        setCtx(chosen);
+      if (target) {
+        // ALWAYS (re)scope the token to the chosen license — the JWT's licenseId
+        // is what authorizes taking/submitting a test. Trusting a persisted
+        // context without re-scoping leaves a plain (unscoped) token, which makes
+        // "start attempt" fail and nothing gets stored.
+        await selectLicense(target);
+        setCtx(getHolderContext());
         const t = await fetchMyTests();
         setTests(t);
         // Auto-open results for a test just finished on the take page.

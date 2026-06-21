@@ -2,10 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, Search } from "lucide-react";
-import { createUser, fetchUsersForProject, type UserListRow } from "@/lib/backend";
+import { createUser, fetchUsers, type UserListRow } from "@/lib/backend";
 import { useProject } from "@/lib/project-context";
-import { useLocale } from "@/lib/locale-context";
-import { localize } from "@/lib/localized";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,32 +23,39 @@ import {
 } from "@/components/ui/select";
 import { apiMessage } from "../organizations/[id]/_components/licenses-tab";
 
-const COLUMNS = ["Login", "Email", "Role", "Organization", "License"] as const;
+const COLUMNS = ["Login", "Email", "Role", "Projects", "Licenses"] as const;
+
+/** Distinct project names a user is related to, via their licenses. */
+function userProjects(u: UserListRow): string[] {
+  return [...new Set(u.licenses.map((l) => l.project).filter((p): p is string => !!p))];
+}
 
 export default function AdminUsersPage() {
   const { project } = useProject();
-  const { locale } = useLocale();
   const [search, setSearch] = useState("");
   const [allUsers, setAllUsers] = useState<UserListRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
 
+  // Users are NOT project-scoped — show everyone across the platform.
   const reload = useCallback(() => {
-    if (!project?.id) return;
     setLoading(true);
-    fetchUsersForProject(project.id)
+    fetchUsers()
       .then(setAllUsers)
       .catch((e) => console.error("Failed to load users:", e))
       .finally(() => setLoading(false));
-  }, [project?.id]);
+  }, []);
 
-  useEffect(reload, [reload]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load users on mount
+    reload();
+  }, [reload]);
 
   const users = useMemo(() => {
     if (!search) return allUsers;
     const q = search.toLowerCase();
     return allUsers.filter((u) =>
-      [u.login, u.email, u.role, u.organization, u.license].some((v) =>
+      [u.login, u.email, u.role, ...u.licenses.flatMap((l) => [l.code, l.project])].some((v) =>
         (v ?? "").toLowerCase().includes(q),
       ),
     );
@@ -61,9 +66,7 @@ export default function AdminUsersPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Users</h1>
-          <p className="text-sm text-muted-foreground">
-            Users in <span className="font-medium text-foreground">{localize(project.name, locale)}</span>.
-          </p>
+          <p className="text-sm text-muted-foreground">All users across the platform.</p>
         </div>
         <Button onClick={() => setAddOpen(true)}>
           <Plus className="mr-1 h-4 w-4" /> Add user
@@ -108,10 +111,35 @@ export default function AdminUsersPage() {
                     {u.role}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-600">{u.organization || <Dash />}</td>
                 <td className="px-4 py-3 text-sm">
-                  {u.license ? (
-                    <span className="font-mono text-xs text-gray-600">{u.license}</span>
+                  {userProjects(u).length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {userProjects(u).map((p) => (
+                        <span
+                          key={p}
+                          className="rounded-md border bg-muted/40 px-2 py-0.5 text-xs text-gray-700"
+                        >
+                          {p}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <Dash />
+                  )}
+                </td>
+                <td className="px-4 py-3 text-sm">
+                  {u.licenses.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {u.licenses.map((l) => (
+                        <span
+                          key={l.code}
+                          className="rounded-md border bg-muted/40 px-2 py-0.5 font-mono text-xs text-gray-600"
+                          title={l.project ? `${l.project} · ${l.state}` : l.state}
+                        >
+                          {l.code}
+                        </span>
+                      ))}
+                    </div>
                   ) : (
                     <Dash />
                   )}

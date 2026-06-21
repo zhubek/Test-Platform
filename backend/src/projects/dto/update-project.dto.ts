@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, Min, MinLength, ValidateIf } from 'class-validator';
+import { IsInt, IsISO8601, IsOptional, IsString, Min, MinLength, ValidateIf } from 'class-validator';
 
 export class UpdateProjectDto {
   @IsOptional()
@@ -14,6 +14,12 @@ export class UpdateProjectDto {
   @IsInt()
   @Min(0)
   licenseLimit?: number;
+
+  /** Latest date licenses in this project may expire; null clears it. */
+  @IsOptional()
+  @ValidateIf((o: UpdateProjectDto) => o.expirationDate !== null)
+  @IsISO8601()
+  expirationDate?: string | null;
 
   /** The project's source/fallback language (a Language id); null clears it. */
   @IsOptional()

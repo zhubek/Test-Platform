@@ -10,7 +10,7 @@ export class CreateLicenseDto {
   @IsString()
   holderName?: string;
 
-  @IsOptional()
+  /** Required: every license must carry an expiration; validated ≤ org/project. */
   @IsISO8601()
-  expirationDate?: string;
+  expirationDate!: string;
 }

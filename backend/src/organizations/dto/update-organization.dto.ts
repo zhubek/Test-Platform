@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, Min, MinLength } from 'class-validator';
+import { IsInt, IsISO8601, IsOptional, IsString, Min, MinLength, ValidateIf } from 'class-validator';
 
 export class UpdateOrganizationDto {
   @IsOptional()
@@ -14,4 +14,10 @@ export class UpdateOrganizationDto {
   @IsInt()
   @Min(0)
   licenseCount?: number;
+
+  /** Latest date this org's licenses may expire; null clears it. Validated ≤ project. */
+  @IsOptional()
+  @ValidateIf((o: UpdateOrganizationDto) => o.expirationDate !== null)
+  @IsISO8601()
+  expirationDate?: string | null;
 }

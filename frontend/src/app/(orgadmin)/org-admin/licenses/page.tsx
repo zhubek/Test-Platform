@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { OrgDashboard } from "@/components/org-dashboard/org-dashboard";
-import { getOrgLicenses } from "@/app/(orgadmin)/org-admin/licenses/_components/mock-data";
 import { LicensesTab } from "@/app/(admin)/admin/organizations/[id]/_components/licenses-tab";
 import { SettingsTab } from "@/app/(admin)/admin/organizations/[id]/_components/settings-tab";
 import { ResultsTab } from "@/app/(admin)/admin/organizations/[id]/_components/results-tab";
@@ -115,7 +114,7 @@ export default function OrgAdminLicensesPage() {
         ))}
       </div>
 
-      {active === "dashboard" && <OrgDashboard licenses={getOrgLicenses(org.id)} />}
+      {active === "dashboard" && <OrgDashboard org={org} api={orgApi} />}
       {active === "licenses" && <LicensesTab org={org} onOrgChanged={refresh} api={orgApi} canManage={canManage} />}
       {active === "results" && <ResultsTab org={org} api={orgApi} />}
       {active === "settings" && canSettings && <SettingsTab org={org} onOrgChanged={refresh} api={orgApi} />}

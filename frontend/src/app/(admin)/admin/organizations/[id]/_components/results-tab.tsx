@@ -8,8 +8,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BarChart3 } from "lucide-react";
 import { defaultOrgApi, type OrgApi, type OrgAttempt, type OrgDetail } from "@/lib/backend";
-import { buildResultEntry, topLabel } from "@/lib/result-entry";
-import { ResultsDrawer, type ResultEntry } from "@/app/(public)/home/_components/results-drawer";
+import { topLabel } from "@/lib/result-entry";
+import { OrgResultDrawer } from "./org-result-drawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { apiMessage } from "./licenses-tab";
@@ -27,7 +27,7 @@ export function ResultsTab({ org, api = defaultOrgApi }: { org: OrgDetail; api?:
   const [attempts, setAttempts] = useState<OrgAttempt[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [drawer, setDrawer] = useState<{ title: string; results: ResultEntry[] } | null>(null);
+  const [selected, setSelected] = useState<OrgAttempt | null>(null);
 
   const reload = useCallback(() => {
     setLoading(true);
@@ -40,10 +40,7 @@ export function ResultsTab({ org, api = defaultOrgApi }: { org: OrgDetail; api?:
 
   useEffect(reload, [reload]);
 
-  const open = (a: OrgAttempt) => {
-    const date = fmtDate(a.endTime ?? a.updatedTime);
-    setDrawer({ title: a.test.name?.en ?? "Test", results: [buildResultEntry(a.test, a.variables, date)] });
-  };
+  const open = (a: OrgAttempt) => setSelected(a);
 
   const rows = useMemo(
     () => [...attempts].sort((a, b) => (a.state === "COMPLETED" ? -1 : 1) - (b.state === "COMPLETED" ? -1 : 1)),
@@ -107,12 +104,7 @@ export function ResultsTab({ org, api = defaultOrgApi }: { org: OrgDetail; api?:
         </div>
       )}
 
-      <ResultsDrawer
-        open={drawer !== null}
-        testTitle={drawer?.title ?? ""}
-        results={drawer?.results ?? []}
-        onClose={() => setDrawer(null)}
-      />
+      <OrgResultDrawer attempt={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }

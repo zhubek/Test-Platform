@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { ROLES } from '../auth/roles';
 import { generateCode } from '../common/util/code';
 import { PrismaService } from '../prisma/prisma.service';
@@ -27,10 +27,34 @@ export class OrganizationsService {
     return this.prisma.organization.findMany({ where: { projectId } });
   }
 
-  /** The caller's own organization (for the org-admin area). */
+  /** The caller's own organization (for the org-admin area), with the parent
+   *  project's expiration cap so the UI can bound the org's own date. */
   getForUser(orgId: string | null | undefined) {
     if (!orgId) throw new NotFoundException('No organization for this user');
-    return this.prisma.organization.findUniqueOrThrow({ where: { id: orgId } });
+    return this.prisma.organization.findUniqueOrThrow({
+      where: { id: orgId },
+      include: { project: { select: { expirationDate: true } } },
+    });
+  }
+
+  /** The project's expiration cap (org/license dates may not exceed it). */
+  async projectExpiration(projectId: string): Promise<Date | null> {
+    const p = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      select: { expirationDate: true },
+    });
+    return p?.expirationDate ?? null;
+  }
+
+  /** An org's expiration may never be later than its project's. */
+  private async assertExpiry(projectId: string, expirationDate?: string | null) {
+    if (!expirationDate) return;
+    const cap = await this.projectExpiration(projectId);
+    if (cap && new Date(expirationDate) > cap) {
+      throw new UnprocessableEntityException(
+        `Expiration date can't be later than the project's (${cap.toISOString().slice(0, 10)}).`,
+      );
+    }
   }
 
   /**
@@ -38,11 +62,13 @@ export class OrganizationsService {
    * the plaintext activation code so the caller can hand it to the org_admin.
    */
   async createUnderProject(projectId: string, dto: CreateOrganizationDto) {
+    await this.assertExpiry(projectId, dto.expirationDate);
     const code = generateCode();
     const org = await this.prisma.organization.create({
       data: {
         name: dto.name,
         description: dto.description ?? null,
+        expirationDate: dto.expirationDate ? new Date(dto.expirationDate) : null,
         code,
         project: { connect: { id: projectId } },
         members: {
@@ -60,8 +86,24 @@ export class OrganizationsService {
     return { data: org, code };
   }
 
-  update(id: string, dto: UpdateOrganizationDto) {
-    return this.prisma.organization.update({ where: { id }, data: { ...dto } });
+  async update(id: string, dto: UpdateOrganizationDto) {
+    const { expirationDate, ...rest } = dto;
+    if (expirationDate !== undefined) {
+      const org = await this.prisma.organization.findUniqueOrThrow({
+        where: { id },
+        select: { projectId: true },
+      });
+      await this.assertExpiry(org.projectId, expirationDate);
+    }
+    return this.prisma.organization.update({
+      where: { id },
+      data: {
+        ...rest,
+        ...(expirationDate !== undefined
+          ? { expirationDate: expirationDate ? new Date(expirationDate) : null }
+          : {}),
+      },
+    });
   }
 
   remove(id: string) {

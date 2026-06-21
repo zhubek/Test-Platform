@@ -10,7 +10,6 @@ import { fetchOrganization, type OrgDetail } from "@/lib/backend";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { OrgDashboard } from "@/components/org-dashboard/org-dashboard";
-import { getOrgLicenses } from "@/app/(orgadmin)/org-admin/licenses/_components/mock-data";
 import { LicensesTab } from "./_components/licenses-tab";
 import { SettingsTab } from "./_components/settings-tab";
 import { ResultsTab } from "./_components/results-tab";
@@ -88,7 +87,7 @@ export default function AdminOrganizationPage({
         ))}
       </div>
 
-      {tab === "dashboard" && <OrgDashboard licenses={getOrgLicenses(id)} />}
+      {tab === "dashboard" && org && <OrgDashboard org={org} />}
       {tab === "licenses" && org && <LicensesTab org={org} onOrgChanged={reload} />}
       {tab === "results" && org && <ResultsTab org={org} />}
       {tab === "settings" && org && (

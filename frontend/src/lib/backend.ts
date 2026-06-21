@@ -15,6 +15,7 @@ interface BeProject {
   name: string;
   description: string | null;
   licenseLimit: number;
+  expirationDate: string | null;
   // From the project payload's include: the assigned languages + the default.
   languages?: { language: { id: string; name: string; label: string | null } }[];
   defaultLanguage?: { id: string; name: string; label: string | null } | null;
@@ -28,6 +29,7 @@ function adaptProject(p: BeProject): Project {
     name: l(p.name),
     description: l(p.description ?? ""),
     licenseLimit: p.licenseLimit,
+    expirationDate: p.expirationDate ?? null,
     organizationLimit: 0,
     parameters: [],
     languages: codes,
@@ -38,6 +40,15 @@ function adaptProject(p: BeProject): Project {
 export async function fetchProjects(): Promise<Project[]> {
   const rows = await apiFetch<BeProject[]>("/projects");
   return rows.map(adaptProject);
+}
+
+/** Persist project settings (license limit, expiration). expirationDate: an ISO
+ *  date string, or null to clear. */
+export function updateProjectFields(
+  id: string,
+  patch: { licenseLimit?: number; expirationDate?: string | null },
+): Promise<unknown> {
+  return apiFetch(`/projects/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
 }
 
 // ── Languages (global catalog + per-project assignment) ──────────────────────
@@ -86,8 +97,14 @@ interface BeUser {
   email: string | null;
   status: string;
   roles: { role: { name: string } }[];
-  organization: { name: string } | null;
-  license: { licenseCode: string } | null;
+  licenses: { licenseCode: string; state: string; project: { name: string } | null }[];
+}
+
+/** A license the user holds, with the project it belongs to. */
+export interface UserLicense {
+  code: string;
+  state: string;
+  project: string | null;
 }
 
 export interface UserListRow {
@@ -95,8 +112,8 @@ export interface UserListRow {
   login: string;
   email: string | null;
   role: string;
-  organization: string | null;
-  license: string | null;
+  /** Licenses the user holds (0..n), each with its project. */
+  licenses: UserLicense[];
   status: string;
 }
 
@@ -106,8 +123,11 @@ function adaptUser(u: BeUser): UserListRow {
     login: u.login,
     email: u.email,
     role: u.roles[0]?.role.name ?? "—",
-    organization: u.organization?.name ?? null,
-    license: u.license?.licenseCode ?? null,
+    licenses: (u.licenses ?? []).map((l) => ({
+      code: l.licenseCode,
+      state: l.state,
+      project: l.project?.name ?? null,
+    })),
     status: u.status,
   };
 }
@@ -170,6 +190,9 @@ export interface OrgDetail {
   code: string;
   licenseCount: number;
   licenseUsed: number;
+  expirationDate: string | null;
+  // The parent project's expiration cap — the org's own date may not exceed it.
+  projectExpirationDate: string | null;
 }
 
 export function fetchOrganization(id: string): Promise<OrgDetail> {
@@ -196,7 +219,7 @@ export function createOrganization(
 
 export function updateOrganization(
   id: string,
-  patch: { name?: string; description?: string; licenseCount?: number },
+  patch: { name?: string; description?: string; licenseCount?: number; expirationDate?: string | null },
 ): Promise<OrgDetail> {
   return apiFetch<OrgDetail>(`/organizations/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
 }
@@ -280,10 +303,11 @@ export function fetchOrgLicenses(orgId: string): Promise<OrgLicense[]> {
   return apiFetch<OrgLicense[]>(`/organizations/${orgId}/licenses`);
 }
 
-/** Bulk-generate licenses; the backend enforces the org's license limit. */
+/** Bulk-generate licenses; the backend enforces the org's license limit + the
+ *  expiration cap. expirationDate is required (ISO date string). */
 export function generateLicenses(
   orgId: string,
-  input: { count: number; expirationDate?: string },
+  input: { count: number; expirationDate: string },
 ): Promise<{ data: OrgLicense[]; codes: string[] }> {
   return apiFetchRaw<{ data: OrgLicense[]; codes: string[] }>(
     `/organizations/${orgId}/licenses/generate`,
@@ -333,12 +357,39 @@ export interface OrgAttempt {
       calc?: { name: string; expr: string }[];
       result?: { scores?: { variable: string; label: string; description?: string }[]; summary?: string; professions?: Record<string, string[]> };
     };
+    // The test's RESULT blocks (joined to their library block) so the result
+    // drawer can render the designed blocks without a separate test-read call.
+    blocks?: {
+      id: string;
+      blockId: string;
+      props: Record<string, unknown>;
+      block: { id: string; name: string; html: string; props: { name: string; type: string; value: unknown }[] } | null;
+    }[];
   };
   variables: { variable: string; value: number }[];
 }
 
 export function fetchOrgAttempts(orgId: string): Promise<OrgAttempt[]> {
   return apiFetch<OrgAttempt[]>(`/organizations/${orgId}/attempts`);
+}
+
+// ── Project attempts (project-level dashboards) ─────────────────────────────
+// Completed attempts across every test in the project, newest first. Used as the
+// variable source for the dashboard constructor (license_test_variables).
+
+export interface ProjectAttempt {
+  id: string;
+  state: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "EXPIRED";
+  startTime: string | null;
+  endTime: string | null;
+  updatedTime: string;
+  license: { id: string; licenseCode: string; holder: { login: string; name: string | null } | null };
+  test: { id: string; name: Record<string, string> };
+  variables: { variable: string; value: number }[];
+}
+
+export function fetchProjectAttempts(projectId: string): Promise<ProjectAttempt[]> {
+  return apiFetch<ProjectAttempt[]>(`/projects/${projectId}/attempts`);
 }
 
 // ── Org-management API adapter ──────────────────────────────────────────────

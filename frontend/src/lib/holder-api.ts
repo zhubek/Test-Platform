@@ -70,6 +70,7 @@ export async function holderLogin(identifier: string, password: string): Promise
   const json = await res.json();
   const token = json?.data?.accessToken ?? json?.accessToken;
   if (!token) throw new Error("No token returned");
+  setHolderContext(null); // a fresh login re-derives the project context
   setHolderToken(token);
 }
 
@@ -156,6 +157,14 @@ export interface HolderTest {
     vars?: { name: string; initial: string }[];
     calc?: { name: string; expr: string }[];
     result?: ResultConfig;
+    matches?: {
+      id: string;
+      catalogId: string;
+      groupId: string;
+      method?: string;
+      topN: number;
+      prefix: string;
+    }[];
   };
   attempt: { id: string; state: string } | null;
   _count?: { blocks: number };
@@ -197,13 +206,39 @@ export interface Attempt {
   startTime?: string | null;
   endTime?: string | null;
   updatedTime?: string;
-  variables?: { variable: string; value: number }[];
+  variables?: StoredVariable[];
 }
+
+/** A stored variable. `refId`/`refType` carry an entity reference (e.g. a
+ *  top1/2/3 match → a catalog item) while `value` holds its numeric score. */
+export interface StoredVariable {
+  variable: string;
+  value: number;
+  kind?: "ANSWER" | "VARIABLE" | "REFERENCE";
+  refType?: string | null;
+  refId?: string | null;
+  /** Present on reads when refId resolves (the referenced catalog item). */
+  refItem?: { id: string; title: Record<string, string> } | null;
+}
+
+/** What the take page sends on submit: numeric vars, answers, and ref outputs. */
+export interface SubmitEntry {
+  variable: string;
+  value: number;
+  kind: "answer" | "variable" | "reference";
+  refType?: string;
+  refId?: string;
+}
+
+/** Stored-variable kind, mirrors the backend enum (lowercased on the wire). */
+export type VarKind = "answer" | "variable" | "reference";
 
 export const startAttempt = (testId: string) =>
   holderFetch<Attempt>(`/tests/${testId}/attempts`, { method: "POST" });
 
 export const fetchAttempt = (id: string) => holderFetch<Attempt>(`/license-tests/${id}`);
 
-export const submitAttempt = (id: string, body: { variables: Record<string, number>; progress: Record<string, unknown> }) =>
-  holderFetch<Attempt>(`/license-tests/${id}/submit`, { method: "POST", body: JSON.stringify(body) });
+export const submitAttempt = (
+  id: string,
+  body: { entries: SubmitEntry[]; progress: Record<string, unknown> },
+) => holderFetch<Attempt>(`/license-tests/${id}/submit`, { method: "POST", body: JSON.stringify(body) });

@@ -50,6 +50,14 @@ export class TestsController {
     return this.attempts.listForOrganization(orgId);
   }
 
+  // Project-level dashboards: completed attempts across all of the project's
+  // tests (their license_test_variables), newest first.
+  @Get('projects/:id/attempts')
+  @RequireAccess('project', 'read')
+  listProjectAttempts(@Param('id') projectId: string) {
+    return this.attempts.listForProject(projectId);
+  }
+
   // --- nested under a project: the parent project is the authorized entity ---
 
   @Get('projects/:id/tests')

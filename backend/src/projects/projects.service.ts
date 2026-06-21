@@ -35,7 +35,17 @@ export class ProjectsService {
   }
 
   update(id: string, dto: UpdateProjectDto) {
-    return this.prisma.project.update({ where: { id }, data: { ...dto } });
+    const { expirationDate, ...rest } = dto;
+    return this.prisma.project.update({
+      where: { id },
+      data: {
+        ...rest,
+        // Coerce the ISO date to a Date (or null to clear); leave untouched when absent.
+        ...(expirationDate !== undefined
+          ? { expirationDate: expirationDate ? new Date(expirationDate) : null }
+          : {}),
+      },
+    });
   }
 
   remove(id: string) {

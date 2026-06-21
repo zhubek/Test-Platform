@@ -1,12 +1,14 @@
 "use client";
 
+// Per-test drill-down — computed from real attempts of one test in this org:
+// completion KPIs, average score per scale, and each student's latest result.
+// Reuses buildResultEntry so the scales/summary match what the holder sees.
+
 import { ArrowLeft, BarChart3, CheckCircle2, Clock, TrendingUp, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  licenseResults,
-  type OrgLicense,
-} from "@/app/(orgadmin)/org-admin/licenses/_components/mock-data";
+import type { OrgAttempt } from "@/lib/backend";
+import { buildResultEntry } from "@/lib/result-entry";
 
 interface TestResultRow {
   studentName: string;
@@ -25,62 +27,57 @@ interface TestStats {
   results: TestResultRow[];
 }
 
-function computeTestStats(testId: number, licenses: OrgLicense[]): TestStats {
-  const redeemed = licenses.filter((l) => l.state !== "unredeemed");
-  let completed = 0;
-  let inProgress = 0;
-  for (const l of redeemed) {
-    const t = l.tests.find((x) => x.testId === testId);
-    if (!t) continue;
-    if (t.status === "completed") completed++;
-    else inProgress++;
-  }
-  const rate = redeemed.length ? Math.round((completed / redeemed.length) * 100) : 0;
+const fmtDate = (v: string | null) => (v ? new Date(v).toLocaleDateString() : "—");
 
-  // Average each scale over the latest attempt of every student with results.
+function computeTestStats(attempts: OrgAttempt[]): TestStats {
+  const students = attempts.length;
+  const completed = attempts.filter((a) => a.state === "COMPLETED").length;
+  const inProgress = students - completed;
+  const rate = students ? Math.round((completed / students) * 100) : 0;
+
+  // Average each scale over completed attempts, and a latest-result row each.
   const sums = new Map<string, { sum: number; n: number }>();
   const results: TestResultRow[] = [];
-  for (const l of licenses) {
-    const attempts = licenseResults[l.id]?.[testId];
-    if (!attempts?.length) continue;
-    const latest = attempts[0];
-    for (const s of latest.scores) {
-      const acc = sums.get(s.label) ?? { sum: 0, n: 0 };
-      acc.sum += s.value;
+  for (const a of attempts) {
+    if (a.state !== "COMPLETED") continue;
+    const date = fmtDate(a.endTime ?? a.updatedTime);
+    const entry = buildResultEntry(a.test, a.variables, date);
+    for (const sc of entry.scores) {
+      const acc = sums.get(sc.label.en ?? "") ?? { sum: 0, n: 0 };
+      acc.sum += sc.value;
       acc.n++;
-      sums.set(s.label, acc);
+      sums.set(sc.label.en ?? "", acc);
     }
-    const top = [...latest.scores].sort((a, b) => b.value - a.value)[0];
+    const top = [...entry.scores].sort((x, y) => y.value - x.value)[0];
     results.push({
-      studentName: l.name || l.login || l.code,
-      date: latest.date,
-      topLabel: top?.label ?? "—",
+      studentName: a.license.holder?.name || a.license.holder?.login || a.license.licenseCode,
+      date,
+      topLabel: top?.label.en ?? "—",
       topValue: top?.value ?? 0,
-      summary: latest.summary,
+      summary: entry.summary.en ?? "",
     });
   }
   const averages = [...sums.entries()]
     .map(([label, { sum, n }]) => ({ label, value: Math.round(sum / n) }))
     .sort((a, b) => b.value - a.value);
 
-  return { students: redeemed.length, completed, inProgress, rate, averages, results };
+  return { students, completed, inProgress, rate, averages, results };
 }
 
 interface Props {
-  testId: number;
   testName: string;
-  licenses: OrgLicense[];
+  attempts: OrgAttempt[];
   onBack: () => void;
 }
 
-export function TestDashboard({ testId, testName, licenses, onBack }: Props) {
-  const s = computeTestStats(testId, licenses);
+export function TestDashboard({ testName, attempts, onBack }: Props) {
+  const s = computeTestStats(attempts);
   const maxAvg = Math.max(...s.averages.map((a) => a.value), 1);
 
   const kpis = [
-    { label: "Students", value: s.students, icon: Users, hint: "redeemed licenses" },
+    { label: "Students", value: s.students, icon: Users, hint: "with an attempt" },
     { label: "Completed", value: s.completed, icon: CheckCircle2, hint: "finished this test" },
-    { label: "In progress", value: s.inProgress, icon: Clock, hint: "assigned, not finished" },
+    { label: "In progress", value: s.inProgress, icon: Clock, hint: "started, not finished" },
     { label: "Completion rate", value: `${s.rate}%`, icon: TrendingUp, hint: `${s.completed}/${s.students} students` },
   ];
 
@@ -138,29 +135,16 @@ export function TestDashboard({ testId, testName, licenses, onBack }: Props) {
                   return (
                     <div key={a.label}>
                       <div className="mb-1 flex items-center justify-between">
-                        <span
-                          className={cn(
-                            "text-sm font-medium",
-                            high ? "text-foreground" : "text-muted-foreground",
-                          )}
-                        >
+                        <span className={cn("text-sm font-medium", high ? "text-foreground" : "text-muted-foreground")}>
                           {a.label}
                         </span>
-                        <span
-                          className={cn(
-                            "text-xs font-bold",
-                            high ? "text-primary" : "text-muted-foreground",
-                          )}
-                        >
+                        <span className={cn("text-xs font-bold", high ? "text-primary" : "text-muted-foreground")}>
                           {a.value}
                         </span>
                       </div>
                       <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                         <div
-                          className={cn(
-                            "h-full rounded-full transition-all duration-500",
-                            high ? "bg-primary" : "bg-muted-foreground/40",
-                          )}
+                          className={cn("h-full rounded-full transition-all duration-500", high ? "bg-primary" : "bg-muted-foreground/40")}
                           style={{ width: `${(a.value / maxAvg) * 100}%` }}
                         />
                       </div>
@@ -182,18 +166,20 @@ export function TestDashboard({ testId, testName, licenses, onBack }: Props) {
               <EmptyResults message="No results yet for this test." />
             ) : (
               <div className="flex flex-col divide-y">
-                {s.results.map((r) => (
-                  <div key={r.studentName} className="py-3 first:pt-0 last:pb-0">
+                {s.results.map((r, i) => (
+                  <div key={`${r.studentName}-${i}`} className="py-3 first:pt-0 last:pb-0">
                     <div className="mb-1 flex items-center justify-between gap-2">
                       <span className="text-sm font-semibold">{r.studentName}</span>
                       <span className="shrink-0 text-xs text-muted-foreground">{r.date}</span>
                     </div>
-                    <span className="mb-1.5 inline-block rounded-lg border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                      {r.topLabel} — {r.topValue}%
-                    </span>
-                    <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-                      {r.summary}
-                    </p>
+                    {r.topLabel !== "—" && (
+                      <span className="mb-1.5 inline-block rounded-lg border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                        {r.topLabel} — {r.topValue}
+                      </span>
+                    )}
+                    {r.summary && (
+                      <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">{r.summary}</p>
+                    )}
                   </div>
                 ))}
               </div>

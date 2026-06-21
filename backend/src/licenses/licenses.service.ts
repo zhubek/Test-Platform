@@ -49,6 +49,28 @@ export class LicensesService {
     }
   }
 
+  /**
+   * A license's expiration is required and may never be later than its org's
+   * (or, failing that, its project's) expiration cap.
+   */
+  private async assertExpiration(orgId: string, expirationDate: string | undefined) {
+    if (!expirationDate) throw new UnprocessableEntityException('Expiration date is required.');
+    const exp = new Date(expirationDate);
+    const org = await this.prisma.organization.findUniqueOrThrow({
+      where: { id: orgId },
+      select: { expirationDate: true, project: { select: { expirationDate: true } } },
+    });
+    const caps = [org.expirationDate, org.project?.expirationDate].filter((d): d is Date => !!d);
+    if (caps.length) {
+      const cap = new Date(Math.min(...caps.map((d) => +d)));
+      if (exp > cap) {
+        throw new UnprocessableEntityException(
+          `Expiration date can't be later than ${cap.toISOString().slice(0, 10)}.`,
+        );
+      }
+    }
+  }
+
   private licenseCreateData(
     org: { id: string; projectId: string },
     issuerId: string,
@@ -87,6 +109,7 @@ export class LicensesService {
     issuerId: string,
   ) {
     await this.assertWithinLimit(org.id, 1);
+    await this.assertExpiration(org.id, dto.expirationDate);
     const code = generateCode();
     const [license] = await this.prisma.$transaction([
       this.prisma.license.create({
@@ -111,6 +134,7 @@ export class LicensesService {
     issuerId: string,
   ) {
     await this.assertWithinLimit(org.id, dto.count);
+    await this.assertExpiration(org.id, dto.expirationDate);
     const codes = Array.from({ length: dto.count }, () => generateCode());
     const created = await this.prisma.$transaction([
       ...codes.map((code) =>

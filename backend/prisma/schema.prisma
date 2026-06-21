@@ -84,6 +84,14 @@ enum LicenseTestState {
   EXPIRED
 }
 
+// What a stored result value represents: a raw question answer, a computed
+// calculation variable, or a reference output (top1/2/3 → a catalog item).
+enum LicenseTestVarKind {
+  ANSWER
+  VARIABLE
+  REFERENCE
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // core_ — Identity. ONE table for all four principals (super_admin,
 // project_admin, org_admin, license_holder). Level comes from roles; scope from
@@ -141,6 +149,7 @@ model Project {
   description       String?
   licenseLimit      Int               @default(0)
   licenseUsed       Int               @default(0)
+  expirationDate    DateTime? // licenses in this project may not outlast this date
   defaultLanguageId String? // the source/fallback language for authored content
   defaultLanguage   Language?         @relation("ProjectDefaultLanguage", fields: [defaultLanguageId], references: [id])
   languages         ProjectLanguage[]
@@ -245,6 +254,7 @@ model Organization {
   code         String    @unique // one-time activation code for this org's org_admin
   licenseCount Int       @default(0)
   licenseUsed  Int       @default(0)
+  expirationDate DateTime? // its licenses may not outlast this; ≤ project.expirationDate
   project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   licenses     License[]
   members      User[]    @relation("OrgMembers")
@@ -356,6 +366,7 @@ model DataCatalog {
   values              DataCatalogExtraValue[]
   characteristicValues DataCatalogCharacteristicValue[]
   pageProps           DataCatalogPageProp[]
+  licenseTestRefs     LicenseTestVariable[] // result outputs (top1/2/3) that reference this item
   createdAt           DateTime                         @default(now())
   updatedAt           DateTime                         @updatedAt
 
@@ -498,6 +509,7 @@ model Test {
   advancedParams Json               @default("{}") @map("advanced_params") // calculation vars, visibility rule, …
   blocks         TestBlock[]
   licenseTests   LicenseTest[]
+  licenseTestVars LicenseTestVariable[] // denormalized per-attempt result values (dashboard source)
   projectParams  TestProjectParam[]
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
@@ -549,13 +561,26 @@ model LicenseTest {
 
 // A computed variable value for one attempt (a characteristic/score output).
 model LicenseTestVariable {
-  id            String      @id @default(cuid())
+  id            String             @id @default(cuid())
   licenseTestId String
-  licenseTest   LicenseTest @relation(fields: [licenseTestId], references: [id], onDelete: Cascade)
+  licenseTest   LicenseTest        @relation(fields: [licenseTestId], references: [id], onDelete: Cascade)
+  // Denormalized copy of the attempt's test (immutable per attempt) so dashboard
+  // aggregates over ALL attempts of a test scan one table without a join.
+  testId        String
+  test          Test               @relation(fields: [testId], references: [id], onDelete: Cascade)
+  kind          LicenseTestVarKind @default(VARIABLE)
   variable      String
   value         Float
+  // Optional reference for outputs that point at an entity (e.g. top1/top2/top3
+  // → a matched data-catalog item). `value` still holds the numeric score; the
+  // referenced entity is re-resolved at result time. Null for plain numeric vars.
+  refType       String? // e.g. "catalogItem"
+  refId         String? // the referenced entity id (a DataCatalog item id for catalogItem)
+  refItem       DataCatalog?       @relation(fields: [refId], references: [id], onDelete: SetNull)
 
   @@unique([licenseTestId, variable])
+  @@index([testId, kind, variable]) // dashboard aggregation across all attempts of a test
+  @@index([refId])
   @@map("test_license_test_variables")
 }
 

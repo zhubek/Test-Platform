@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import { IsISO8601, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateOrganizationDto {
   @IsString()
@@ -8,6 +8,11 @@ export class CreateOrganizationDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  /** Latest date this org's licenses may expire (validated ≤ project). */
+  @IsOptional()
+  @IsISO8601()
+  expirationDate?: string;
 
   /** login for the org's (pending) org_admin account. */
   @IsString()

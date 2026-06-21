@@ -10,13 +10,19 @@ import { UpdateUserDto } from './dto/update-user.dto';
 // Never select the password hash back to a caller.
 const SAFE = { omit: { passwordHash: true } } as const;
 
-// List view: safe fields + the names a UI needs (role, org, license).
+// List view: safe fields + the names a UI needs (role + the user's licenses,
+// each with its project so the UI can show "code · project").
 const LIST = {
   omit: { passwordHash: true },
   include: {
     roles: { include: { role: true } },
-    organization: { select: { name: true } },
-    license: { select: { licenseCode: true } },
+    licenses: {
+      select: {
+        licenseCode: true,
+        state: true,
+        project: { select: { name: true } },
+      },
+    },
   },
 } as const;
 

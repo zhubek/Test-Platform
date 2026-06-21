@@ -12,6 +12,7 @@ import {
   assignProjectLanguage,
   unassignProjectLanguage,
   setProjectDefaultLanguage,
+  updateProjectFields,
   type BeLanguage,
 } from "@/lib/backend";
 import { useLocale } from "@/lib/locale-context";
@@ -41,6 +42,7 @@ export default function ParametersPage() {
   const [name, setName] = useState<Localized>(project.name);
   const [description, setDescription] = useState<Localized>(project.description);
   const [licenseLimit, setLicenseLimit] = useState(project.licenseLimit);
+  const [expiration, setExpiration] = useState(project.expirationDate?.slice(0, 10) ?? "");
   const [orgLimit, setOrgLimit] = useState(project.organizationLimit);
   const [params, setParams] = useState<ProjectParameter[]>(project.parameters);
   const [saved, setSaved] = useState(false);
@@ -56,6 +58,7 @@ export default function ParametersPage() {
     setName(project.name);
     setDescription(project.description);
     setLicenseLimit(project.licenseLimit);
+    setExpiration(project.expirationDate?.slice(0, 10) ?? "");
     setOrgLimit(project.organizationLimit);
     setParams(project.parameters);
   }, [project]);
@@ -134,10 +137,12 @@ export default function ParametersPage() {
     );
 
   const save = () => {
+    const expISO = expiration ? new Date(expiration).toISOString() : null;
     updateProject(project.id, {
       name,
       description,
       licenseLimit,
+      expirationDate: expISO,
       organizationLimit: orgLimit,
       parameters: params
         .map((p) => ({
@@ -146,6 +151,12 @@ export default function ParametersPage() {
         }))
         .filter((p) => (p.label.en || p.label.ru || p.label.kk).trim() !== ""),
     });
+    // Persist the backend-backed project settings (license limit + expiration).
+    if (project.id) {
+      updateProjectFields(project.id, { licenseLimit, expirationDate: expISO }).catch((e) =>
+        console.error("Failed to save project settings:", e),
+      );
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 1800);
   };
@@ -198,6 +209,20 @@ export default function ParametersPage() {
                   onChange={(e) => setLicenseLimit(Math.max(0, parseInt(e.target.value) || 0))}
                   className="w-32"
                 />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[0.75rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Expiration date
+                </label>
+                <Input
+                  type="date"
+                  value={expiration}
+                  onChange={(e) => setExpiration(e.target.value)}
+                  className="w-44"
+                />
+                <p className="mt-1 text-[0.66rem] text-muted-foreground">
+                  Org & license dates can&apos;t exceed this.
+                </p>
               </div>
               <div>
                 <label className="mb-1.5 block text-[0.75rem] font-semibold uppercase tracking-wider text-muted-foreground">

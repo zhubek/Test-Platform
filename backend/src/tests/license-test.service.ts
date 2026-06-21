@@ -12,6 +12,12 @@ import { LicenseTestEntity } from './tests.types';
 
 const json = (v: unknown): Prisma.InputJsonValue => (v ?? {}) as Prisma.InputJsonValue;
 
+// Stored variables with the referenced catalog item (for ref outputs like
+// top1/2/3) resolved to its id + title so results can render it.
+const VARS_INCLUDE = {
+  include: { refItem: { select: { id: true, title: true } } },
+} satisfies Prisma.LicenseTest$variablesArgs;
+
 @Injectable()
 export class LicenseTestService {
   constructor(private readonly prisma: PrismaService) {}
@@ -20,32 +26,67 @@ export class LicenseTestService {
   listForTest(testId: string) {
     return this.prisma.licenseTest.findMany({
       where: { testId },
-      include: { license: { select: { licenseCode: true } }, variables: true },
+      include: { license: { select: { licenseCode: true } }, variables: VARS_INCLUDE },
       orderBy: { updatedTime: 'desc' },
     });
   }
 
   /**
    * Attempts across all licenses in an organization (org-admin results view).
-   * Includes the holder, the test's name + result config (advancedParams), and
-   * the computed variables so the UI can render each holder's result.
+   * Includes the holder, the test's name + result config (advancedParams), the
+   * test's RESULT blocks (joined to the library block) so the result drawer can
+   * render the designed blocks here — an org admin can't read /tests/:id/blocks
+   * directly — and the computed variables.
    */
   listForOrganization(orgId: string) {
     return this.prisma.licenseTest.findMany({
       where: { license: { organizationId: orgId } },
       include: {
         license: { select: { id: true, licenseCode: true, holder: { select: { login: true, name: true } } } },
-        test: { select: { id: true, name: true, advancedParams: true } },
-        variables: true,
+        test: {
+          select: {
+            id: true,
+            name: true,
+            advancedParams: true,
+            blocks: {
+              where: { surface: 'RESULT' },
+              orderBy: { order: 'asc' },
+              select: {
+                id: true,
+                blockId: true,
+                props: true,
+                block: { select: { id: true, name: true, html: true, props: true } },
+              },
+            },
+          },
+        },
+        variables: VARS_INCLUDE,
       },
       orderBy: { updatedTime: 'desc' },
+    });
+  }
+
+  /**
+   * Completed attempts across every test in a project (project-level dashboards).
+   * Newest first; includes the holder, the test name, and the computed variables
+   * so a dashboard can aggregate results from license_test_variables.
+   */
+  listForProject(projectId: string) {
+    return this.prisma.licenseTest.findMany({
+      where: { test: { projectId }, state: 'COMPLETED' },
+      include: {
+        license: { select: { id: true, licenseCode: true, holder: { select: { login: true, name: true } } } },
+        test: { select: { id: true, name: true } },
+        variables: VARS_INCLUDE,
+      },
+      orderBy: { endTime: 'desc' },
     });
   }
 
   findOne(id: string) {
     return this.prisma.licenseTest.findUniqueOrThrow({
       where: { id },
-      include: { variables: true },
+      include: { variables: VARS_INCLUDE },
     });
   }
 
@@ -110,11 +151,51 @@ export class LicenseTestService {
     if (attempt.state === 'COMPLETED' || attempt.state === 'EXPIRED') {
       throw new UnprocessableEntityException(`Attempt already ${attempt.state.toLowerCase()}`);
     }
-    const vars = Object.entries(dto.variables ?? {}).map(([variable, value]) => ({
-      licenseTestId: attempt.id,
-      variable,
-      value: Number(value) || 0,
-    }));
+    // Prefer the rich `entries` (which carry kind + an entity ref for top1/2/3);
+    // fall back to the legacy flat `variables` map. Last-write-wins per name.
+    const KIND = { answer: 'ANSWER', variable: 'VARIABLE', reference: 'REFERENCE' } as const;
+    const byName = new Map<
+      string,
+      { value: number; kind?: keyof typeof KIND; refType: string | null; refId: string | null }
+    >();
+    for (const [variable, value] of Object.entries(dto.variables ?? {})) {
+      byName.set(variable, { value: Number(value) || 0, refType: null, refId: null });
+    }
+    for (const e of dto.entries ?? []) {
+      byName.set(e.variable, {
+        value: Number(e.value) || 0,
+        kind: e.kind,
+        refType: e.refType ?? null,
+        refId: e.refId ?? null,
+      });
+    }
+    // A refId must point at a real catalog item or the FK insert fails; drop
+    // any that don't resolve (keeping the numeric value).
+    const refIds = [...new Set([...byName.values()].map((v) => v.refId).filter((x): x is string => !!x))];
+    const validRefIds = refIds.length
+      ? new Set(
+          (
+            await this.prisma.dataCatalog.findMany({
+              where: { id: { in: refIds } },
+              select: { id: true },
+            })
+          ).map((r) => r.id),
+        )
+      : new Set<string>();
+    const vars = [...byName].map(([variable, v]) => {
+      const refOk = v.refId && validRefIds.has(v.refId);
+      // Explicit kind wins; otherwise infer (a resolved ref → REFERENCE, else VARIABLE).
+      const kind = v.kind ? KIND[v.kind] : refOk ? 'REFERENCE' : 'VARIABLE';
+      return {
+        licenseTestId: attempt.id,
+        testId: attempt.testId, // denormalized for join-free dashboard aggregation
+        kind,
+        variable,
+        value: v.value,
+        refType: refOk ? v.refType : null,
+        refId: refOk ? v.refId : null,
+      };
+    });
     await this.prisma.$transaction([
       this.prisma.licenseTestVariable.deleteMany({ where: { licenseTestId: attempt.id } }),
       ...(vars.length ? [this.prisma.licenseTestVariable.createMany({ data: vars })] : []),

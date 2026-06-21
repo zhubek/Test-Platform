@@ -45,9 +45,15 @@ export class OrganizationsController {
 
   @Get('organizations/:id')
   @RequireAccess('organization', 'read')
-  findOne(@Loaded() org: OrganizationEntity, @CurrentUser() user: AuthUser) {
-    // The activation code is shown in full only at create/reset; reads mask it.
-    return { data: { ...org, code: maskCode(org.code) }, capabilities: capabilitiesFor(org, user) };
+  async findOne(@Loaded() org: OrganizationEntity, @CurrentUser() user: AuthUser) {
+    const capabilities = capabilitiesFor(org, user);
+    // Show the activation code in full to a caller who can rotate it anyway
+    // (super/project admin) so they can use it / hand it to the org admin; the
+    // org admin's own view (/me/organization) stays masked.
+    const code = capabilities.resetCode === true ? org.code : maskCode(org.code);
+    // projectExpirationDate caps the org's own date in the settings UI.
+    const projectExpirationDate = await this.service.projectExpiration(org.projectId);
+    return { data: { ...org, code, projectExpirationDate }, capabilities };
   }
 
   // The caller's own org (org-admin area). JWT only — AccessGuard opts out
@@ -55,7 +61,11 @@ export class OrganizationsController {
   @Get('me/organization')
   async myOrganization(@CurrentUser() user: AuthUser) {
     const org = await this.service.getForUser(user.orgId);
-    return { data: { ...org, code: maskCode(org.code) }, capabilities: capabilitiesFor(org, user) };
+    const { project, ...rest } = org;
+    return {
+      data: { ...rest, code: maskCode(org.code), projectExpirationDate: project?.expirationDate ?? null },
+      capabilities: capabilitiesFor(org, user),
+    };
   }
 
   @Patch('organizations/:id')

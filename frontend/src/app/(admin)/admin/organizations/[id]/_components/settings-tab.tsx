@@ -27,6 +27,7 @@ export function SettingsTab({
   const [name, setName] = useState(org.name);
   const [description, setDescription] = useState(org.description ?? "");
   const [limit, setLimit] = useState(org.licenseCount);
+  const [expiration, setExpiration] = useState(org.expirationDate?.slice(0, 10) ?? "");
   const [savingGeneral, setSavingGeneral] = useState(false);
   const [generalMsg, setGeneralMsg] = useState<string | null>(null);
 
@@ -60,6 +61,7 @@ export function SettingsTab({
         name: name.trim() || org.name,
         description,
         licenseCount: Math.max(0, limit),
+        expirationDate: expiration || null,
       });
       onOrgChanged();
       setGeneralMsg("Saved");
@@ -138,6 +140,21 @@ export function SettingsTab({
               Limit below the {org.licenseUsed} already issued — no new licenses can be generated until it&apos;s raised.
             </p>
           )}
+          <Field label="Expiration date">
+            <Input
+              type="date"
+              value={expiration}
+              max={org.projectExpirationDate?.slice(0, 10) || undefined}
+              onChange={(e) => setExpiration(e.target.value)}
+              className="w-44"
+            />
+          </Field>
+          {org.projectExpirationDate && (
+            <p className="text-xs text-muted-foreground">
+              Can&apos;t be later than the project&apos;s expiration ({org.projectExpirationDate.slice(0, 10)}). New licenses
+              default to this date.
+            </p>
+          )}
           <div className="flex items-center gap-3">
             <Button onClick={saveGeneral} disabled={savingGeneral}>
               {savingGeneral ? "Saving…" : "Save"}
@@ -187,9 +204,8 @@ export function SettingsTab({
               </Button>
             </div>
             <p className="mt-1.5 text-[0.66rem] leading-relaxed text-muted-foreground">
-              The org admin signs in with their login + this code (no password). It is shown in full only once;
-              afterwards just the last 4 characters appear. If they forget it, Reset to reveal a new one — the old code
-              stops working.
+              The org admin signs in at <code className="font-mono">/org-admin</code> with their login + this code (no
+              password). Reset rotates it — the old code stops working immediately.
             </p>
           </div>
         </div>

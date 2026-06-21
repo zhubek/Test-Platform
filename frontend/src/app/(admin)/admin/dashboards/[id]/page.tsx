@@ -2,7 +2,7 @@
 
 import { use } from "react";
 import { Breadcrumb } from "../../_components/breadcrumb";
-import { DashboardEditorShell } from "./_components/dashboard-editor-shell";
+import { DashboardConstructor } from "./_components/dashboard-constructor";
 import { contentDashboards } from "../../_components/mock-data";
 import { useLocale } from "@/lib/locale-context";
 import { localize } from "@/lib/localized";
@@ -25,7 +25,11 @@ export default function DashboardEditorPage({
           { label: localize(dashboard.name, locale) },
         ]}
       />
-      <DashboardEditorShell initialData={dashboard} />
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold tracking-tight">{localize(dashboard.name, locale)}</h1>
+        <p className="text-sm text-muted-foreground">{localize(dashboard.description, locale)}</p>
+      </div>
+      <DashboardConstructor dashboardId={id} />
     </>
   );
 }
