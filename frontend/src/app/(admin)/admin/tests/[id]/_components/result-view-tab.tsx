@@ -48,6 +48,11 @@ import { type ExprVarGroup } from "@/components/prop-source";
 import { InstancePropEditor } from "@/components/instance-prop-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  MatchedProfessionCards,
+  isProfessionMatchesBlock,
+  type MatchRow,
+} from "@/components/matched-profession-cards";
 import { cn } from "@/lib/utils";
 
 export function ResultViewTab({ testId }: { testId?: string }) {
@@ -228,6 +233,23 @@ export function ResultViewTab({ testId }: { testId?: string }) {
           : { rank: cv.rank ?? i + 1, score: scores[i], name: `(no ${m.catalogLabel} items)` };
       });
     }
+    // A flat `professions` collection (+ the catalog name) for the system
+    // "Profession matches" block, built from the first match's top{r} objects.
+    const m0 = matches[0];
+    if (m0) {
+      base.matchCatalog = m0.catalogId;
+      base.professions = calc
+        .filter((c) => c.matchId === m0.id && c.derived)
+        .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0))
+        .map((cv) => base[cv.name])
+        .filter((o): o is Record<string, unknown> => !!o && typeof o === "object")
+        .map((o) => ({
+          rank: Number(o.rank) || 0,
+          name: String(o.name ?? ""),
+          score: Number(o.score) || 0,
+          id: (o.id as string) ?? null,
+        }));
+    }
     return base;
   }, [vars, calc, matches, itemsByCatalog, project.parameters, locale, sample, catalogs]);
 
@@ -404,15 +426,23 @@ export function ResultViewTab({ testId }: { testId?: string }) {
             items.map((it) => {
               const block = resolveBlockRef(it, blocks);
               if (!block) return null;
+              const isMatches = isProfessionMatchesBlock(block);
               const types = new Map(block.props.map((p) => [p.name, p.type]));
-              const resolved = resolveInstanceProps(it, types, scope);
+              const resolved = isMatches ? {} : resolveInstanceProps(it, types, scope);
               return (
                 <div
                   key={it.id}
                   className={cn("rounded-xl transition-shadow", openId === it.id && "ring-2 ring-teal-400/60")}
                   onClick={() => setOpenId(it.id)}
                 >
-                  <ViewRenderer template={block.html} props={resolved} />
+                  {isMatches ? (
+                    <MatchedProfessionCards
+                      catalog={matches[0]?.catalogId}
+                      matches={(scope.professions as MatchRow[]) ?? []}
+                    />
+                  ) : (
+                    <ViewRenderer template={block.html} props={resolved} />
+                  )}
                 </div>
               );
             })

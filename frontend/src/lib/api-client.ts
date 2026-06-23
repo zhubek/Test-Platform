@@ -1,97 +1,58 @@
-// Thin transport layer to the NestJS backend.
-//
-// NOTE (dev shim): the frontend has no login screen yet, so this client
-// auto-logs-in with NEXT_PUBLIC_DEV_LOGIN/PASSWORD to obtain a JWT and caches
-// it in localStorage. Replace `ensureToken`/`login` with a real auth flow when
-// a login page exists — the rest of the client stays the same.
+// Thin transport layer to the NestJS backend for the staff /admin area.
+// Auth is a real sign-in (login + password) — no auto-login. The JWT is cached
+// in localStorage; on a 401 the token is cleared so the admin gate re-prompts.
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-const DEV_LOGIN = process.env.NEXT_PUBLIC_DEV_LOGIN ?? "superadmin";
-const DEV_PASSWORD = process.env.NEXT_PUBLIC_DEV_PASSWORD ?? "changeme123";
 const TOKEN_KEY = "tp-token";
 
 let token: string | null = null;
 
-function getToken(): string | null {
+export function getToken(): string | null {
   if (token) return token;
   if (typeof window !== "undefined") token = localStorage.getItem(TOKEN_KEY);
   return token;
 }
 
-function setToken(value: string | null): void {
+export function setToken(value: string | null): void {
   token = value;
   if (typeof window === "undefined") return;
   if (value) localStorage.setItem(TOKEN_KEY, value);
   else localStorage.removeItem(TOKEN_KEY);
 }
 
-async function login(): Promise<string> {
+/** Sign in with login + password; stores the JWT. Throws on bad credentials. */
+export async function signIn(identifier: string, password: string): Promise<void> {
   const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ identifier: DEV_LOGIN, password: DEV_PASSWORD }),
+    body: JSON.stringify({ identifier, password }),
   });
-  if (!res.ok) throw new Error(`Auth failed (${res.status})`);
+  if (!res.ok) throw new Error("Invalid login or password");
   const json = await res.json();
   const accessToken: string | undefined = json?.data?.accessToken ?? json?.accessToken;
   if (!accessToken) throw new Error("No accessToken in login response");
   setToken(accessToken);
-  return accessToken;
 }
 
-async function ensureToken(): Promise<string> {
-  return getToken() ?? (await login());
+export function signOut(): void {
+  setToken(null);
 }
 
-/**
- * Fetch JSON from the backend with a bearer token, auto-refreshing the token
- * once on 401. Unwraps the `{ data }` envelope the backend returns.
- */
-export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const run = (t: string) =>
-    fetch(`${API_URL}${path}`, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...(init.headers ?? {}),
-        Authorization: `Bearer ${t}`,
-      },
-    });
-
-  let res = await run(await ensureToken());
+// Shared request: attach the bearer token; clear it (so the gate re-prompts) on 401.
+async function request(path: string, init: RequestInit): Promise<Response> {
+  const t = getToken();
+  if (!t) throw new Error("Not signed in");
+  const res = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init.headers ?? {}),
+      Authorization: `Bearer ${t}`,
+    },
+  });
   if (res.status === 401) {
     setToken(null);
-    res = await run(await login());
-  }
-  if (!res.ok) {
-    throw new Error(`${init.method ?? "GET"} ${path} → ${res.status}: ${await res.text()}`);
-  }
-  if (res.status === 204) return undefined as T;
-
-  const json = await res.json();
-  return (json && typeof json === "object" && "data" in json ? json.data : json) as T;
-}
-
-/**
- * Like apiFetch but returns the raw streaming Response (no body read) — for
- * Server-Sent Events / token streaming. Adds the bearer token and refreshes it
- * once on 401. The caller reads `res.body`.
- */
-export async function apiFetchStream(path: string, init: RequestInit = {}): Promise<Response> {
-  const run = (t: string) =>
-    fetch(`${API_URL}${path}`, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...(init.headers ?? {}),
-        Authorization: `Bearer ${t}`,
-      },
-    });
-
-  let res = await run(await ensureToken());
-  if (res.status === 401) {
-    setToken(null);
-    res = await run(await login());
+    throw new Error("unauthorized");
   }
   if (!res.ok) {
     throw new Error(`${init.method ?? "GET"} ${path} → ${res.status}: ${await res.text()}`);
@@ -99,30 +60,22 @@ export async function apiFetchStream(path: string, init: RequestInit = {}): Prom
   return res;
 }
 
-/**
- * Like apiFetch but WITHOUT envelope unwrapping — for endpoints whose payload
- * legitimately contains a `data` key next to siblings (e.g. `{ data, code }`
- * from license/org provisioning).
- */
-export async function apiFetchRaw<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const run = (t: string) =>
-    fetch(`${API_URL}${path}`, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...(init.headers ?? {}),
-        Authorization: `Bearer ${t}`,
-      },
-    });
+/** Fetch JSON, unwrapping the backend's `{ data }` envelope. */
+export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await request(path, init);
+  if (res.status === 204) return undefined as T;
+  const json = await res.json();
+  return (json && typeof json === "object" && "data" in json ? json.data : json) as T;
+}
 
-  let res = await run(await ensureToken());
-  if (res.status === 401) {
-    setToken(null);
-    res = await run(await login());
-  }
-  if (!res.ok) {
-    throw new Error(`${init.method ?? "GET"} ${path} → ${res.status}: ${await res.text()}`);
-  }
+/** The raw streaming Response (no body read) — for SSE / token streaming. */
+export async function apiFetchStream(path: string, init: RequestInit = {}): Promise<Response> {
+  return request(path, init);
+}
+
+/** Like apiFetch but WITHOUT envelope unwrapping — for `{ data, code }` payloads. */
+export async function apiFetchRaw<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await request(path, init);
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }

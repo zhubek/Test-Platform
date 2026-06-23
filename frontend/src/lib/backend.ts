@@ -42,6 +42,38 @@ export async function fetchProjects(): Promise<Project[]> {
   return rows.map(adaptProject);
 }
 
+// ── Project migration (export / import) — super-admin only ───────────────────
+
+/** A project content snapshot (blocks, catalogs, tests). Opaque to the client. */
+export type ProjectBundle = Record<string, unknown> & { project?: { name?: string } };
+
+/** Download the full content snapshot of a project (preserve-IDs). */
+export function exportProject(projectId: string): Promise<ProjectBundle> {
+  return apiFetch<ProjectBundle>(`/projects/${projectId}/export`);
+}
+
+/**
+ * Re-create a bundle's content in this instance; returns created counts.
+ * - `targetProjectId` re-parents the content INTO that project.
+ * - mode "merge" (default) preserves ids (idempotent — skips existing).
+ * - mode "clone" regenerates all ids so it lands as a fresh copy (use when the
+ *   source content already exists in this instance, e.g. project → project).
+ */
+export function importProject(
+  bundle: ProjectBundle,
+  targetProjectId?: string,
+  mode: "merge" | "clone" = "merge",
+): Promise<Record<string, number>> {
+  const qs = new URLSearchParams();
+  if (targetProjectId) qs.set("targetProjectId", targetProjectId);
+  if (mode === "clone") qs.set("mode", "clone");
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return apiFetch<Record<string, number>>(`/migration/import${suffix}`, {
+    method: "POST",
+    body: JSON.stringify(bundle),
+  });
+}
+
 /** Persist project settings (license limit, expiration). expirationDate: an ISO
  *  date string, or null to clear. */
 export function updateProjectFields(
@@ -49,6 +81,30 @@ export function updateProjectFields(
   patch: { licenseLimit?: number; expirationDate?: string | null },
 ): Promise<unknown> {
   return apiFetch(`/projects/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+}
+
+// ── Project admin (login + password sign-in to /admin) ───────────────────────
+
+export interface ProjectAdmin {
+  id: string;
+  login: string;
+  name: string | null;
+  status: string;
+}
+
+export function fetchProjectAdmin(projectId: string): Promise<ProjectAdmin | null> {
+  return apiFetch<ProjectAdmin | null>(`/projects/${projectId}/admin`);
+}
+
+/** Create/update the project's admin. `password` is required when none exists. */
+export function setProjectAdmin(
+  projectId: string,
+  input: { login: string; name?: string; password?: string },
+): Promise<ProjectAdmin> {
+  return apiFetch<ProjectAdmin>(`/projects/${projectId}/admin`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
 }
 
 // ── Languages (global catalog + per-project assignment) ──────────────────────
@@ -451,9 +507,14 @@ export interface Block {
   props: BlockProp[];
   /** Sample values keyed by prop name — used when rendering without chosen props. */
   sampleProps: Record<string, unknown>;
+  /** null = a platform-wide SYSTEM block: available everywhere, locked (no edit/delete). */
+  projectId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
+
+/** True for platform-wide system blocks (locked — cannot be edited or deleted). */
+export const isSystemBlock = (b: { projectId?: string | null }): boolean => b.projectId === null;
 
 export type BlockInput = {
   type: BlockType;

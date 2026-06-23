@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { BlockType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBlockDto } from './dto/create-block.dto';
@@ -11,8 +11,13 @@ export class BlocksService {
   /** List the library, newest first, optionally narrowed to one type tab and/or
    *  one project. */
   list(type?: BlockType, projectId?: string) {
+    // A project's own blocks PLUS platform-wide system blocks (projectId null),
+    // which are available — but locked — in every project.
     return this.prisma.block.findMany({
-      where: { ...(type ? { type } : {}), ...(projectId ? { projectId } : {}) },
+      where: {
+        ...(type ? { type } : {}),
+        ...(projectId ? { OR: [{ projectId }, { projectId: null }] } : {}),
+      },
       orderBy: { updatedAt: 'desc' },
     });
   }
@@ -31,7 +36,8 @@ export class BlocksService {
     });
   }
 
-  update(id: string, dto: UpdateBlockDto) {
+  async update(id: string, dto: UpdateBlockDto) {
+    await this.assertNotSystem(id);
     return this.prisma.block.update({
       where: { id },
       data: {
@@ -45,8 +51,17 @@ export class BlocksService {
     });
   }
 
-  remove(id: string) {
+  async remove(id: string) {
+    await this.assertNotSystem(id);
     return this.prisma.block.delete({ where: { id } });
+  }
+
+  /** Platform-wide system blocks (projectId null) are locked — no edit/delete. */
+  private async assertNotSystem(id: string) {
+    const block = await this.prisma.block.findUnique({ where: { id }, select: { projectId: true } });
+    if (block && block.projectId === null) {
+      throw new ForbiddenException('This is a system block and cannot be edited or deleted.');
+    }
   }
 
   /** Copy an existing block into a new "… (copy)" entry. */

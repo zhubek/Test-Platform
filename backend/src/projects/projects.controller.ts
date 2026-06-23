@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   UseGuards,
 } from '@nestjs/common';
 import { AccessGuard } from '../common/access/access.guard';
@@ -16,6 +17,7 @@ import { RequireAccess } from '../common/decorators/require-access.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { capabilitiesFor } from './projects.access';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { SetProjectAdminDto } from './dto/set-project-admin.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectsService } from './projects.service';
 import type { ProjectEntity } from './projects.types';
@@ -53,5 +55,19 @@ export class ProjectsController {
   @RequireAccess('project', 'delete')
   remove(@Param('id') id: string) {
     return this.service.remove(id);
+  }
+
+  // --- the project's admin account (login + password sign-in to /admin) ---
+
+  @Get(':id/admin')
+  @RequireAccess('project', 'read')
+  getAdmin(@Param('id') id: string) {
+    return this.service.getAdmin(id);
+  }
+
+  @Put(':id/admin')
+  @RequireAccess('project', 'update')
+  setAdmin(@Param('id') id: string, @Body() dto: SetProjectAdminDto) {
+    return this.service.setAdmin(id, dto);
   }
 }

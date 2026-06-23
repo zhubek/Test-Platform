@@ -1,10 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { ROLES } from '../auth/roles';
 import { AuthUser } from '../common/access/types';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { SetProjectAdminDto } from './dto/set-project-admin.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
+
+const ADMIN_SELECT = {
+  id: true,
+  login: true,
+  name: true,
+  status: true,
+} satisfies Prisma.UserSelect;
 
 const PROJECT_INCLUDE = {
   languages: { include: { language: true } },
@@ -50,5 +59,50 @@ export class ProjectsService {
 
   remove(id: string) {
     return this.prisma.project.delete({ where: { id } });
+  }
+
+  /** The project's admin account (login + password sign-in to /admin), if set. */
+  getAdmin(projectId: string) {
+    return this.prisma.user.findFirst({
+      where: { projectId, projectRole: 'PROJECT_ADMIN' },
+      select: ADMIN_SELECT,
+    });
+  }
+
+  /**
+   * Create or update the project's admin: sets login/name, and (re)sets the
+   * password when provided. A brand-new admin requires a password; editing an
+   * existing one may leave it unchanged. The account is staff (logs in with
+   * login + password at /admin) and ACTIVE once it has a password.
+   */
+  async setAdmin(projectId: string, dto: SetProjectAdminDto) {
+    const existing = await this.getAdmin(projectId);
+    const passwordHash = dto.password ? await bcrypt.hash(dto.password, 10) : undefined;
+    if (existing) {
+      return this.prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          login: dto.login,
+          name: dto.name ?? existing.name,
+          ...(passwordHash ? { passwordHash, status: 'ACTIVE' } : {}),
+        },
+        select: ADMIN_SELECT,
+      });
+    }
+    if (!passwordHash) {
+      throw new BadRequestException('A password is required to create the project admin.');
+    }
+    return this.prisma.user.create({
+      data: {
+        login: dto.login,
+        name: dto.name ?? null,
+        passwordHash,
+        status: 'ACTIVE',
+        project: { connect: { id: projectId } },
+        projectRole: 'PROJECT_ADMIN',
+        roles: { create: { role: { connect: { name: ROLES.PROJECT_ADMIN } } } },
+      },
+      select: ADMIN_SELECT,
+    });
   }
 }

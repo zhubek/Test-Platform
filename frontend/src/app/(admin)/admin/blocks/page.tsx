@@ -7,13 +7,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Pencil, Plus, Trash2 } from "lucide-react";
+import { Copy, Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   blockSampleProps,
   createBlock,
   deleteBlock,
   duplicateBlock,
   fetchBlocks,
+  isSystemBlock,
   type Block,
   type BlockProp,
   type BlockType,
@@ -215,33 +216,42 @@ export default function BlocksPage() {
                   {b.description || "No description"}
                 </p>
                 <div className="mt-3 flex items-center gap-1">
-                  <ButtonLink
-                    href={`/admin/blocks/${b.id}`}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                  >
-                    <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
-                  </ButtonLink>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => onDuplicate(b.id)}
-                    disabled={busy}
-                    title="Duplicate"
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => onDelete(b.id, b.name)}
-                    disabled={busy}
-                    title="Delete"
-                    className="text-muted-foreground hover:text-red-500"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  {isSystemBlock(b) ? (
+                    // System blocks are locked: usable everywhere, but not editable/deletable.
+                    <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-[0.7rem] font-medium text-muted-foreground">
+                      <Lock className="h-3 w-3" /> System block · locked
+                    </span>
+                  ) : (
+                    <>
+                      <ButtonLink
+                        href={`/admin/blocks/${b.id}`}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                      >
+                        <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
+                      </ButtonLink>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => onDuplicate(b.id)}
+                        disabled={busy}
+                        title="Duplicate"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => onDelete(b.id, b.name)}
+                        disabled={busy}
+                        title="Delete"
+                        className="text-muted-foreground hover:text-red-500"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

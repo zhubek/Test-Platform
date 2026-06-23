@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Check, ChevronsUpDown, FolderKanban, ChevronDown } from "lucide-react";
+import { Check, ChevronsUpDown, FolderKanban, ChevronDown, LogOut } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { useProject, projectLanguages } from "@/lib/project-context";
+import { useAdminAuth } from "@/lib/admin-auth";
 import { localize } from "@/lib/localized";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/button-link";
 import {
   DropdownMenu,
@@ -20,7 +22,7 @@ type NavItem =
   | { label: string; href: string }
   | { label: string; children: { label: string; href: string }[] };
 
-const nav: NavItem[] = [
+const baseNav: NavItem[] = [
   { label: "Tests", href: "/admin/tests" },
   { label: "Blocks", href: "/admin/blocks" },
   { label: "Catalogs", href: "/admin/catalogs" },
@@ -40,6 +42,16 @@ export function AdminTopbar() {
   const pathname = usePathname();
   const { locale, setLocale } = useLocale();
   const { projects, project, setProjectId } = useProject();
+  const { me, signOut } = useAdminAuth();
+
+  // Project admins get the same admin UI minus Access→Users (super-admin only).
+  const nav: NavItem[] = me.isSuper
+    ? baseNav
+    : baseNav.map((item) =>
+        "children" in item
+          ? { ...item, children: item.children.filter((c) => c.href !== "/admin/users") }
+          : item,
+      );
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-xl">
@@ -148,6 +160,12 @@ export function AdminTopbar() {
         <ButtonLink variant="outline" size="sm" href="/tests">
           View site
         </ButtonLink>
+        <span className="hidden text-xs text-muted-foreground sm:inline" title={me.login}>
+          {me.name || me.login}
+        </span>
+        <Button variant="ghost" size="icon-sm" onClick={signOut} title="Sign out" aria-label="Sign out">
+          <LogOut className="h-4 w-4" />
+        </Button>
       </div>
     </header>
   );

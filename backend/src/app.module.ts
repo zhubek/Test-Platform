@@ -11,6 +11,7 @@ import { AllExceptionsFilter } from './common/logging/all-exceptions.filter';
 import { LoggingInterceptor } from './common/logging/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { LanguagesModule } from './languages/languages.module';
+import { MigrationModule } from './migration/migration.module';
 import { LicensesModule } from './licenses/licenses.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { ParamsModule } from './params/params.module';
@@ -34,6 +35,7 @@ import { UsersModule } from './users/users.module';
     LanguagesModule,
     BlocksModule,
     DataCatalogsModule,
+    MigrationModule,
     TestsModule,
     AssistantModule,
   ],

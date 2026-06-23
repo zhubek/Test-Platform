@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { createUser, fetchUsers, type UserListRow } from "@/lib/backend";
 import { useProject } from "@/lib/project-context";
+import { useAdminAuth } from "@/lib/admin-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,10 +34,17 @@ function userProjects(u: UserListRow): string[] {
 
 export default function AdminUsersPage() {
   const { project } = useProject();
+  const { me } = useAdminAuth();
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [allUsers, setAllUsers] = useState<UserListRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
+
+  // Users management is super-admin only; project admins are bounced out.
+  useEffect(() => {
+    if (!me.isSuper) router.replace("/admin/tests");
+  }, [me.isSuper, router]);
 
   // Users are NOT project-scoped — show everyone across the platform.
   const reload = useCallback(() => {

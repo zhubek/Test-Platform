@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AdminTopbar } from "@/components/admin-topbar";
 import { ChatWidget } from "@/components/chat-widget";
 import { ProjectProvider } from "@/lib/project-context";
+import { AdminAuthGate } from "@/lib/admin-auth";
 
 export const metadata: Metadata = {
   title: "Test-Platform Admin",
@@ -14,14 +15,16 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ProjectProvider>
-      <div className="flex min-h-screen flex-col bg-muted/30">
-        <AdminTopbar />
-        <main className="flex-1">
-          <div className="mx-auto max-w-6xl px-4 py-8 md:px-8">{children}</div>
-        </main>
-        <ChatWidget />
-      </div>
-    </ProjectProvider>
+    <AdminAuthGate>
+      <ProjectProvider>
+        <div className="flex min-h-screen flex-col bg-muted/30">
+          <AdminTopbar />
+          <main className="flex-1">
+            <div className="mx-auto max-w-6xl px-4 py-8 md:px-8">{children}</div>
+          </main>
+          <ChatWidget />
+        </div>
+      </ProjectProvider>
+    </AdminAuthGate>
   );
 }
