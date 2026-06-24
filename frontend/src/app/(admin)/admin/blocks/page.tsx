@@ -22,6 +22,7 @@ import {
 import { blocksToResolver } from "@/lib/view-renderer";
 import { ResolvedViewRenderer } from "@/lib/resolved-view";
 import { useProject } from "@/lib/project-context";
+import { useLocale } from "@/lib/locale-context";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/button-link";
 import { cn } from "@/lib/utils";
@@ -31,11 +32,11 @@ import { cn } from "@/lib/utils";
 // data catalog, dashboard). Each tab filters the library to a single DB `type`.
 type TabKey = "test" | "result" | "catalog" | "dashboard";
 
-const TABS: { key: TabKey; label: string; type: BlockType }[] = [
-  { key: "test", label: "Test", type: "TEST" },
-  { key: "result", label: "Test Result", type: "RESULT" },
-  { key: "catalog", label: "Catalog", type: "CATALOG" },
-  { key: "dashboard", label: "Dashboard", type: "DASHBOARD" },
+const TABS: { key: TabKey; labelKey: string; type: BlockType }[] = [
+  { key: "test", labelKey: "admin.blocks.tabTest", type: "TEST" },
+  { key: "result", labelKey: "admin.blocks.tabResult", type: "RESULT" },
+  { key: "catalog", labelKey: "admin.blocks.tabCatalog", type: "CATALOG" },
+  { key: "dashboard", labelKey: "admin.blocks.tabDashboard", type: "DASHBOARD" },
 ];
 
 // The three display surfaces share one minimal starter; Test blocks need a widget.
@@ -87,6 +88,7 @@ function propsObject(props: BlockProp[]): Record<string, unknown> {
 export default function BlocksPage() {
   const router = useRouter();
   const { project } = useProject();
+  const { t } = useLocale();
   const [tabKey, setTabKey] = useState<TabKey>("test");
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [allBlocks, setAllBlocks] = useState<Block[]>([]);
@@ -111,8 +113,8 @@ export default function BlocksPage() {
 
   useEffect(() => {
     if (!project.id) return; // wait for the active project; blocks are project-scoped
-    const t = TABS.find((x) => x.key === tabKey)!;
-    load(t.type);
+    const activeTab = TABS.find((x) => x.key === tabKey)!;
+    load(activeTab.type);
   }, [tabKey, load, project.id]);
 
   const createNew = async () => {
@@ -146,7 +148,7 @@ export default function BlocksPage() {
   };
 
   const onDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete “${name}”? This cannot be undone.`)) return;
+    if (!confirm(`${t("admin.blocks.deleteConfirm")} “${name}”? ${t("admin.blocks.cannotBeUndone")}`)) return;
     setBusy(true);
     try {
       await deleteBlock(id);
@@ -162,42 +164,41 @@ export default function BlocksPage() {
     <>
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Blocks</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("admin.blocks.heading")}</h1>
           <p className="text-sm text-muted-foreground">
-            Reusable components built in HTML + Tailwind, organized by where they
-            are used: tests, test results, catalogs, and dashboards.
+            {t("admin.blocks.subheading")}
           </p>
         </div>
         <Button onClick={createNew} disabled={busy}>
-          <Plus className="mr-1 h-4 w-4" /> New {tab.label.toLowerCase()} block
+          <Plus className="mr-1 h-4 w-4" /> {t("admin.blocks.newBlock")}
         </Button>
       </div>
 
       {/* Surface tabs */}
       <div className="mb-5 inline-flex rounded-lg border bg-card p-0.5">
-        {TABS.map((t) => (
+        {TABS.map((tabItem) => (
           <button
-            key={t.key}
-            onClick={() => setTabKey(t.key)}
+            key={tabItem.key}
+            onClick={() => setTabKey(tabItem.key)}
             className={cn(
               "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
-              tabKey === t.key
+              tabKey === tabItem.key
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {t.label}
+            {t(tabItem.labelKey)}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <div className="py-16 text-center text-sm text-muted-foreground">Loading blocks…</div>
+        <div className="py-16 text-center text-sm text-muted-foreground">{t("admin.blocks.loadingBlocks")}</div>
       ) : blocks.length === 0 ? (
         <div className="rounded-xl border border-dashed py-16 text-center">
-          <p className="text-sm text-muted-foreground">No {tab.label.toLowerCase()} blocks yet.</p>
+          <p className="text-sm text-muted-foreground">{t("admin.blocks.emptyState")}</p>
           <Button variant="outline" size="sm" onClick={createNew} disabled={busy} className="mt-3">
-            <Plus className="mr-1 h-4 w-4" /> Create the first one
+            <Plus className="mr-1 h-4 w-4" /> {t("admin.blocks.createFirst")}
           </Button>
         </div>
       ) : (
@@ -213,13 +214,13 @@ export default function BlocksPage() {
               <div className="flex flex-1 flex-col p-4">
                 <h3 className="truncate font-semibold text-gray-900">{b.name}</h3>
                 <p className="mt-0.5 line-clamp-2 flex-1 text-xs text-muted-foreground">
-                  {b.description || "No description"}
+                  {b.description || t("admin.blocks.noDescription")}
                 </p>
                 <div className="mt-3 flex items-center gap-1">
                   {isSystemBlock(b) ? (
                     // System blocks are locked: usable everywhere, but not editable/deletable.
                     <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-[0.7rem] font-medium text-muted-foreground">
-                      <Lock className="h-3 w-3" /> System block · locked
+                      <Lock className="h-3 w-3" /> {t("admin.blocks.systemBlockLocked")}
                     </span>
                   ) : (
                     <>
@@ -229,14 +230,14 @@ export default function BlocksPage() {
                         size="sm"
                         className="flex-1"
                       >
-                        <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
+                        <Pencil className="mr-1 h-3.5 w-3.5" /> {t("admin.common.edit")}
                       </ButtonLink>
                       <Button
                         variant="ghost"
                         size="icon-sm"
                         onClick={() => onDuplicate(b.id)}
                         disabled={busy}
-                        title="Duplicate"
+                        title={t("admin.blocks.duplicate")}
                       >
                         <Copy className="h-3.5 w-3.5" />
                       </Button>
@@ -245,7 +246,7 @@ export default function BlocksPage() {
                         size="icon-sm"
                         onClick={() => onDelete(b.id, b.name)}
                         disabled={busy}
-                        title="Delete"
+                        title={t("admin.common.delete")}
                         className="text-muted-foreground hover:text-red-500"
                       >
                         <Trash2 className="h-3.5 w-3.5" />

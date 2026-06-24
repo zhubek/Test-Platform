@@ -11,6 +11,7 @@
 import { useState, type ReactNode } from "react";
 import { ArrowLeft, ChevronRight, type LucideIcon } from "lucide-react";
 import { type Localized } from "@/lib/localized";
+import { useLocale } from "@/lib/locale-context";
 import { cn } from "@/lib/utils";
 import { EditLanguageProvider, PageLanguageBar } from "./edit-language";
 import { AccessTab } from "./access-tab";
@@ -65,11 +66,11 @@ interface Props {
 
 const TABS = ["general", "datapages", "access", "pages"] as const;
 type TabId = (typeof TABS)[number];
-const LABELS: Record<TabId, string> = {
-  general: "General",
-  datapages: "Pages",
-  access: "Access",
-  pages: "Views",
+const LABEL_KEYS: Record<TabId, string> = {
+  general: "admin.catUi.tabGeneral",
+  datapages: "admin.catUi.tabPages",
+  access: "admin.catUi.tabAccess",
+  pages: "admin.catUi.tabViews",
 };
 
 export function CatalogDetailScaffold(props: Props) {
@@ -95,6 +96,7 @@ function ScaffoldInner({
   deleteLabel,
   saving,
 }: Props) {
+  const { t } = useLocale();
   const [tab, setTab] = useState<TabId>("general");
   const [openPage, setOpenPage] = useState<string | null>(null);
 
@@ -105,7 +107,7 @@ function ScaffoldInner({
       <div className="mb-5 flex items-center justify-between gap-3">
         <h1 className="truncate text-lg font-bold tracking-tight text-gray-900">{title || "—"}</h1>
         <div className="flex items-center gap-3">
-          {saving && <span className="text-xs text-gray-400">Saving…</span>}
+          {saving && <span className="text-xs text-gray-400">{t("admin.common.saving")}</span>}
           <PageLanguageBar />
         </div>
       </div>
@@ -127,7 +129,7 @@ function ScaffoldInner({
               tab === id ? "text-gray-900" : "text-gray-400 hover:text-gray-600",
             )}
           >
-            {LABELS[id]}
+            {t(LABEL_KEYS[id])}
             {tab === id && (
               <span className="absolute bottom-0 left-4 right-4 h-[2px] rounded-full bg-gray-900" />
             )}
@@ -139,8 +141,8 @@ function ScaffoldInner({
         <div className="space-y-6">
           <CatalogFieldsForm
             fields={[
-              { id: "title", label: "Title", kind: "localized", ...titleField },
-              { id: "description", label: "Description", kind: "localized", ...descriptionField },
+              { id: "title", label: t("admin.catUi.title"), kind: "localized", ...titleField },
+              { id: "description", label: t("admin.common.description"), kind: "localized", ...descriptionField },
             ]}
           />
           <ExtraVariables
@@ -163,7 +165,7 @@ function ScaffoldInner({
                 onClick={onDelete}
                 className="text-xs text-red-500 transition-colors hover:text-red-700"
               >
-                {deleteLabel ?? "Delete"}
+                {deleteLabel ?? t("admin.common.delete")}
               </button>
             </div>
           )}
@@ -181,7 +183,7 @@ function ScaffoldInner({
           <PageView pages={pages} openPage={openPage} onBack={() => setOpenPage(null)} />
         ) : pages.length === 0 ? (
           <div className="rounded-xl border border-dashed py-12 text-center text-sm text-gray-400">
-            No views for this catalog.
+            {t("admin.catUi.noViews")}
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

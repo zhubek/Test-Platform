@@ -10,6 +10,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { apiFetch, getToken, signIn as apiSignIn, signOut as apiSignOut } from "./api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useLocale } from "@/lib/locale-context";
 
 export interface AdminMe {
   id: string;
@@ -53,6 +54,7 @@ export function useAdminAuth(): AuthCtx {
 }
 
 export function AdminAuthGate({ children }: { children: ReactNode }) {
+  const { t } = useLocale();
   const [me, setMe] = useState<AdminMe | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -79,7 +81,7 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">{t("admin.common.loading")}</div>
     );
   }
   if (!me) return <LoginCard onDone={load} />;
@@ -88,6 +90,7 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
 }
 
 function LoginCard({ onDone }: { onDone: () => void }) {
+  const { t } = useLocale();
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -100,7 +103,7 @@ function LoginCard({ onDone }: { onDone: () => void }) {
       await apiSignIn(login.trim(), password);
       onDone();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to sign in");
+      setError(e instanceof Error ? e.message : t("admin.login.failedToSignIn"));
     } finally {
       setBusy(false);
     }
@@ -110,21 +113,21 @@ function LoginCard({ onDone }: { onDone: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <div className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-sm">
         <h1 className="text-xl font-bold tracking-tight">
-          Test<span className="text-primary">Platform</span> admin
+          Test<span className="text-primary">Platform</span> {t("admin.login.brandSuffix")}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">Sign in with your login and password.</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t("admin.login.subtitle")}</p>
         <div className="mt-4 space-y-2">
-          <Input value={login} onChange={(e) => setLogin(e.target.value)} placeholder="Login" className="font-mono" />
+          <Input value={login} onChange={(e) => setLogin(e.target.value)} placeholder={t("admin.common.login")} className="font-mono" />
           <Input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
+            placeholder={t("admin.common.password")}
             onKeyDown={(e) => e.key === "Enter" && submit()}
           />
           {error && <p className="text-sm text-red-500">{error}</p>}
           <Button onClick={submit} disabled={busy || !login.trim() || !password} className="w-full">
-            {busy ? "…" : "Sign in"}
+            {busy ? "…" : t("admin.login.signIn")}
           </Button>
         </div>
       </div>

@@ -33,7 +33,7 @@ export function CatalogPagesTab({
   catalog: string;
   entityId: number | string;
 }) {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   const loc = locale as "en" | "ru" | "kk";
   const [pages, setPages] = useState<CatalogPageTemplate[]>([]);
   const [library, setLibrary] = useState<Block[]>([]);
@@ -78,15 +78,15 @@ export function CatalogPagesTab({
           onClick={() => setOpenId(null)}
           className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-gray-500 transition-colors hover:text-gray-800"
         >
-          <ArrowLeft className="h-3.5 w-3.5" /> {localize(open.title, loc) || "All pages"}
+          <ArrowLeft className="h-3.5 w-3.5" /> {localize(open.title, loc) || t("admin.catCfg.allPages")}
         </button>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-xl border bg-card">
             <div className="flex items-center gap-2 border-b px-3 py-2">
-              <span className="text-sm font-semibold">Props</span>
+              <span className="text-sm font-semibold">{t("admin.catCfg.props")}</span>
               <span className="text-[0.7rem] text-muted-foreground">
-                this item&apos;s values for each block
+                {t("admin.catCfg.itemValuesPerBlock")}
               </span>
             </div>
             <div className="max-h-[70vh] space-y-2 overflow-auto p-3">
@@ -104,7 +104,7 @@ export function CatalogPagesTab({
 
           <div className="rounded-xl border bg-card">
             <div className="border-b px-3 py-2 text-sm font-medium text-muted-foreground">
-              Live preview
+              {t("admin.catCfg.livePreview")}
             </div>
             <div className="max-h-[70vh] space-y-4 overflow-auto bg-gray-50/60 p-5">
               {open.blocks.map((inst) => {
@@ -112,7 +112,7 @@ export function CatalogPagesTab({
                 if (!block)
                   return (
                     <div key={inst.id} className="rounded-lg border border-dashed border-red-200 bg-red-50/40 px-4 py-3 text-xs text-red-400">
-                      Block no longer exists in the library.
+                      {t("admin.catCfg.blockNoLongerExists")}
                     </div>
                   );
                 return (
@@ -137,16 +137,15 @@ export function CatalogPagesTab({
   return (
     <div>
       <p className="mb-4 text-xs text-gray-400">
-        Open a page to fill in this item&apos;s values. Page structure (which blocks)
-        is set on the{" "}
+        {t("admin.catCfg.itemPagesIntroPrefix")}{" "}
         <Link href={`/admin/catalogs#${catalog}`} className="text-teal-600 hover:underline">
-          catalog group&apos;s Pages tab
+          {t("admin.catCfg.groupPagesTabLink")}
         </Link>
         .
       </p>
       {pages.length === 0 ? (
         <div className="rounded-xl border border-dashed py-12 text-center text-sm text-gray-400">
-          No pages for this catalog yet.
+          {t("admin.catCfg.noPagesForItem")}
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -161,10 +160,13 @@ export function CatalogPagesTab({
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold text-gray-900">
-                  {localize(p.title, loc) || "Untitled page"}
+                  {localize(p.title, loc) || t("admin.catCfg.untitledPage")}
                 </span>
                 <span className="mt-0.5 block text-xs text-gray-400">
-                  {p.blocks.length} block{p.blocks.length !== 1 && "s"}
+                  {p.blocks.length}{" "}
+                  {p.blocks.length === 1
+                    ? t("admin.catCfg.blockCountOne")
+                    : t("admin.catCfg.blockCountMany")}
                 </span>
               </span>
               <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-gray-300 transition-colors group-hover:text-teal-500" />
@@ -188,13 +190,14 @@ function ItemBlockCard({
   values: Record<string, unknown>;
   onValuesChange: (props: Record<string, unknown>) => void;
 }) {
+  const { t } = useLocale();
   const [expanded, setExpanded] = useState(true);
   void instance;
 
   if (!block) {
     return (
       <div className="rounded-lg border border-dashed border-red-200 bg-red-50/40 px-3 py-2 text-xs text-red-400">
-        Block no longer exists in the library.
+        {t("admin.catCfg.blockNoLongerExists")}
       </div>
     );
   }
@@ -220,7 +223,7 @@ function ItemBlockCard({
       {expanded && (
         <div className="space-y-3 border-t bg-card px-3 py-3">
           {block.props.length === 0 ? (
-            <p className="text-xs text-muted-foreground">This block has no props.</p>
+            <p className="text-xs text-muted-foreground">{t("admin.catCfg.blockHasNoProps")}</p>
           ) : (
             block.props.map((def: BlockProp) => (
               <PropControl

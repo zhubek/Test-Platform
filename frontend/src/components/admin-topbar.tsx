@@ -32,25 +32,26 @@ type NavItem =
   | { label: string; href: string }
   | { label: string; children: { label: string; href: string }[] };
 
+// Labels are i18n keys, resolved via t() at render.
 const baseNav: NavItem[] = [
-  { label: "Tests", href: "/admin/tests" },
-  { label: "Blocks", href: "/admin/blocks" },
-  { label: "Catalogs", href: "/admin/catalogs" },
+  { label: "admin.nav.tests", href: "/admin/tests" },
+  { label: "admin.nav.blocks", href: "/admin/blocks" },
+  { label: "admin.nav.catalogs", href: "/admin/catalogs" },
   {
-    label: "Access",
+    label: "admin.nav.access",
     children: [
-      { label: "Users", href: "/admin/users" },
-      { label: "Organizations", href: "/admin/organizations" },
-      { label: "Licenses", href: "/admin/licenses" },
+      { label: "admin.nav.users", href: "/admin/users" },
+      { label: "admin.nav.organizations", href: "/admin/organizations" },
+      { label: "admin.nav.licenses", href: "/admin/licenses" },
     ],
   },
-  { label: "Dashboards", href: "/admin/dashboards" },
-  { label: "Parameters", href: "/admin/parameters" },
+  { label: "admin.nav.dashboards", href: "/admin/dashboards" },
+  { label: "admin.nav.parameters", href: "/admin/parameters" },
 ];
 
 export function AdminTopbar() {
   const pathname = usePathname();
-  const { locale, setLocale } = useLocale();
+  const { locale, setLocale, t } = useLocale();
   const { projects, project, setProjectId, addProject } = useProject();
   const { me, signOut } = useAdminAuth();
 
@@ -97,17 +98,17 @@ export function AdminTopbar() {
           <DropdownMenuTrigger className="ml-1 inline-flex items-center gap-2 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted">
             <FolderKanban className="h-4 w-4 text-muted-foreground" />
             <span className="max-w-[140px] truncate">
-              {projects.length === 0 ? "No projects" : localize(project.name, locale)}
+              {projects.length === 0 ? t("admin.topbar.noProjects") : localize(project.name, locale)}
             </span>
             <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
             <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-              Switch project
+              {t("admin.topbar.switchProject")}
             </div>
             <DropdownMenuSeparator />
             {projects.length === 0 && (
-              <div className="px-2 py-2 text-xs text-muted-foreground">No projects yet.</div>
+              <div className="px-2 py-2 text-xs text-muted-foreground">{t("admin.topbar.noProjectsYet")}</div>
             )}
             {projects.map((p) => (
               <DropdownMenuItem
@@ -135,7 +136,7 @@ export function AdminTopbar() {
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setNewOpen(true)} className="gap-2 text-primary">
-                  <Plus className="h-4 w-4" /> New project
+                  <Plus className="h-4 w-4" /> {t("admin.project.new")}
                 </DropdownMenuItem>
               </>
             )}
@@ -156,13 +157,13 @@ export function AdminTopbar() {
                       active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    {item.label}
+                    {t(item.label)}
                     <ChevronDown className="h-3.5 w-3.5" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-48">
                     {item.children.map((c) => (
                       <DropdownMenuItem key={c.href} render={<Link href={c.href} />}>
-                        {c.label}
+                        {t(c.label)}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
@@ -179,7 +180,7 @@ export function AdminTopbar() {
                   active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {item.label}
+                {t(item.label)}
               </Link>
             );
           })}
@@ -203,12 +204,12 @@ export function AdminTopbar() {
         </div>
 
         <ButtonLink variant="outline" size="sm" href="/tests">
-          View site
+          {t("admin.topbar.viewSite")}
         </ButtonLink>
         <span className="hidden text-xs text-muted-foreground sm:inline" title={me.login}>
           {me.name || me.login}
         </span>
-        <Button variant="ghost" size="icon-sm" onClick={signOut} title="Sign out" aria-label="Sign out">
+        <Button variant="ghost" size="icon-sm" onClick={signOut} title={t("admin.topbar.signOut")} aria-label={t("admin.topbar.signOut")}>
           <LogOut className="h-4 w-4" />
         </Button>
       </div>
@@ -216,15 +217,13 @@ export function AdminTopbar() {
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>New project</DialogTitle>
-            <DialogDescription>
-              Create a new project. You can configure languages, parameters, and content after.
-            </DialogDescription>
+            <DialogTitle>{t("admin.project.new")}</DialogTitle>
+            <DialogDescription>{t("admin.project.newDesc")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <Input
               autoFocus
-              placeholder="Project name"
+              placeholder={t("admin.project.namePlaceholder")}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => {
@@ -235,10 +234,10 @@ export function AdminTopbar() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setNewOpen(false)} disabled={creating}>
-              Cancel
+              {t("admin.common.cancel")}
             </Button>
             <Button onClick={createNewProject} disabled={creating || !newName.trim()}>
-              {creating ? "Creating…" : "Create project"}
+              {creating ? t("admin.project.creating") : t("admin.project.create")}
             </Button>
           </DialogFooter>
         </DialogContent>

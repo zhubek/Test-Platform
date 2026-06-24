@@ -44,7 +44,7 @@ const inputClass =
   "w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all";
 
 export function CatalogGroupPagesTab({ catalog }: { catalog: string }) {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   const loc = locale as "en" | "ru" | "kk";
   const [pages, setPages] = useState<CatalogPageTemplate[]>([]);
   const [library, setLibrary] = useState<Block[]>([]);
@@ -99,7 +99,7 @@ export function CatalogGroupPagesTab({ catalog }: { catalog: string }) {
   };
 
   const removePage = (pageId: string) => {
-    if (!confirm("Delete this page?")) return;
+    if (!confirm(t("admin.catCfg.deletePageConfirm"))) return;
     persist(pages.filter((p) => p.id !== pageId));
     if (openId === pageId) setOpenId(null);
   };
@@ -129,17 +129,17 @@ export function CatalogGroupPagesTab({ catalog }: { catalog: string }) {
           onClick={() => setOpenId(null)}
           className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-gray-500 transition-colors hover:text-gray-800"
         >
-          <ArrowLeft className="h-3.5 w-3.5" /> All pages
+          <ArrowLeft className="h-3.5 w-3.5" /> {t("admin.catCfg.allPages")}
         </button>
 
         <div className="mb-4 max-w-md">
           <label className="mb-1.5 block text-[0.72rem] font-semibold uppercase tracking-wider text-gray-400">
-            Page title
+            {t("admin.catCfg.pageTitle")}
           </label>
           <LocalizedInput
             value={open.title}
             onChange={(v) => patchPage(open.id, { title: v })}
-            placeholder="Page title"
+            placeholder={t("admin.catCfg.pageTitle")}
             className={inputClass}
           />
         </div>
@@ -148,9 +148,9 @@ export function CatalogGroupPagesTab({ catalog }: { catalog: string }) {
           {/* ── Left: block list (structure only) ── */}
           <div className="rounded-xl border bg-card">
             <div className="flex items-center gap-2 border-b px-3 py-2">
-              <span className="text-sm font-semibold">Blocks</span>
+              <span className="text-sm font-semibold">{t("admin.catCfg.blocks")}</span>
               <span className="text-[0.7rem] text-muted-foreground">
-                prop values are set per item
+                {t("admin.catCfg.propValuesPerItem")}
               </span>
             </div>
             <div className="max-h-[70vh] space-y-2 overflow-auto p-3">
@@ -167,10 +167,10 @@ export function CatalogGroupPagesTab({ catalog }: { catalog: string }) {
                       </>
                     ) : (
                       <span className="min-w-0 flex-1 truncate text-xs text-red-400">
-                        Block no longer exists in the library.
+                        {t("admin.catCfg.blockNoLongerExists")}
                       </span>
                     )}
-                    <Button variant="ghost" size="icon-xs" onClick={() => move(i, -1)} disabled={i === 0} title="Move up">
+                    <Button variant="ghost" size="icon-xs" onClick={() => move(i, -1)} disabled={i === 0} title={t("admin.catCfg.moveUp")}>
                       <ArrowUp className="h-3.5 w-3.5" />
                     </Button>
                     <Button
@@ -178,7 +178,7 @@ export function CatalogGroupPagesTab({ catalog }: { catalog: string }) {
                       size="icon-xs"
                       onClick={() => move(i, 1)}
                       disabled={i === open.blocks.length - 1}
-                      title="Move down"
+                      title={t("admin.catCfg.moveDown")}
                     >
                       <ArrowDown className="h-3.5 w-3.5" />
                     </Button>
@@ -187,7 +187,7 @@ export function CatalogGroupPagesTab({ catalog }: { catalog: string }) {
                       size="icon-xs"
                       onClick={() => setBlocks(open.blocks.filter((b) => b.id !== inst.id))}
                       className="text-muted-foreground hover:text-red-500"
-                      title="Remove block"
+                      title={t("admin.catCfg.removeBlock")}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -199,7 +199,7 @@ export function CatalogGroupPagesTab({ catalog }: { catalog: string }) {
                 onClick={() => setPickerOpen(true)}
                 className="h-auto w-full rounded-xl border-2 border-dashed py-3 text-muted-foreground hover:border-teal-300 hover:text-primary"
               >
-                <Plus className="h-4 w-4" /> Add block
+                <Plus className="h-4 w-4" /> {t("admin.catCfg.addBlock")}
               </Button>
             </div>
           </div>
@@ -207,12 +207,12 @@ export function CatalogGroupPagesTab({ catalog }: { catalog: string }) {
           {/* ── Right: preview with the blocks' sample data ── */}
           <div className="rounded-xl border bg-card">
             <div className="border-b px-3 py-2 text-sm font-medium text-muted-foreground">
-              Preview <span className="text-[0.7rem]">(sample data — items fill their own)</span>
+              {t("admin.catCfg.preview")} <span className="text-[0.7rem]">{t("admin.catCfg.previewSampleNote")}</span>
             </div>
             <div className="max-h-[70vh] space-y-4 overflow-auto bg-gray-50/60 p-5">
               {open.blocks.length === 0 ? (
                 <p className="py-10 text-center text-sm text-muted-foreground">
-                  Add blocks to see the page.
+                  {t("admin.catCfg.addBlocksToSeePage")}
                 </p>
               ) : (
                 open.blocks.map((inst) => {
@@ -220,7 +220,7 @@ export function CatalogGroupPagesTab({ catalog }: { catalog: string }) {
                   if (!block)
                     return (
                       <div key={inst.id} className="rounded-lg border border-dashed border-red-200 bg-red-50/40 px-4 py-3 text-xs text-red-400">
-                        Block no longer exists in the library.
+                        {t("admin.catCfg.blockNoLongerExists")}
                       </div>
                     );
                   return (
@@ -253,16 +253,15 @@ export function CatalogGroupPagesTab({ catalog }: { catalog: string }) {
   return (
     <div>
       <p className="mb-4 text-xs text-gray-400">
-        The pages every item of this catalog has. A page is an ordered set of blocks;
-        each item fills in its own prop values.
+        {t("admin.catCfg.groupPagesIntro")}
       </p>
       {pages.length === 0 ? (
         <div className="rounded-xl border border-dashed py-12 text-center">
           <p className="text-sm text-gray-400">
-            No pages yet. Compose them from blocks in the shared library.
+            {t("admin.catCfg.noPagesYet")}
           </p>
           <Button variant="outline" size="sm" onClick={addPage} className="mt-3">
-            <Plus className="mr-1 h-4 w-4" /> Add the first page
+            <Plus className="mr-1 h-4 w-4" /> {t("admin.catCfg.addFirstPage")}
           </Button>
         </div>
       ) : (
@@ -286,10 +285,13 @@ export function CatalogGroupPagesTab({ catalog }: { catalog: string }) {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold text-gray-900">
-                  {localize(p.title, loc) || "Untitled page"}
+                  {localize(p.title, loc) || t("admin.catCfg.untitledPage")}
                 </span>
                 <span className="mt-0.5 block text-xs text-gray-400">
-                  {p.blocks.length} block{p.blocks.length !== 1 && "s"}
+                  {p.blocks.length}{" "}
+                  {p.blocks.length === 1
+                    ? t("admin.catCfg.blockCountOne")
+                    : t("admin.catCfg.blockCountMany")}
                 </span>
               </span>
               <button
@@ -298,7 +300,7 @@ export function CatalogGroupPagesTab({ catalog }: { catalog: string }) {
                   removePage(p.id);
                 }}
                 className="mt-1 shrink-0 text-gray-300 opacity-0 transition-all hover:text-red-500 group-hover:opacity-100"
-                title="Delete page"
+                title={t("admin.catCfg.deletePage")}
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -309,7 +311,7 @@ export function CatalogGroupPagesTab({ catalog }: { catalog: string }) {
             onClick={addPage}
             className="flex min-h-[72px] items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-medium text-gray-400 transition-colors hover:border-teal-300 hover:text-teal-600"
           >
-            <Plus className="h-4 w-4" /> Add page
+            <Plus className="h-4 w-4" /> {t("admin.catCfg.addPage")}
           </button>
         </div>
       )}
@@ -331,22 +333,23 @@ function BlockPicker({
   onPick: (block: Block) => void;
   onClose: () => void;
 }) {
+  const { t } = useLocale();
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add a block</DialogTitle>
+          <DialogTitle>{t("admin.catCfg.addABlock")}</DialogTitle>
           <DialogDescription>
-            Pick a view block from the shared library. Manage the library in{" "}
+            {t("admin.catCfg.blockPickerDescPrefix")}{" "}
             <Link href="/admin/blocks" className="text-primary underline">
-              Blocks
+              {t("admin.catCfg.blocksLink")}
             </Link>
             .
           </DialogDescription>
         </DialogHeader>
         {library.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            No view blocks in the library yet — create one on the Blocks page first.
+            {t("admin.catCfg.noViewBlocks")}
           </p>
         ) : (
           <div className="grid max-h-[60vh] gap-3 overflow-auto sm:grid-cols-2">
@@ -376,7 +379,7 @@ function BlockPicker({
                 <div className="p-3">
                   <h4 className="truncate text-sm font-semibold">{b.name}</h4>
                   <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                    {b.description || "No description"}
+                    {b.description || t("admin.catCfg.noDescription")}
                   </p>
                 </div>
               </div>

@@ -3,6 +3,8 @@
 // codes below and fall back to English for any other (see `t`).
 export type Locale = string;
 
+import { adminStrings } from "./i18n-admin";
+
 const translations: Record<string, Record<string, string>> = {
   en: {
     // ── Topbar (shared) ──
@@ -1802,6 +1804,13 @@ const translations: Record<string, Record<string, string>> = {
 
   kk: {},
 };
+
+// Merge the admin-area strings (en/ru/kk per key) into the locale dictionaries.
+for (const [key, tri] of Object.entries(adminStrings)) {
+  (translations.en ??= {})[key] = tri.en;
+  (translations.ru ??= {})[key] = tri.ru;
+  (translations.kk ??= {})[key] = tri.kk;
+}
 
 export function t(locale: Locale, key: string): string {
   return translations[locale]?.[key] ?? translations.en[key] ?? key;

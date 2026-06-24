@@ -4,6 +4,7 @@
 // front (and editable later on the group's Parameters tab).
 
 import { useState } from "react";
+import { useLocale } from "@/lib/locale-context";
 import { createCatalogGroup, type CustomCatalogGroup } from "@/lib/custom-catalogs";
 import type { ExtraSlot } from "@/lib/catalog-extras";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ export function NewCatalogDialog({
   onClose: () => void;
   onCreated: (group: CustomCatalogGroup) => void;
 }) {
+  const { t } = useLocale();
   const [name, setName] = useState("");
   const [slots, setSlots] = useState<ExtraSlot[]>([]);
 
@@ -44,29 +46,28 @@ export function NewCatalogDialog({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New catalog</DialogTitle>
+          <DialogTitle>{t("admin.catUi.newCatalog")}</DialogTitle>
           <DialogDescription>
-            A catalog group holds items that share one set of extra variables.
-            Items get Title and Description by default.
+            {t("admin.catUi.newCatalogDesc")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
             <label className="mb-1.5 block text-[0.72rem] font-semibold uppercase tracking-wider text-gray-400">
-              Name
+              {t("admin.common.name")}
             </label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Skills"
+              placeholder={t("admin.catUi.namePlaceholder")}
               autoFocus
             />
           </div>
 
           <div>
             <label className="mb-1.5 block text-[0.72rem] font-semibold uppercase tracking-wider text-gray-400">
-              Extra variables
+              {t("admin.catUi.extraVariables")}
             </label>
             <ExtraSlotsEditor value={slots} onChange={setSlots} />
           </div>
@@ -74,10 +75,10 @@ export function NewCatalogDialog({
 
         <div className="mt-2 flex justify-end gap-2">
           <Button variant="outline" size="sm" onClick={onClose}>
-            Cancel
+            {t("admin.common.cancel")}
           </Button>
           <Button size="sm" onClick={create} disabled={!name.trim()}>
-            Create catalog
+            {t("admin.catUi.createCatalog")}
           </Button>
         </div>
       </DialogContent>

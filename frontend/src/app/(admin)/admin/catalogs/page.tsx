@@ -53,7 +53,7 @@ export default function MethodicPage() {
               topTab === tb ? "text-gray-900" : "text-gray-400 hover:text-gray-600",
             )}
           >
-            {tb === "catalogs" ? "Catalogs" : t("cm.methodic.tabs.characteristics")}
+            {tb === "catalogs" ? t("admin.catalogs.catalogsTab") : t("cm.methodic.tabs.characteristics")}
             {topTab === tb && (
               <span className="absolute bottom-0 left-4 right-4 h-[2px] rounded-full bg-gray-900" />
             )}
@@ -90,7 +90,7 @@ export default function MethodicPage() {
             onClick={() => setNewOpen(true)}
             className="flex min-h-[72px] items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-gray-200 text-sm font-medium text-gray-400 transition-colors hover:border-teal-300 hover:text-teal-600"
           >
-            <Plus className="h-4 w-4" /> New catalog
+            <Plus className="h-4 w-4" /> {t("admin.catalogs.newCatalog")}
           </button>
         </div>
       )}

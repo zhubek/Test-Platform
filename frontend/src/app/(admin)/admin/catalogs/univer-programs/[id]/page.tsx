@@ -93,10 +93,10 @@ export default function UniverProgramEditorPage({
   }, [save]);
 
   const handleDelete = useCallback(async () => {
-    if (!confirm("Delete this program?")) return;
+    if (!confirm(t("admin.catProf.confirmDeleteProgram"))) return;
     await deleteUniverProgram(numId);
     window.location.href = "/admin/catalogs#univerPrograms";
-  }, [numId]);
+  }, [numId, t]);
 
   // University name resolver
   const uniMap = useMemo(() => {
@@ -136,11 +136,11 @@ export default function UniverProgramEditorPage({
   }, [allUnis, selectedUniIds, uniSearch, loc]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">Loading...</div>;
+    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">{t("admin.common.loading")}</div>;
   }
 
   if (!prog) {
-    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">Program not found</div>;
+    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">{t("admin.catProf.programNotFound")}</div>;
   }
 
   const universities = prog.params?.universities ?? [];
@@ -226,7 +226,7 @@ export default function UniverProgramEditorPage({
             {/* UNT Points — by grant type (rows) and year (columns) */}
             <div>
               <label className="block text-[0.68rem] font-medium text-gray-500 mb-2">
-                UNT minimum points (by type &amp; year)
+                {t("admin.catProf.untMinPoints")}
               </label>
 
               {UNT_TYPES.some((tp) => points[tp.key]) ? (
@@ -260,7 +260,7 @@ export default function UniverProgramEditorPage({
                           type="button"
                           onClick={() => removePointRow(tp.key)}
                           className="text-gray-300 transition-colors hover:text-red-400"
-                          title="Remove"
+                          title={t("admin.common.remove")}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
                             <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.28 7.22a.75.75 0 0 0-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 1 0 1.06 1.06L10 11.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L11.06 10l1.72-1.72a.75.75 0 0 0-1.06-1.06L10 8.94 8.28 7.22Z" clipRule="evenodd" />
@@ -271,7 +271,7 @@ export default function UniverProgramEditorPage({
                   </div>
                 </>
               ) : (
-                <div className="mb-1 text-xs text-gray-300">No UNT points yet — add a grant type below.</div>
+                <div className="mb-1 text-xs text-gray-300">{t("admin.catProf.noUntPoints")}</div>
               )}
 
               {/* Add a grant type */}
@@ -369,7 +369,7 @@ export default function UniverProgramEditorPage({
                 onClick={saveAll}
                 className="mt-3 px-3 py-1.5 text-xs font-medium rounded-lg bg-teal-600 text-white hover:bg-teal-700 transition-colors"
               >
-                {saving ? "Saving..." : t("cm.methodic.saveChanges")}
+                {saving ? t("admin.common.saving") : t("cm.methodic.saveChanges")}
               </button>
             </div>
 
@@ -416,8 +416,8 @@ export default function UniverProgramEditorPage({
         onBlur: saveAll,
       }}
       onDelete={handleDelete}
-      deleteLabel="Delete program"
-      pages={[{ id: "details", label: "UNT points & universities", icon: GraduationCap, render: detailsNode }]}
+      deleteLabel={t("admin.catProf.deleteProgram")}
+      pages={[{ id: "details", label: t("admin.catProf.untPointsUniversities"), icon: GraduationCap, render: detailsNode }]}
       access={{
         editors,
         onChange: (ids) => {

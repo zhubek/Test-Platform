@@ -58,16 +58,16 @@ export default function CityEditorPage({
   }, [save]);
 
   const handleDelete = useCallback(async () => {
-    if (!confirm("Delete this city?")) return;
+    if (!confirm(t("admin.catPage.deleteCityConfirm"))) return;
     await deleteCity(numId);
     window.location.href = "/admin/catalogs#cities";
   }, [numId]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">Loading...</div>;
+    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">{t("admin.common.loading")}</div>;
   }
   if (!city) {
-    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">City not found</div>;
+    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">{t("admin.catPage.cityNotFound")}</div>;
   }
 
   const name = city.name[locale] || city.name.en || "";
@@ -108,7 +108,7 @@ export default function CityEditorPage({
         },
       }}
       onDelete={handleDelete}
-      deleteLabel="Delete city"
+      deleteLabel={t("admin.catPage.deleteCity")}
       access={{
         editors,
         onChange: (ids) => {

@@ -6,6 +6,7 @@
 // item's numeric value for each (0–100), stored by characteristic id.
 
 import { attachedCharacteristicGroups, useDcGroups } from "@/lib/dc-catalogs";
+import { useLocale } from "@/lib/locale-context";
 
 interface Props {
   catalog: string;
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function CharacteristicVariables({ catalog, value, onChange, onBlur }: Props) {
+  const { t } = useLocale();
   useDcGroups(); // subscribe so attachments stay in sync
   const charGroups = attachedCharacteristicGroups(catalog);
 
@@ -24,10 +26,10 @@ export function CharacteristicVariables({ catalog, value, onChange, onBlur }: Pr
     <div className="max-w-2xl">
       <div className="mb-1 mt-2 border-t border-gray-100 pt-5">
         <h3 className="text-[0.72rem] font-semibold uppercase tracking-wider text-gray-400">
-          Characteristics
+          {t("admin.catUi.characteristics")}
         </h3>
         <p className="mt-0.5 text-xs text-gray-400">
-          Numeric values for the characteristic groups attached to this catalog.
+          {t("admin.catUi.characteristicsHint")}
         </p>
       </div>
 

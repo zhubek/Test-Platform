@@ -5,6 +5,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { Plus } from "lucide-react";
+import { useLocale } from "@/lib/locale-context";
 import {
   createCharacteristicGroup,
   loadAllCharacteristicGroups,
@@ -12,6 +13,7 @@ import {
 } from "@/lib/dc-catalogs";
 
 export function CharacteristicsTab() {
+  const { t } = useLocale();
   const [search, setSearch] = useState("");
   const [groups, setGroups] = useState<DcCharacteristicGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +52,7 @@ export function CharacteristicsTab() {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search characteristics…"
+          placeholder={t("admin.catUi.searchCharacteristics")}
           className="w-full max-w-md rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
         />
         <button
@@ -58,12 +60,12 @@ export function CharacteristicsTab() {
           className="flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-700"
         >
           <Plus className="h-4 w-4" />
-          Add group
+          {t("admin.catUi.addGroup")}
         </button>
       </div>
 
       {loading ? (
-        <div className="py-10 text-center text-sm text-gray-400">Loading...</div>
+        <div className="py-10 text-center text-sm text-gray-400">{t("admin.common.loading")}</div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {filtered.map((cg) => (
@@ -81,10 +83,10 @@ export function CharacteristicsTab() {
                 </div>
                 <div>
                   <h3 className="text-[0.92rem] font-semibold text-gray-900 transition-colors group-hover:text-teal-700">
-                    {cg.name || <span className="italic text-gray-400">Untitled group</span>}
+                    {cg.name || <span className="italic text-gray-400">{t("admin.catUi.untitledGroup")}</span>}
                   </h3>
                   <p className="mt-0.5 text-[0.72rem] text-gray-400">
-                    {cg.characteristics.length} characteristics
+                    {cg.characteristics.length} {t("admin.catUi.characteristicsLabel")}
                   </p>
                 </div>
               </div>
@@ -106,7 +108,7 @@ export function CharacteristicsTab() {
             </a>
           ))}
           {filtered.length === 0 && (
-            <div className="col-span-2 py-12 text-center text-sm text-gray-400">No results.</div>
+            <div className="col-span-2 py-12 text-center text-sm text-gray-400">{t("admin.catUi.noResults")}</div>
           )}
         </div>
       )}

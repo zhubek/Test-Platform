@@ -5,6 +5,7 @@ import { Plus, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createUser, fetchUsers, type UserListRow } from "@/lib/backend";
 import { useProject } from "@/lib/project-context";
+import { useLocale } from "@/lib/locale-context";
 import { useAdminAuth } from "@/lib/admin-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +26,13 @@ import {
 } from "@/components/ui/select";
 import { apiMessage } from "../organizations/[id]/_components/licenses-tab";
 
-const COLUMNS = ["Login", "Email", "Role", "Projects", "Licenses"] as const;
+const COLUMN_KEYS = [
+  "admin.common.login",
+  "admin.users.email",
+  "admin.users.role",
+  "admin.users.projects",
+  "admin.users.licenses",
+] as const;
 
 /** Distinct project names a user is related to, via their licenses. */
 function userProjects(u: UserListRow): string[] {
@@ -34,6 +41,7 @@ function userProjects(u: UserListRow): string[] {
 
 export default function AdminUsersPage() {
   const { project } = useProject();
+  const { t } = useLocale();
   const { me } = useAdminAuth();
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -74,11 +82,11 @@ export default function AdminUsersPage() {
     <>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Users</h1>
-          <p className="text-sm text-muted-foreground">All users across the platform.</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t("admin.users.heading")}</h1>
+          <p className="text-sm text-muted-foreground">{t("admin.users.subheading")}</p>
         </div>
         <Button onClick={() => setAddOpen(true)}>
-          <Plus className="mr-1 h-4 w-4" /> Add user
+          <Plus className="mr-1 h-4 w-4" /> {t("admin.users.addUser")}
         </Button>
       </div>
 
@@ -90,7 +98,7 @@ export default function AdminUsersPage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search users…"
+            placeholder={t("admin.users.searchPlaceholder")}
             className="pl-9"
           />
         </div>
@@ -100,12 +108,12 @@ export default function AdminUsersPage() {
         <table className="w-full text-left">
           <thead>
             <tr className="border-b-2 border-gray-100">
-              {COLUMNS.map((h) => (
+              {COLUMN_KEYS.map((key) => (
                 <th
-                  key={h}
+                  key={key}
                   className="px-4 py-2.5 text-[0.7rem] font-semibold uppercase tracking-wider text-gray-400"
                 >
-                  {h}
+                  {t(key)}
                 </th>
               ))}
             </tr>
@@ -159,7 +167,7 @@ export default function AdminUsersPage() {
         </table>
         {users.length === 0 && (
           <div className="py-12 text-center text-sm text-gray-400">
-            {loading ? "Loading users…" : "No users found."}
+            {loading ? t("admin.users.loadingUsers") : t("admin.users.noUsers")}
           </div>
         )}
       </div>
@@ -184,6 +192,7 @@ function AddUserDialog({
   projectId?: string;
   onCreated: () => void;
 }) {
+  const { t } = useLocale();
   const [login, setLogin] = useState("");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -233,35 +242,35 @@ function AddUserDialog({
     <Dialog open={open} onOpenChange={close}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add user</DialogTitle>
+          <DialogTitle>{t("admin.users.addUser")}</DialogTitle>
           <DialogDescription>
-            Staff account with password login. Org admins and test-takers are created from their organization.
+            {t("admin.users.addUserDesc")}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <UField label="Login">
+            <UField label={t("admin.common.login")}>
               <Input value={login} onChange={(e) => setLogin(e.target.value)} className="font-mono" />
             </UField>
-            <UField label="Name">
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Optional" />
+            <UField label={t("admin.common.name")}>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("admin.users.optional")} />
             </UField>
           </div>
-          <UField label="Email">
+          <UField label={t("admin.users.email")}>
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </UField>
           <div className="grid grid-cols-2 gap-3">
-            <UField label="Password (min 8)">
+            <UField label={t("admin.users.passwordMin8")}>
               <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </UField>
-            <UField label="Role">
+            <UField label={t("admin.users.role")}>
               <Select value={role} onValueChange={(v) => setRole((v as "SUPER_ADMIN" | "PROJECT_ADMIN") ?? "PROJECT_ADMIN")}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="PROJECT_ADMIN">Project admin</SelectItem>
-                  <SelectItem value="SUPER_ADMIN">Super admin</SelectItem>
+                  <SelectItem value="PROJECT_ADMIN">{t("admin.users.roleProjectAdmin")}</SelectItem>
+                  <SelectItem value="SUPER_ADMIN">{t("admin.users.roleSuperAdmin")}</SelectItem>
                 </SelectContent>
               </Select>
             </UField>
@@ -270,10 +279,10 @@ function AddUserDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => close(false)}>
-            Cancel
+            {t("admin.common.cancel")}
           </Button>
           <Button onClick={submit} disabled={busy || !valid}>
-            {busy ? "Creating…" : "Create user"}
+            {busy ? t("admin.users.creating") : t("admin.users.createUser")}
           </Button>
         </DialogFooter>
       </DialogContent>

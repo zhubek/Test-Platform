@@ -84,7 +84,7 @@ export default function TestsPage() {
             {t("cm.tests.heading")}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Build and manage assessments in {localize(project.name, locale) || "this project"}.
+            {t("admin.tests.subheading")} {localize(project.name, locale) || t("admin.tests.thisProject")}.
           </p>
         </div>
         <Button onClick={handleAdd} disabled={!project.id}>
@@ -105,9 +105,9 @@ export default function TestsPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="published">Published</SelectItem>
+            <SelectItem value="all">{t("admin.tests.allStatuses")}</SelectItem>
+            <SelectItem value="draft">{t("admin.tests.draft")}</SelectItem>
+            <SelectItem value="published">{t("admin.tests.published")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -164,7 +164,7 @@ export default function TestsPage() {
                     {category && <Badge variant="outline">{category}</Badge>}
                     {test.duration > 0 && (
                       <span className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" /> {test.duration} min
+                        <Clock className="h-3.5 w-3.5" /> {test.duration} {t("admin.tests.min")}
                       </span>
                     )}
                     <span className="flex items-center gap-1">

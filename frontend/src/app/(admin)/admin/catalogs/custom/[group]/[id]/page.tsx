@@ -48,16 +48,16 @@ export default function CustomItemEditorPage({
   );
 
   const handleDelete = useCallback(async () => {
-    if (!confirm("Delete this item?")) return;
+    if (!confirm(t("admin.catPage.deleteItemConfirm"))) return;
     await deleteCustomItem(group, id);
     window.location.href = `/admin/catalogs#${group}`;
   }, [group, id]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">Loading...</div>;
+    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">{t("admin.common.loading")}</div>;
   }
   if (!item) {
-    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">Item not found</div>;
+    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">{t("admin.catPage.itemNotFound")}</div>;
   }
 
   const name = item.name[locale] || item.name.en || "";
@@ -100,7 +100,7 @@ export default function CustomItemEditorPage({
         onBlur: () => save({ characteristics: item.characteristics }),
       }}
       onDelete={handleDelete}
-      deleteLabel="Delete item"
+      deleteLabel={t("admin.catPage.deleteItem")}
       access={{
         editors,
         onChange: (ids) => {

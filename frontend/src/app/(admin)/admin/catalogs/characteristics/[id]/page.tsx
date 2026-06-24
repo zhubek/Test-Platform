@@ -5,6 +5,7 @@
 
 import { use, useState, useEffect, useCallback } from "react";
 import { Archive, ArchiveRestore, Plus } from "lucide-react";
+import { useLocale } from "@/lib/locale-context";
 import { Breadcrumb } from "../../../_components/breadcrumb";
 import {
   fetchCharacteristicGroup,
@@ -26,6 +27,7 @@ export default function CharacteristicGroupEditorPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { t } = useLocale();
   const [cg, setCg] = useState<DcCharacteristicGroup | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -53,19 +55,19 @@ export default function CharacteristicGroupEditorPage({
   );
 
   if (loading) {
-    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">Loading...</div>;
+    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">{t("admin.common.loading")}</div>;
   }
   if (!cg) {
-    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">Not found</div>;
+    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">{t("admin.catPage.notFound")}</div>;
   }
 
   return (
     <>
       <Breadcrumb
         items={[
-          { label: "Catalogs", href: "/admin/catalogs" },
-          { label: "Characteristics", href: "/admin/catalogs#characteristics" },
-          { label: cg.name || "Untitled" },
+          { label: t("admin.catPage.catalogs"), href: "/admin/catalogs" },
+          { label: t("admin.catPage.characteristics"), href: "/admin/catalogs#characteristics" },
+          { label: cg.name || t("admin.catPage.untitled") },
         ]}
       />
 
@@ -79,7 +81,7 @@ export default function CharacteristicGroupEditorPage({
               (tab === t2 ? "text-gray-900" : "text-gray-400 hover:text-gray-600")
             }
           >
-            {t2 === "general" ? "General" : "Characteristics"}
+            {t2 === "general" ? t("admin.catPage.general") : t("admin.catPage.characteristics")}
             {tab === t2 && (
               <span className="absolute bottom-0 left-4 right-4 h-[2px] rounded-full bg-gray-900" />
             )}
@@ -104,10 +106,11 @@ function GeneralTab({
   save: (patch: { name?: string; description?: string; color?: string; archived?: boolean }) => Promise<void>;
   saving: boolean;
 }) {
+  const { t } = useLocale();
   const archived = !!cg.archived;
   return (
     <div className="max-w-lg space-y-4">
-      <Field label="Name">
+      <Field label={t("admin.common.name")}>
         <input
           type="text"
           value={cg.name}
@@ -117,7 +120,7 @@ function GeneralTab({
         />
       </Field>
 
-      <Field label="Description">
+      <Field label={t("admin.common.description")}>
         <input
           type="text"
           value={cg.description ?? ""}
@@ -127,7 +130,7 @@ function GeneralTab({
         />
       </Field>
 
-      <Field label="Color">
+      <Field label={t("admin.catPage.color")}>
         <div className="flex items-center gap-3">
           <input
             type="color"
@@ -150,10 +153,10 @@ function GeneralTab({
       <div className="my-2 border-t border-gray-100" />
 
       <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-400">{saving ? "Saving..." : ""}</span>
+        <span className="text-xs text-gray-400">{saving ? t("admin.common.saving") : ""}</span>
         <button
           onClick={() => {
-            if (confirm(archived ? "Restore this group?" : "Archive this group?")) {
+            if (confirm(archived ? t("admin.catPage.restoreGroupConfirm") : t("admin.catPage.archiveGroupConfirm"))) {
               save({ archived: !archived });
             }
           }}
@@ -163,11 +166,11 @@ function GeneralTab({
         >
           {archived ? (
             <>
-              <ArchiveRestore className="h-3.5 w-3.5" /> Restore
+              <ArchiveRestore className="h-3.5 w-3.5" /> {t("admin.catPage.restore")}
             </>
           ) : (
             <>
-              <Archive className="h-3.5 w-3.5" /> Archive
+              <Archive className="h-3.5 w-3.5" /> {t("admin.catPage.archive")}
             </>
           )}
         </button>
@@ -183,6 +186,7 @@ function CharacteristicsListTab({
   cg: DcCharacteristicGroup;
   setCg: (cg: DcCharacteristicGroup) => void;
 }) {
+  const { t } = useLocale();
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
@@ -220,15 +224,15 @@ function CharacteristicsListTab({
       </div>
 
       {cg.characteristics.length === 0 && !adding && (
-        <div className="py-8 text-center text-sm text-gray-400">No characteristics yet.</div>
+        <div className="py-8 text-center text-sm text-gray-400">{t("admin.catPage.noCharacteristics")}</div>
       )}
 
       {adding ? (
         <div className="mt-3 space-y-3 rounded-xl border border-teal-200 bg-white p-4">
-          <Field label="Name">
+          <Field label={t("admin.common.name")}>
             <input value={newName} onChange={(e) => setNewName(e.target.value)} className={inputClass} autoFocus />
           </Field>
-          <Field label="Description">
+          <Field label={t("admin.common.description")}>
             <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className={inputClass} />
           </Field>
           <div className="flex gap-2">
@@ -237,13 +241,13 @@ function CharacteristicsListTab({
               disabled={!newName.trim()}
               className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-teal-700 disabled:opacity-40"
             >
-              Add
+              {t("admin.common.add")}
             </button>
             <button
               onClick={() => setAdding(false)}
               className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:text-gray-700"
             >
-              Cancel
+              {t("admin.common.cancel")}
             </button>
           </div>
         </div>
@@ -252,7 +256,7 @@ function CharacteristicsListTab({
           onClick={() => setAdding(true)}
           className="mt-3 flex items-center gap-1.5 text-xs font-medium text-teal-600 transition-colors hover:text-teal-700"
         >
-          <Plus className="h-3.5 w-3.5" /> Add characteristic
+          <Plus className="h-3.5 w-3.5" /> {t("admin.catPage.addCharacteristic")}
         </button>
       )}
     </div>
@@ -266,6 +270,7 @@ function CharacteristicItem({
   char: DcCharacteristic;
   onUpdate: (patch: { name?: string; description?: string; archived?: boolean }) => void;
 }) {
+  const { t } = useLocale();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(char.name);
   const [desc, setDesc] = useState(char.description ?? "");
@@ -273,10 +278,10 @@ function CharacteristicItem({
   if (editing) {
     return (
       <div className="space-y-3 rounded-xl border border-teal-200 bg-white p-4">
-        <Field label="Name">
+        <Field label={t("admin.common.name")}>
           <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
         </Field>
-        <Field label="Description">
+        <Field label={t("admin.common.description")}>
           <input value={desc} onChange={(e) => setDesc(e.target.value)} className={inputClass} />
         </Field>
         <div className="flex gap-2">
@@ -287,13 +292,13 @@ function CharacteristicItem({
             }}
             className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-teal-700"
           >
-            Save
+            {t("admin.common.save")}
           </button>
           <button
             onClick={() => setEditing(false)}
             className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:text-gray-700"
           >
-            Cancel
+            {t("admin.common.cancel")}
           </button>
         </div>
       </div>
@@ -313,12 +318,12 @@ function CharacteristicItem({
           onClick={() => setEditing(true)}
           className="text-xs font-medium text-teal-600 transition-colors hover:text-teal-800"
         >
-          Edit
+          {t("admin.common.edit")}
         </button>
         <button
           onClick={() => onUpdate({ archived: true })}
           className="p-1 text-gray-300 transition-colors hover:text-amber-500"
-          title="Archive"
+          title={t("admin.catPage.archive")}
         >
           <Archive className="h-3.5 w-3.5" />
         </button>

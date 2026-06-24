@@ -218,7 +218,7 @@ export function LaborMarketEditor({ data: initial }: Props) {
               type="text"
               value={growthValue}
               onChange={(e) => setGrowthValue(e.target.value)}
-              placeholder="e.g. 9%+"
+              placeholder={t("admin.catProf.labor.growthValuePlaceholder")}
               className={inputClass}
             />
             <div className="mt-1.5">
@@ -239,14 +239,14 @@ export function LaborMarketEditor({ data: initial }: Props) {
               type="text"
               value={openingsValue}
               onChange={(e) => setOpeningsValue(e.target.value)}
-              placeholder="e.g. 5,360"
+              placeholder={t("admin.catProf.labor.openingsValuePlaceholder")}
               className={inputClass}
             />
             <div className="mt-1.5">
               <LocalizedInput value={openingsDesc} onChange={setOpeningsDesc} className={inputClass} />
             </div>
             <div className="mt-1.5">
-              <LocalizedInput value={openingsUpdated} onChange={setOpeningsUpdated} placeholder="Updated: ..." className={inputClass} />
+              <LocalizedInput value={openingsUpdated} onChange={setOpeningsUpdated} placeholder={t("admin.catProf.labor.updatedPlaceholder")} className={inputClass} />
             </div>
           </FieldGroup>
 
@@ -413,10 +413,10 @@ export function LaborMarketEditor({ data: initial }: Props) {
                 }
                 className={inputClass + " cursor-pointer"}
               >
-                <option value="green">Green</option>
-                <option value="blue">Blue</option>
-                <option value="amber">Amber</option>
-                <option value="purple">Purple</option>
+                <option value="green">{t("admin.catProf.labor.accentGreen")}</option>
+                <option value="blue">{t("admin.catProf.labor.accentBlue")}</option>
+                <option value="amber">{t("admin.catProf.labor.accentAmber")}</option>
+                <option value="purple">{t("admin.catProf.labor.accentPurple")}</option>
               </select>
             </div>
           ))}
@@ -454,6 +454,7 @@ function SalaryRangeSlider({
   mainNum: number;
   onChange: (min: number, max: number, main: number) => void;
 }) {
+  const { t } = useLocale();
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
   const snap = (v: number) => Math.round(v / SALARY_STEP) * SALARY_STEP;
 
@@ -497,7 +498,7 @@ function SalaryRangeSlider({
       {/* Sliders + number inputs */}
       <div className="grid grid-cols-3 gap-2">
         <div>
-          <label className="block text-[0.6rem] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Min</label>
+          <label className="block text-[0.6rem] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">{t("admin.catProf.labor.min")}</label>
           <input
             type="number"
             min={0}
@@ -518,7 +519,7 @@ function SalaryRangeSlider({
           />
         </div>
         <div>
-          <label className="block text-[0.6rem] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Median</label>
+          <label className="block text-[0.6rem] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">{t("admin.catProf.labor.median")}</label>
           <input
             type="number"
             min={0}
@@ -539,7 +540,7 @@ function SalaryRangeSlider({
           />
         </div>
         <div>
-          <label className="block text-[0.6rem] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Max</label>
+          <label className="block text-[0.6rem] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">{t("admin.catProf.labor.max")}</label>
           <input
             type="number"
             min={0}
@@ -604,12 +605,13 @@ function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
 }
 
 function RemoveButton({ onClick }: { onClick: () => void }) {
+  const { t } = useLocale();
   return (
     <button
       type="button"
       onClick={onClick}
       className="shrink-0 self-start mt-2 text-gray-300 hover:text-red-400 transition-colors"
-      title="Remove"
+      title={t("admin.common.remove")}
     >
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
         <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.28 7.22a.75.75 0 0 0-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 1 0 1.06 1.06L10 11.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L11.06 10l1.72-1.72a.75.75 0 0 0-1.06-1.06L10 8.94 8.28 7.22Z" clipRule="evenodd" />

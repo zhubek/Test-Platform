@@ -26,7 +26,7 @@ export default function DashboardsPage() {
             {t("cm.dashboards.heading")}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Aggregate analytics across results.
+            {t("admin.dash.subheading")}
           </p>
         </div>
         <ButtonLink href="/admin/dashboards/new">
@@ -58,7 +58,8 @@ export default function DashboardsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-xs text-muted-foreground">
-                {dash.widgets.length} widget{dash.widgets.length !== 1 && "s"}
+                {dash.widgets.length}{" "}
+                {dash.widgets.length === 1 ? t("admin.dash.widget") : t("admin.dash.widgets")}
               </CardContent>
             </Card>
           </Link>

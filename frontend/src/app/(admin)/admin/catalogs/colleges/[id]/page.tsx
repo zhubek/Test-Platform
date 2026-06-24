@@ -82,7 +82,7 @@ export default function CollegeEditorPage({
   }, [save]);
 
   const handleDelete = useCallback(async () => {
-    if (!confirm("Delete this college?")) return;
+    if (!confirm(t("admin.catPage.deleteCollegeConfirm"))) return;
     await deleteCollege(numId);
     window.location.href = "/admin/catalogs#colleges";
   }, [numId]);
@@ -90,7 +90,7 @@ export default function CollegeEditorPage({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20 text-sm text-gray-400">
-        Loading...
+        {t("admin.common.loading")}
       </div>
     );
   }
@@ -98,7 +98,7 @@ export default function CollegeEditorPage({
   if (!col) {
     return (
       <div className="flex items-center justify-center py-20 text-sm text-gray-400">
-        College not found
+        {t("admin.catPage.collegeNotFound")}
       </div>
     );
   }
@@ -127,7 +127,7 @@ export default function CollegeEditorPage({
                 setCol({ ...col, cityId: c?.id ?? null, city: c ?? null });
                 save({ cityId: c?.id ?? null });
               }}
-              placeholder="Almaty"
+              placeholder={t("admin.catPage.cityPlaceholder")}
               className={inputClass}
             />
           </Field>
@@ -185,8 +185,8 @@ export default function CollegeEditorPage({
         onBlur: saveParams,
       }}
       onDelete={handleDelete}
-      deleteLabel="Delete college"
-      pages={[{ id: "details", label: "Details & contacts", icon: Building2, render: detailsNode }]}
+      deleteLabel={t("admin.catPage.deleteCollege")}
+      pages={[{ id: "details", label: t("admin.catPage.detailsContacts"), icon: Building2, render: detailsNode }]}
       access={{
         editors,
         onChange: (ids) => {
@@ -237,7 +237,7 @@ function CollegePreview({
 
         {(p.email || p.phone || p.website) && (
           <div className="mb-3">
-            <div className="text-[0.6875rem] font-bold text-gray-400 uppercase tracking-wider mb-2">Contacts</div>
+            <div className="text-[0.6875rem] font-bold text-gray-400 uppercase tracking-wider mb-2">{t("admin.catPage.contacts")}</div>
             <div className="flex flex-col gap-1.5">
               {p.email && (
                 <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -263,7 +263,7 @@ function CollegePreview({
 
         {(p.instagram || p.facebook || p.youtube) && (
           <div>
-            <div className="text-[0.6875rem] font-bold text-gray-400 uppercase tracking-wider mb-2">Social</div>
+            <div className="text-[0.6875rem] font-bold text-gray-400 uppercase tracking-wider mb-2">{t("admin.catPage.social")}</div>
             <div className="flex gap-2">
               {p.instagram && (
                 <a href={`https://instagram.com/${p.instagram}`} target="_blank" rel="noopener noreferrer" title="Instagram" className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center transition-colors hover:bg-gray-100">

@@ -92,17 +92,17 @@ export default function ProfessionDetailPage({
   );
 
   const handleDelete = useCallback(async () => {
-    if (!confirm("Delete this profession?")) return;
+    if (!confirm(t("admin.catProf.confirmDeleteProfession"))) return;
     await deleteProfession(numId);
     window.location.href = "/admin/catalogs#professions";
-  }, [numId]);
+  }, [numId, t]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">Loading...</div>;
+    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">{t("admin.common.loading")}</div>;
   }
 
   if (!prof) {
-    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">Profession not found</div>;
+    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">{t("admin.catProf.professionNotFound")}</div>;
   }
 
   const name = prof.name[loc] || prof.name.en || "";
@@ -119,7 +119,7 @@ export default function ProfessionDetailPage({
       render: <LaborMarketEditor data={prof.params?.labor_market ?? null} /> },
     { id: "content", label: t("professionDetail.tabs.content"), icon: FileStack,
       render: <ContentEditor data={prof.params?.content ?? null} /> },
-    { id: "card", label: "Card", icon: CreditCard, description: "How it appears in Explore",
+    { id: "card", label: t("admin.catProf.card"), icon: CreditCard, description: t("admin.catProf.cardDescription"),
       render: (
         <div className="grid gap-8 lg:grid-cols-2">
           {/* The card's structural fields live with the card they feed. */}
@@ -212,7 +212,7 @@ export default function ProfessionDetailPage({
       pages={pages}
       access={{ editors, onChange: (ids) => saveParams("access", ids) }}
       onDelete={handleDelete}
-      deleteLabel="Delete profession"
+      deleteLabel={t("admin.catProf.deleteProfession")}
     />
   );
 }

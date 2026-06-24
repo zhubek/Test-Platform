@@ -45,7 +45,7 @@ const newParamId = () => `np-${Date.now()}-${++pid}`;
 export default function ParametersPage() {
   const { project, updateProject } = useProject();
   const { me } = useAdminAuth();
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
 
   // Local editable copy, reset when the active project changes.
   const [name, setName] = useState<Localized>(project.name);
@@ -174,15 +174,15 @@ export default function ParametersPage() {
     <>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Project parameters</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("admin.params.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Settings for{" "}
+            {t("admin.params.settingsFor")}{" "}
             <span className="font-medium text-foreground">{localize(project.name, locale)}</span>.
           </p>
         </div>
         <Button onClick={save}>
           <Save className="mr-1 h-4 w-4" />
-          {saved ? "Saved" : "Save"}
+          {saved ? t("admin.common.saved") : t("admin.common.save")}
         </Button>
       </div>
 
@@ -190,16 +190,16 @@ export default function ParametersPage() {
         <div className={cn("grid items-start gap-6", me.isSuper && "lg:grid-cols-2")}>
           {/* Project details */}
           <section className="rounded-xl border bg-card p-5">
-            <h3 className="mb-4 text-sm font-semibold">Project</h3>
+            <h3 className="mb-4 text-sm font-semibold">{t("admin.params.projectSection")}</h3>
             <div className="space-y-4">
             <LocalizedInput
-              label="Project name"
+              label={t("admin.params.projectName")}
               value={name}
               onChange={setName}
               className="max-w-md"
             />
             <LocalizedTextarea
-              label="Description"
+              label={t("admin.common.description")}
               value={description}
               onChange={setDescription}
               rows={2}
@@ -208,7 +208,7 @@ export default function ParametersPage() {
             <div className="flex flex-wrap gap-5">
               <div>
                 <label className="mb-1.5 block text-[0.75rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                  License limit
+                  {t("admin.params.licenseLimit")}
                 </label>
                 <Input
                   type="number"
@@ -220,7 +220,7 @@ export default function ParametersPage() {
               </div>
               <div>
                 <label className="mb-1.5 block text-[0.75rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Expiration date
+                  {t("admin.params.expirationDate")}
                 </label>
                 <Input
                   type="date"
@@ -229,12 +229,12 @@ export default function ParametersPage() {
                   className="w-44"
                 />
                 <p className="mt-1 text-[0.66rem] text-muted-foreground">
-                  Org & license dates can&apos;t exceed this.
+                  {t("admin.params.expirationHint")}
                 </p>
               </div>
               <div>
                 <label className="mb-1.5 block text-[0.75rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Organization limit
+                  {t("admin.params.organizationLimit")}
                 </label>
                 <Input
                   type="number"
@@ -255,10 +255,9 @@ export default function ParametersPage() {
         {/* Languages */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Languages</CardTitle>
+            <CardTitle className="text-base">{t("admin.params.languagesTitle")}</CardTitle>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              The content languages this project uses. Editors show a translation chip per
-              language here and hide all others. The starred one is the source/fallback.
+              {t("admin.params.languagesHint")}
             </p>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -279,7 +278,7 @@ export default function ParametersPage() {
                     <button
                       type="button"
                       onClick={() => makeDefault(code)}
-                      title={isDefault ? "Source language" : "Make source language"}
+                      title={isDefault ? t("admin.params.sourceLanguage") : t("admin.params.makeSourceLanguage")}
                       className={cn(
                         "ml-1 transition-colors",
                         isDefault ? "text-teal-600" : "text-gray-300 hover:text-amber-500",
@@ -291,7 +290,7 @@ export default function ParametersPage() {
                       <button
                         type="button"
                         onClick={() => removeLanguage(code)}
-                        title="Remove language"
+                        title={t("admin.params.removeLanguage")}
                         className="text-gray-300 hover:text-red-500"
                       >
                         <X className="h-3.5 w-3.5" />
@@ -306,7 +305,7 @@ export default function ParametersPage() {
               <div className="w-56">
                 <Select value="" onValueChange={(v) => v && addLanguage(v)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="+ Add language" />
+                    <SelectValue placeholder={t("admin.params.addLanguage")} />
                   </SelectTrigger>
                   <SelectContent>
                     {available.map((lang) => (
@@ -326,9 +325,9 @@ export default function ParametersPage() {
         <Card>
           <CardHeader className="flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-base">Redemption parameters</CardTitle>
+              <CardTitle className="text-base">{t("admin.params.redemptionParams")}</CardTitle>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Asked when a student redeems a license. Up to {MAX_PARAMETERS}.
+                {t("admin.params.redemptionParamsHint")} {t("admin.params.upTo")} {MAX_PARAMETERS}.
               </p>
             </div>
             <Button
@@ -338,13 +337,13 @@ export default function ParametersPage() {
               disabled={params.length >= MAX_PARAMETERS}
             >
               <Plus className="mr-1 h-4 w-4" />
-              Add parameter ({params.length}/{MAX_PARAMETERS})
+              {t("admin.params.addParameter")} ({params.length}/{MAX_PARAMETERS})
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
             {params.length === 0 ? (
               <div className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
-                No parameters yet.
+                {t("admin.params.noParameters")}
               </div>
             ) : (
               params.map((p, pIdx) => (
@@ -358,7 +357,7 @@ export default function ParametersPage() {
                       <LocalizedInput
                         value={p.label}
                         onChange={(v) => updateParam(p.id, { label: v })}
-                        placeholder="Parameter name (e.g. Region)"
+                        placeholder={t("admin.params.parameterNamePlaceholder")}
                         className="w-full"
                       />
                     </div>
@@ -372,15 +371,15 @@ export default function ParametersPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="single">Single choice</SelectItem>
-                        <SelectItem value="multiple">Multiple choice</SelectItem>
+                        <SelectItem value="single">{t("admin.params.singleChoice")}</SelectItem>
+                        <SelectItem value="multiple">{t("admin.params.multipleChoice")}</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button
                       variant="ghost"
                       size="icon-sm"
                       onClick={() => removeParam(p.id)}
-                      title="Remove parameter"
+                      title={t("admin.params.removeParameter")}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -400,7 +399,7 @@ export default function ParametersPage() {
                           <LocalizedInput
                             value={opt}
                             onChange={(v) => updateOption(p.id, oIdx, v)}
-                            placeholder={`Option ${oIdx + 1}`}
+                            placeholder={`${t("admin.params.option")} ${oIdx + 1}`}
                             className="w-full"
                           />
                         </div>
@@ -416,7 +415,7 @@ export default function ParametersPage() {
                       onClick={() => addOption(p.id)}
                       className="ml-5 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
                     >
-                      <Plus className="h-3 w-3" /> Add option
+                      <Plus className="h-3 w-3" /> {t("admin.params.addOption")}
                     </button>
                   </div>
                 </div>
@@ -571,12 +570,13 @@ function MigrationCard({ projectId, projectName }: { projectId: string; projectN
 // Styled to match the org page's "Organization admin" section (a password box
 // stands in for the org's activation-code box — staff sign in with a password).
 function ProjectAdminCard({ projectId }: { projectId: string }) {
+  const { t } = useLocale();
   const [admin, setAdmin] = useState<ProjectAdmin | null>(null);
   const [adminLogin, setAdminLogin] = useState("");
   const [adminName, setAdminName] = useState("");
   const [password, setPassword] = useState("");
   const [savingAdmin, setSavingAdmin] = useState(false);
-  const [adminMsg, setAdminMsg] = useState<string | null>(null);
+  const [adminMsg, setAdminMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -604,9 +604,12 @@ function ProjectAdminCard({ projectId }: { projectId: string }) {
       });
       setAdmin(a);
       setPassword("");
-      setAdminMsg("Saved");
+      setAdminMsg({ ok: true, text: t("admin.common.saved") });
     } catch (e) {
-      setAdminMsg(e instanceof Error ? e.message.replace(/^PUT .*?: /, "") : "Failed to save");
+      setAdminMsg({
+        ok: false,
+        text: e instanceof Error ? e.message.replace(/^PUT .*?: /, "") : t("admin.params.failedToSave"),
+      });
     } finally {
       setSavingAdmin(false);
     }
@@ -614,44 +617,43 @@ function ProjectAdminCard({ projectId }: { projectId: string }) {
 
   return (
     <section className="rounded-xl border bg-card p-5">
-      <h3 className="mb-4 text-sm font-semibold">Project admin</h3>
+      <h3 className="mb-4 text-sm font-semibold">{t("admin.params.projectAdmin")}</h3>
       <div className="space-y-3">
-        <Field label="Login">
+        <Field label={t("admin.common.login")}>
           <Input value={adminLogin} onChange={(e) => setAdminLogin(e.target.value)} className="font-mono" />
         </Field>
-        <Field label="Name">
+        <Field label={t("admin.common.name")}>
           <Input value={adminName} onChange={(e) => setAdminName(e.target.value)} />
         </Field>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          Status:{" "}
+          {t("admin.common.status")}:{" "}
           {admin ? (
             <Badge variant={admin.status === "ACTIVE" ? "default" : "secondary"}>{admin.status}</Badge>
           ) : (
-            <span>no admin yet — set a login and password and save</span>
+            <span>{t("admin.params.noAdminYet")}</span>
           )}
         </div>
         <div className="flex items-center gap-3">
           <Button onClick={saveAdmin} disabled={savingAdmin || !adminLogin.trim() || (!admin && password.length < 6)}>
-            {savingAdmin ? "Saving…" : "Save admin"}
+            {savingAdmin ? t("admin.common.saving") : t("admin.params.saveAdmin")}
           </Button>
           {adminMsg && (
-            <span className={adminMsg === "Saved" ? "text-xs text-teal-600" : "text-xs text-red-500"}>{adminMsg}</span>
+            <span className={adminMsg.ok ? "text-xs text-teal-600" : "text-xs text-red-500"}>{adminMsg.text}</span>
           )}
         </div>
 
         <div className="mt-2 rounded-lg border bg-muted/30 p-3">
-          <p className="mb-1.5 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">Password</p>
+          <p className="mb-1.5 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">{t("admin.common.password")}</p>
           <Input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder={admin ? "leave blank to keep current" : "min 6 characters"}
+            placeholder={admin ? t("admin.params.passwordKeepBlank") : t("admin.params.passwordMinChars")}
             className="max-w-xs"
           />
           <p className="mt-1.5 text-[0.66rem] leading-relaxed text-muted-foreground">
-            The project admin signs in at <code className="font-mono">/admin</code> with their login + this password. They
-            see the full admin area for this project, except Access → Users. Setting a new password replaces the old one
-            immediately.
+            {t("admin.params.projectAdminHintBefore")} <code className="font-mono">/admin</code>{" "}
+            {t("admin.params.projectAdminHintAfter")}
           </p>
         </div>
       </div>

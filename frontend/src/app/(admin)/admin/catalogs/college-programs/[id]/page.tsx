@@ -78,10 +78,10 @@ export default function CollegeProgramEditorPage({
   }, [save]);
 
   const handleDelete = useCallback(async () => {
-    if (!confirm("Delete this program?")) return;
+    if (!confirm(t("admin.catProf.confirmDeleteProgram"))) return;
     await deleteCollegeProgram(numId);
     window.location.href = "/admin/catalogs#collegePrograms";
-  }, [numId]);
+  }, [numId, t]);
 
   const colMap = useMemo(() => {
     const m = new Map<number, CollegeRow>();
@@ -114,11 +114,11 @@ export default function CollegeProgramEditorPage({
   }, [allCols, selectedColIds, colSearch, loc]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">Loading...</div>;
+    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">{t("admin.common.loading")}</div>;
   }
 
   if (!prog) {
-    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">Program not found</div>;
+    return <div className="flex items-center justify-center py-20 text-sm text-gray-400">{t("admin.catProf.programNotFound")}</div>;
   }
 
   const colleges = prog.params?.colleges ?? [];
@@ -247,7 +247,7 @@ export default function CollegeProgramEditorPage({
                 onClick={saveAll}
                 className="mt-3 px-3 py-1.5 text-xs font-medium rounded-lg bg-teal-600 text-white hover:bg-teal-700 transition-colors"
               >
-                {saving ? "Saving..." : t("cm.methodic.saveChanges")}
+                {saving ? t("admin.common.saving") : t("cm.methodic.saveChanges")}
               </button>
             </div>
 
@@ -294,8 +294,8 @@ export default function CollegeProgramEditorPage({
         onBlur: saveAll,
       }}
       onDelete={handleDelete}
-      deleteLabel="Delete program"
-      pages={[{ id: "details", label: "Colleges", icon: GraduationCap, render: detailsNode }]}
+      deleteLabel={t("admin.catProf.deleteProgram")}
+      pages={[{ id: "details", label: t("admin.catProf.colleges"), icon: GraduationCap, render: detailsNode }]}
       access={{
         editors,
         onChange: (ids) => {

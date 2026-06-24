@@ -25,7 +25,7 @@ import { apiMessage, CopyCode } from "./[id]/_components/licenses-tab";
 
 export default function AdminOrganizationsPage() {
   const { project } = useProject();
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   const [search, setSearch] = useState("");
   const [orgsAll, setOrgsAll] = useState<AdminOrg[]>([]);
   const [addOpen, setAddOpen] = useState(false);
@@ -51,13 +51,13 @@ export default function AdminOrganizationsPage() {
     <>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Organizations</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("admin.orgs.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Organizations in <span className="font-medium text-foreground">{localize(project.name, locale)}</span>.
+            {t("admin.orgs.subtitlePrefix")} <span className="font-medium text-foreground">{localize(project.name, locale)}</span>.
           </p>
         </div>
         <Button onClick={() => setAddOpen(true)}>
-          <Plus className="mr-1 h-4 w-4" /> Add organization
+          <Plus className="mr-1 h-4 w-4" /> {t("admin.orgs.addOrganization")}
         </Button>
       </div>
 
@@ -74,7 +74,7 @@ export default function AdminOrganizationsPage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search organizations…"
+            placeholder={t("admin.orgs.searchPlaceholder")}
             className="pl-9"
           />
         </div>
@@ -82,7 +82,7 @@ export default function AdminOrganizationsPage() {
 
       {orgs.length === 0 ? (
         <div className="rounded-lg border border-dashed py-16 text-center text-sm text-muted-foreground">
-          No organizations in this project.
+          {t("admin.orgs.empty")}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -107,7 +107,7 @@ export default function AdminOrganizationsPage() {
                   <div className="mt-3">
                     <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
                       <span>
-                        {o.licensesRedeemed}/{o.licensesTotal} licenses
+                        {o.licensesRedeemed}/{o.licensesTotal} {t("admin.orgs.licenses")}
                       </span>
                       <span className="font-semibold">{pct}%</span>
                     </div>
@@ -143,6 +143,7 @@ function AddOrganizationDialog({
   onCreated: () => void;
 }) {
   const router = useRouter();
+  const { t } = useLocale();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [adminLogin, setAdminLogin] = useState("");
@@ -189,10 +190,9 @@ function AddOrganizationDialog({
         {created ? (
           <>
             <DialogHeader>
-              <DialogTitle>Organization created</DialogTitle>
+              <DialogTitle>{t("admin.orgs.createdTitle")}</DialogTitle>
               <DialogDescription>
-                Give this activation code to <span className="font-mono">{adminLogin}</span> — they use it once to set
-                their password. You can regenerate it later in Settings.
+                {t("admin.orgs.createdDescPrefix")} <span className="font-mono">{adminLogin}</span> {t("admin.orgs.createdDescSuffix")}
               </DialogDescription>
             </DialogHeader>
             <div className="flex justify-center py-2">
@@ -200,26 +200,26 @@ function AddOrganizationDialog({
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => close(false)}>
-                Done
+                {t("admin.orgs.done")}
               </Button>
-              <Button onClick={() => router.push(`/admin/organizations/${created.id}`)}>Open organization</Button>
+              <Button onClick={() => router.push(`/admin/organizations/${created.id}`)}>{t("admin.orgs.openOrganization")}</Button>
             </DialogFooter>
           </>
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>Add organization</DialogTitle>
-              <DialogDescription>Creates the organization and its admin account (pending activation).</DialogDescription>
+              <DialogTitle>{t("admin.orgs.addOrganization")}</DialogTitle>
+              <DialogDescription>{t("admin.orgs.addDescription")}</DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
-              <Field label="Name">
+              <Field label={t("admin.common.name")}>
                 <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="School #25" />
               </Field>
-              <Field label="Description / city">
+              <Field label={t("admin.orgs.descriptionCity")}>
                 <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Almaty" />
               </Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Admin login">
+                <Field label={t("admin.orgs.adminLogin")}>
                   <Input
                     value={adminLogin}
                     onChange={(e) => setAdminLogin(e.target.value)}
@@ -227,18 +227,18 @@ function AddOrganizationDialog({
                     className="font-mono"
                   />
                 </Field>
-                <Field label="Admin name">
-                  <Input value={adminName} onChange={(e) => setAdminName(e.target.value)} placeholder="Optional" />
+                <Field label={t("admin.orgs.adminName")}>
+                  <Input value={adminName} onChange={(e) => setAdminName(e.target.value)} placeholder={t("admin.orgs.optional")} />
                 </Field>
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => close(false)}>
-                Cancel
+                {t("admin.common.cancel")}
               </Button>
               <Button onClick={submit} disabled={busy || !name.trim() || !adminLogin.trim()}>
-                {busy ? "Creating…" : "Create organization"}
+                {busy ? t("admin.orgs.creating") : t("admin.orgs.createOrganization")}
               </Button>
             </DialogFooter>
           </>

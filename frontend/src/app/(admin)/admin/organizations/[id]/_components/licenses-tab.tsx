@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Check, Copy, Plus, RefreshCw } from "lucide-react";
+import { useLocale } from "@/lib/locale-context";
 import { defaultOrgApi, type OrgApi, type OrgDetail, type OrgLicense } from "@/lib/backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,11 +26,11 @@ export function apiMessage(e: unknown): string {
   return m ? m[1] : String(e instanceof Error ? e.message : e);
 }
 
-const STATE_BADGE: Record<OrgLicense["state"], { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  ISSUED: { label: "Unredeemed", variant: "secondary" },
-  ACTIVE: { label: "Active", variant: "default" },
-  EXPIRED: { label: "Expired", variant: "outline" },
-  REVOKED: { label: "Revoked", variant: "destructive" },
+const STATE_BADGE: Record<OrgLicense["state"], { labelKey: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  ISSUED: { labelKey: "admin.lic.stateIssued", variant: "secondary" },
+  ACTIVE: { labelKey: "admin.lic.stateActive", variant: "default" },
+  EXPIRED: { labelKey: "admin.lic.stateExpired", variant: "outline" },
+  REVOKED: { labelKey: "admin.lic.stateRevoked", variant: "destructive" },
 };
 
 const fmtDate = (v: string | null) => (v ? new Date(v).toLocaleDateString() : "—");
@@ -45,6 +46,7 @@ export function LicensesTab({
   api?: OrgApi;
   canManage?: boolean;
 }) {
+  const { t } = useLocale();
   const [licenses, setLicenses] = useState<OrgLicense[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -84,15 +86,15 @@ export function LicensesTab({
     <div>
       <div className="mb-4 flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          <span className="font-semibold text-foreground">{org.licenseUsed}</span> of{" "}
-          <span className="font-semibold text-foreground">{org.licenseCount}</span> licenses used ·{" "}
+          <span className="font-semibold text-foreground">{org.licenseUsed}</span> {t("admin.lic.ofUsed")}{" "}
+          <span className="font-semibold text-foreground">{org.licenseCount}</span> {t("admin.lic.licensesUsed")} ·{" "}
           <span className={remaining === 0 ? "font-semibold text-red-500" : "font-semibold text-teal-600"}>
-            {remaining} remaining
+            {remaining} {t("admin.lic.remaining")}
           </span>
         </p>
         {canManage && (
-          <Button onClick={() => setGenOpen(true)} disabled={remaining === 0} title={remaining === 0 ? "License limit reached — raise it in Settings" : undefined}>
-            <Plus className="mr-1 h-4 w-4" /> Generate licenses
+          <Button onClick={() => setGenOpen(true)} disabled={remaining === 0} title={remaining === 0 ? t("admin.lic.limitReached") : undefined}>
+            <Plus className="mr-1 h-4 w-4" /> {t("admin.lic.generateLicenses")}
           </Button>
         )}
       </div>
@@ -100,22 +102,22 @@ export function LicensesTab({
       {error && <p className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
       {loading ? (
-        <p className="py-10 text-center text-sm text-muted-foreground">Loading licenses…</p>
+        <p className="py-10 text-center text-sm text-muted-foreground">{t("admin.lic.loadingLicenses")}</p>
       ) : licenses.length === 0 ? (
         <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
-          No licenses yet. {remaining > 0 ? "Generate the first batch." : "Set a license limit in Settings first."}
+          {t("admin.lic.noLicenses")} {remaining > 0 ? t("admin.lic.generateFirstBatch") : t("admin.lic.setLimitFirst")}
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border bg-card">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/40 text-left text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                <th className="px-3 py-2">License code</th>
-                <th className="px-3 py-2">Holder</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Issued</th>
-                <th className="px-3 py-2">Expires</th>
-                <th className="px-3 py-2 text-right">Actions</th>
+                <th className="px-3 py-2">{t("admin.lic.colLicenseCode")}</th>
+                <th className="px-3 py-2">{t("admin.lic.colHolder")}</th>
+                <th className="px-3 py-2">{t("admin.common.status")}</th>
+                <th className="px-3 py-2">{t("admin.lic.colIssued")}</th>
+                <th className="px-3 py-2">{t("admin.lic.colExpires")}</th>
+                <th className="px-3 py-2 text-right">{t("admin.common.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -131,7 +133,7 @@ export function LicensesTab({
                       {li.holder?.name && <span className="ml-1.5 text-xs text-muted-foreground">{li.holder.name}</span>}
                     </td>
                     <td className="px-3 py-2">
-                      <Badge variant={badge.variant}>{badge.label}</Badge>
+                      <Badge variant={badge.variant}>{t(badge.labelKey)}</Badge>
                     </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">{fmtDate(li.issuedDate)}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">{fmtDate(li.expirationDate)}</td>
@@ -139,12 +141,12 @@ export function LicensesTab({
                       <div className="flex items-center justify-end gap-1">
                         {(li.state === "ISSUED" || li.state === "ACTIVE") && (
                           <Button variant="ghost" size="sm" disabled={busy} className="h-7 text-xs" onClick={() => act(() => api.licenseAction(li.id, "revoke"))}>
-                            Revoke
+                            {t("admin.lic.revoke")}
                           </Button>
                         )}
                         {li.state === "EXPIRED" && (
                           <Button variant="ghost" size="sm" disabled={busy} className="h-7 text-xs" onClick={() => act(() => api.licenseAction(li.id, "renew"))}>
-                            Renew
+                            {t("admin.lic.renew")}
                           </Button>
                         )}
                         {li.state !== "REVOKED" && (
@@ -153,7 +155,7 @@ export function LicensesTab({
                             size="sm"
                             disabled={busy}
                             className="h-7 text-xs"
-                            title="New activation code; holder must re-activate"
+                            title={t("admin.lic.resetCodeHint")}
                             onClick={() =>
                               act(async () => {
                                 const { code } = await api.resetLicenseCode(li.id);
@@ -161,7 +163,7 @@ export function LicensesTab({
                               })
                             }
                           >
-                            <RefreshCw className="mr-1 h-3 w-3" /> Reset code
+                            <RefreshCw className="mr-1 h-3 w-3" /> {t("admin.lic.resetCode")}
                           </Button>
                         )}
                         <Button
@@ -170,12 +172,12 @@ export function LicensesTab({
                           disabled={busy}
                           className="h-7 text-xs text-muted-foreground hover:text-red-500"
                           onClick={() => {
-                            if (confirm("Delete this license? Its slot returns to the allotment.")) {
+                            if (confirm(t("admin.lic.confirmDelete"))) {
                               act(() => api.deleteLicense(li.id));
                             }
                           }}
                         >
-                          Delete
+                          {t("admin.common.delete")}
                         </Button>
                       </div>
                     </td>
@@ -223,6 +225,7 @@ function GenerateDialog({
   maxExpiration: string;
   onDone: () => void;
 }) {
+  const { t } = useLocale();
   const [count, setCount] = useState(1);
   // Defaults to the org's expiration; editable but capped at it.
   const [expiration, setExpiration] = useState(defaultExpiration);
@@ -247,7 +250,7 @@ function GenerateDialog({
 
   const generate = async () => {
     if (!expiration) {
-      setError("Expiration date is required.");
+      setError(t("admin.lic.expirationRequired"));
       return;
     }
     setBusy(true);
@@ -272,9 +275,9 @@ function GenerateDialog({
         {codes ? (
           <>
             <DialogHeader>
-              <DialogTitle>{codes.length} licenses generated</DialogTitle>
+              <DialogTitle>{codes.length} {t("admin.lic.licensesGenerated")}</DialogTitle>
               <DialogDescription>
-                Hand these activation codes to the test-takers. Codes stay visible in the table.
+                {t("admin.lic.handCodesHint")}
               </DialogDescription>
             </DialogHeader>
             <div className="max-h-56 space-y-1 overflow-auto rounded-md border bg-muted/30 p-2">
@@ -284,23 +287,23 @@ function GenerateDialog({
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => navigator.clipboard.writeText(codes.join("\n"))}>
-                <Copy className="mr-1 h-3.5 w-3.5" /> Copy all
+                <Copy className="mr-1 h-3.5 w-3.5" /> {t("admin.lic.copyAll")}
               </Button>
-              <Button onClick={() => close(false)}>Done</Button>
+              <Button onClick={() => close(false)}>{t("admin.lic.done")}</Button>
             </DialogFooter>
           </>
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>Generate licenses</DialogTitle>
+              <DialogTitle>{t("admin.lic.generateLicenses")}</DialogTitle>
               <DialogDescription>
-                Each license is an activation code a test-taker redeems. {remaining} slot{remaining === 1 ? "" : "s"} remaining in this organization&apos;s allotment.
+                {t("admin.lic.generateHint")} {remaining} {remaining === 1 ? t("admin.lic.slotRemaining") : t("admin.lic.slotsRemaining")}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
               <label className="block">
                 <span className="mb-1 block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                  How many
+                  {t("admin.lic.howMany")}
                 </span>
                 <Input
                   type="number"
@@ -313,7 +316,7 @@ function GenerateDialog({
               </label>
               <label className="block">
                 <span className="mb-1 block text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Expiration date
+                  {t("admin.lic.expirationDate")}
                 </span>
                 <Input
                   type="date"
@@ -323,17 +326,17 @@ function GenerateDialog({
                   className="w-44"
                 />
                 <span className="mt-1 block text-[0.66rem] text-muted-foreground">
-                  Defaults to the organization&apos;s date{maxExpiration ? `; no later than ${maxExpiration}` : ""}.
+                  {t("admin.lic.expirationDefaultHint")}{maxExpiration ? `; ${t("admin.lic.noLaterThan")} ${maxExpiration}` : ""}.
                 </span>
               </label>
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => close(false)}>
-                Cancel
+                {t("admin.common.cancel")}
               </Button>
               <Button onClick={generate} disabled={busy || count < 1 || !expiration}>
-                {busy ? "Generating…" : `Generate ${count}`}
+                {busy ? t("admin.lic.generating") : `${t("admin.lic.generate")} ${count}`}
               </Button>
             </DialogFooter>
           </>
@@ -345,6 +348,7 @@ function GenerateDialog({
 
 /** A monospaced code with a copy button. */
 export function CopyCode({ code, highlight }: { code: string; highlight?: boolean }) {
+  const { t } = useLocale();
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -358,7 +362,7 @@ export function CopyCode({ code, highlight }: { code: string; highlight?: boolea
         "inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 font-mono text-xs transition-colors hover:border-teal-300 " +
         (highlight ? "border-teal-400 bg-teal-50 text-teal-800" : "bg-card")
       }
-      title="Copy"
+      title={t("admin.lic.copy")}
     >
       {code}
       {copied ? <Check className="h-3 w-3 text-teal-600" /> : <Copy className="h-3 w-3 text-muted-foreground" />}

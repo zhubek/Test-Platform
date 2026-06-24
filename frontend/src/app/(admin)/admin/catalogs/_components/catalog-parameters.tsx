@@ -44,7 +44,7 @@ export function CatalogParameters({ catalog }: { catalog: string }) {
 
 // ── Visibility ───────────────────────────────────────────────────────────────
 function VisibilitySection({ group }: { group?: DcGroup }) {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   const [saving, setSaving] = useState(false);
   const [savedNote, setSavedNote] = useState(false);
 
@@ -73,9 +73,9 @@ function VisibilitySection({ group }: { group?: DcGroup }) {
   return (
     <div>
       <div className="mb-4">
-        <h3 className="text-sm font-semibold text-gray-900">Visibility</h3>
+        <h3 className="text-sm font-semibold text-gray-900">{t("admin.catCfg.visibility")}</h3>
         <p className="mt-0.5 text-xs text-gray-400">
-          Public catalogs appear on the site. Pick which page renders as the card view.
+          {t("admin.catCfg.visibilityHint")}
         </p>
       </div>
 
@@ -92,17 +92,17 @@ function VisibilitySection({ group }: { group?: DcGroup }) {
           }
           className="h-4 w-4 accent-teal-600"
         />
-        <span className="text-sm font-medium text-gray-900">Public catalog</span>
+        <span className="text-sm font-medium text-gray-900">{t("admin.catCfg.publicCatalog")}</span>
       </label>
 
       {isPublic && (
         <div className="mt-4">
           <label className="mb-1.5 block text-[0.72rem] font-semibold uppercase tracking-wider text-gray-400">
-            Card view page
+            {t("admin.catCfg.cardViewPage")}
           </label>
           {pages.length === 0 ? (
             <p className="text-xs text-gray-300">
-              No pages defined yet — add one on the Pages tab to use as the card view.
+              {t("admin.catCfg.noPagesForCard")}
             </p>
           ) : (
             <select
@@ -111,10 +111,10 @@ function VisibilitySection({ group }: { group?: DcGroup }) {
               onChange={(e) => persist({ cardPageId: e.target.value || null })}
               className="h-9 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none transition-all focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
             >
-              <option value="">— Select a page —</option>
+              <option value="">{t("admin.catCfg.selectAPage")}</option>
               {pages.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {localize(p.pageName, locale) || "Untitled page"}
+                  {localize(p.pageName, locale) || t("admin.catCfg.untitledPage")}
                 </option>
               ))}
             </select>
@@ -122,13 +122,14 @@ function VisibilitySection({ group }: { group?: DcGroup }) {
         </div>
       )}
 
-      {savedNote && <span className="mt-3 block text-xs text-teal-600">Saved</span>}
+      {savedNote && <span className="mt-3 block text-xs text-teal-600">{t("admin.common.saved")}</span>}
     </div>
   );
 }
 
 // ── Extra variables ──────────────────────────────────────────────────────────
 function ExtraVariablesSection({ catalog, isPublic }: { catalog: string; isPublic: boolean }) {
+  const { t } = useLocale();
   const saved = useExtraSlotDefs(catalog);
   const [draft, setDraft] = useState<ExtraSlot[] | null>(null);
   const [saving, setSaving] = useState(false);
@@ -163,11 +164,10 @@ function ExtraVariablesSection({ catalog, isPublic }: { catalog: string; isPubli
   return (
     <div className="border-t border-gray-100 pt-8">
       <div className="mb-4">
-        <h3 className="text-sm font-semibold text-gray-900">Extra variables</h3>
+        <h3 className="text-sm font-semibold text-gray-900">{t("admin.catCfg.extraVariables")}</h3>
         <p className="mt-0.5 text-xs text-gray-400">
-          Every item of this catalog gets these variables; values are filled inside
-          each item. The first five appear as columns on the Items table.
-          {isPublic && " Flag a variable as a filter to expose it on the public site."}
+          {t("admin.catCfg.extraVariablesHint")}
+          {isPublic && " " + t("admin.catCfg.extraVariablesFilterHint")}
         </p>
       </div>
 
@@ -175,10 +175,10 @@ function ExtraVariablesSection({ catalog, isPublic }: { catalog: string; isPubli
 
       <div className="mt-4 flex items-center gap-3 border-t border-gray-100 pt-4">
         <Button size="sm" onClick={save} disabled={!dirty || saving}>
-          {saving ? "Saving…" : "Save parameters"}
+          {saving ? t("admin.common.saving") : t("admin.catCfg.saveParameters")}
         </Button>
-        {savedNote && <span className="text-xs text-teal-600">Saved</span>}
-        {dirty && !savedNote && <span className="text-xs text-gray-400">Unsaved changes</span>}
+        {savedNote && <span className="text-xs text-teal-600">{t("admin.common.saved")}</span>}
+        {dirty && !savedNote && <span className="text-xs text-gray-400">{t("admin.catCfg.unsavedChanges")}</span>}
       </div>
     </div>
   );
@@ -186,6 +186,7 @@ function ExtraVariablesSection({ catalog, isPublic }: { catalog: string; isPubli
 
 // ── Characteristics ──────────────────────────────────────────────────────────
 function CharacteristicsSection({ catalog }: { catalog: string }) {
+  const { t } = useLocale();
   useDcGroups(); // keep attachments in sync
   const [all, setAll] = useState<DcCharacteristicGroup[]>(getAllCharacteristicGroups());
   const [draft, setDraft] = useState<Set<string> | null>(null);
@@ -230,15 +231,14 @@ function CharacteristicsSection({ catalog }: { catalog: string }) {
   return (
     <div className="border-t border-gray-100 pt-8">
       <div className="mb-4">
-        <h3 className="text-sm font-semibold text-gray-900">Characteristics</h3>
+        <h3 className="text-sm font-semibold text-gray-900">{t("admin.catCfg.characteristics")}</h3>
         <p className="mt-0.5 text-xs text-gray-400">
-          Attach characteristic groups. Each item then gets a numeric variable per
-          characteristic, shown under extra variables on its General tab.
+          {t("admin.catCfg.characteristicsHint")}
         </p>
       </div>
 
       {all.length === 0 ? (
-        <p className="text-xs text-gray-300">No characteristic groups defined yet.</p>
+        <p className="text-xs text-gray-300">{t("admin.catCfg.noCharacteristicGroups")}</p>
       ) : (
         <div className="space-y-1.5">
           {all.map((cg) => {
@@ -286,10 +286,10 @@ function CharacteristicsSection({ catalog }: { catalog: string }) {
 
       <div className="mt-4 flex items-center gap-3 border-t border-gray-100 pt-4">
         <Button size="sm" onClick={save} disabled={!dirty || saving}>
-          {saving ? "Saving…" : "Save characteristics"}
+          {saving ? t("admin.common.saving") : t("admin.catCfg.saveCharacteristics")}
         </Button>
-        {savedNote && <span className="text-xs text-teal-600">Saved</span>}
-        {dirty && !savedNote && <span className="text-xs text-gray-400">Unsaved changes</span>}
+        {savedNote && <span className="text-xs text-teal-600">{t("admin.common.saved")}</span>}
+        {dirty && !savedNote && <span className="text-xs text-gray-400">{t("admin.catCfg.unsavedChanges")}</span>}
       </div>
     </div>
   );
