@@ -16,7 +16,12 @@ services:
       timeout: 5s
       retries: 10
 
+  # ── App services are OPT-IN (profile "full") — for a fully containerized run,
+  # e.g. prod. Local dev runs the backend/frontend NATIVELY and uses only `db`:
+  #   docker compose up -d            # just Postgres
+  #   docker compose --profile full up -d   # whole stack in containers
   backend:
+    profiles: ["full"]
     build:
       context: ./backend
     restart: unless-stopped
@@ -36,6 +41,7 @@ services:
       - "4000:4000"
 
   frontend:
+    profiles: ["full"]
     build:
       context: ./frontend
       args:
