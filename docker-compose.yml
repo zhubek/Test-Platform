@@ -10,6 +10,46 @@ services:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testplatform -d testplatform"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    # Reuse the local backend/.env for secrets (JWT, Gemini, …) when present.
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      # Point at the db SERVICE (overrides any DATABASE_URL from env_file).
+      DATABASE_URL: postgresql://testplatform:testplatform@db:5432/testplatform
+      PORT: "4000"
+      NODE_ENV: production
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Proxy target baked into next.config rewrites at build time.
+        BACKEND_URL: http://backend:4000
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      # Also set at runtime in case next re-evaluates the config.
+      BACKEND_URL: http://backend:4000
+      NEXT_PUBLIC_API_URL: /api
+    ports:
+      - "3000:3000"
 
 volumes:
   pgdata:
