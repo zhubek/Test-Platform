@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Check, ChevronsUpDown, FolderKanban, ChevronDown, LogOut } from "lucide-react";
+import { Check, ChevronsUpDown, FolderKanban, ChevronDown, LogOut, Plus } from "lucide-react";
 import { useLocale } from "@/lib/locale-context";
 import { useProject, projectLanguages } from "@/lib/project-context";
 import { useAdminAuth } from "@/lib/admin-auth";
@@ -10,6 +11,7 @@ import { localize } from "@/lib/localized";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/button-link";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +19,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type NavItem =
   | { label: string; href: string }
@@ -41,8 +51,30 @@ const baseNav: NavItem[] = [
 export function AdminTopbar() {
   const pathname = usePathname();
   const { locale, setLocale } = useLocale();
-  const { projects, project, setProjectId } = useProject();
+  const { projects, project, setProjectId, addProject } = useProject();
   const { me, signOut } = useAdminAuth();
+
+  // "New project" dialog (super-admin only — projects are platform-level).
+  const [newOpen, setNewOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [newError, setNewError] = useState<string | null>(null);
+
+  const createNewProject = async () => {
+    const name = newName.trim();
+    if (!name) return;
+    setCreating(true);
+    setNewError(null);
+    try {
+      await addProject({ name });
+      setNewOpen(false);
+      setNewName("");
+    } catch (e) {
+      setNewError(e instanceof Error ? e.message.replace(/^POST .*?: /, "") : "Failed to create project");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   // Project admins get the same admin UI minus Access→Users (super-admin only).
   const nav: NavItem[] = me.isSuper
@@ -64,7 +96,9 @@ export function AdminTopbar() {
         <DropdownMenu>
           <DropdownMenuTrigger className="ml-1 inline-flex items-center gap-2 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted">
             <FolderKanban className="h-4 w-4 text-muted-foreground" />
-            <span className="max-w-[140px] truncate">{localize(project.name, locale)}</span>
+            <span className="max-w-[140px] truncate">
+              {projects.length === 0 ? "No projects" : localize(project.name, locale)}
+            </span>
             <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
@@ -72,6 +106,9 @@ export function AdminTopbar() {
               Switch project
             </div>
             <DropdownMenuSeparator />
+            {projects.length === 0 && (
+              <div className="px-2 py-2 text-xs text-muted-foreground">No projects yet.</div>
+            )}
             {projects.map((p) => (
               <DropdownMenuItem
                 key={p.id}
@@ -94,6 +131,14 @@ export function AdminTopbar() {
                 </span>
               </DropdownMenuItem>
             ))}
+            {me.isSuper && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setNewOpen(true)} className="gap-2 text-primary">
+                  <Plus className="h-4 w-4" /> New project
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -167,6 +212,37 @@ export function AdminTopbar() {
           <LogOut className="h-4 w-4" />
         </Button>
       </div>
+
+      <Dialog open={newOpen} onOpenChange={setNewOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>New project</DialogTitle>
+            <DialogDescription>
+              Create a new project. You can configure languages, parameters, and content after.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Input
+              autoFocus
+              placeholder="Project name"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newName.trim()) void createNewProject();
+              }}
+            />
+            {newError && <p className="text-sm text-red-500">{newError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewOpen(false)} disabled={creating}>
+              Cancel
+            </Button>
+            <Button onClick={createNewProject} disabled={creating || !newName.trim()}>
+              {creating ? "Creating…" : "Create project"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </header>
   );
 }

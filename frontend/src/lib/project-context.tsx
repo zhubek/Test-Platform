@@ -10,7 +10,7 @@ import {
 import type { Localized } from "@/lib/localized";
 import { l } from "@/lib/localized";
 import type { Locale } from "./i18n";
-import { fetchProjects } from "./backend";
+import { fetchProjects, createProject } from "./backend";
 import { setActiveProjectScope } from "./active-project";
 
 // A license-redemption parameter: a field the student fills in when
@@ -58,65 +58,6 @@ export function projectDefaultLanguage(p: Project): Locale {
   return p.defaultLanguage || p.languages[0] || "en";
 }
 
-// Mock projects (would come from the backend later).
-export const PROJECTS: Project[] = [
-  {
-    id: "spring-2026",
-    name: l("Spring 2026", "Весна 2026", "Көктем 2026"),
-    description: l("Spring intake assessments", "Весенние тестирования"),
-    licenseLimit: 1000,
-    organizationLimit: 20,
-    languages: ["en", "ru", "kk"],
-    defaultLanguage: "en",
-    parameters: [
-      {
-        id: "p1",
-        label: l("Region", "Регион", "Аймақ"),
-        type: "single",
-        options: [l("Almaty", "Алматы"), l("Astana", "Астана"), l("Shymkent", "Шымкент"), l("Other", "Другое")],
-      },
-      {
-        id: "p2",
-        label: l("Interests", "Интересы", "Қызығушылықтар"),
-        type: "multiple",
-        options: [l("STEM"), l("Arts", "Искусство"), l("Sports", "Спорт"), l("Languages", "Языки")],
-      },
-    ],
-  },
-  {
-    id: "pilot",
-    name: l("Pilot Program", "Пилотная программа"),
-    description: l("Early-access pilot cohort", "Пилотная группа раннего доступа"),
-    licenseLimit: 200,
-    organizationLimit: 5,
-    languages: ["en", "ru", "kk"],
-    defaultLanguage: "en",
-    parameters: [
-      { id: "p1", label: l("Grade", "Класс", "Сынып"), type: "single", options: [l("9"), l("10"), l("11")] },
-    ],
-  },
-  {
-    id: "region-x",
-    name: l("Region X", "Регион X"),
-    description: l("Regional rollout", "Региональное внедрение"),
-    licenseLimit: 500,
-    organizationLimit: 10,
-    languages: ["en", "ru", "kk"],
-    defaultLanguage: "en",
-    parameters: [],
-  },
-  {
-    id: "summer-camp",
-    name: l("Summer Camp 2026", "Летний лагерь 2026"),
-    description: l("Summer guidance camp", "Летний профориентационный лагерь"),
-    licenseLimit: 300,
-    organizationLimit: 3,
-    languages: ["en", "ru", "kk"],
-    defaultLanguage: "en",
-    parameters: [],
-  },
-];
-
 const STORAGE_KEY = "tp-active-project";
 
 interface ProjectContextValue {
@@ -124,6 +65,8 @@ interface ProjectContextValue {
   project: Project;
   setProjectId: (id: string) => void;
   updateProject: (id: string, patch: Partial<Project>) => void;
+  /** Create a project on the backend, then select it. */
+  addProject: (input: { name: string; description?: string; licenseLimit?: number }) => Promise<Project>;
 }
 
 const ProjectContext = createContext<ProjectContextValue | null>(null);
@@ -148,29 +91,27 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectIdState] = useState<string>("");
 
-  // Load real projects from the backend, restoring the last-selected one.
-  // Falls back to the mock PROJECTS only if the backend is unreachable/empty.
+  // Load real projects from the backend, restoring the last-selected one. The
+  // picker is purely backend-driven: an empty DB shows NO projects (so nothing
+  // acts on a phantom id), and the user creates one with "New project".
   useEffect(() => {
     let cancelled = false;
     const saved = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-    const pick = (list: Project[]) =>
-      saved && list.some((p) => p.id === saved) ? saved : list[0].id;
     fetchProjects()
       .then((real) => {
         if (cancelled) return;
-        const list = real.length > 0 ? real : PROJECTS;
-        const initial = pick(list);
-        setProjects(list);
+        setProjects(real);
+        const initial = saved && real.some((p) => p.id === saved) ? saved : real[0]?.id ?? "";
         // Set the ambient scope before the id state so library reads (blocks,
         // catalog groups) load already scoped to the active project.
-        setActiveProjectScope(initial);
+        setActiveProjectScope(initial || undefined);
         setProjectIdState(initial);
       })
       .catch((err) => {
         if (cancelled) return;
-        console.warn("Backend unavailable — using mock projects.", err);
-        setProjects(PROJECTS);
-        setProjectIdState(pick(PROJECTS));
+        console.error("Failed to load projects:", err);
+        setProjects([]);
+        setProjectIdState("");
       });
     return () => {
       cancelled = true;
@@ -187,10 +128,17 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   };
 
+  const addProject: ProjectContextValue["addProject"] = async (input) => {
+    const created = await createProject(input);
+    setProjects((prev) => [...prev, created]);
+    setProjectId(created.id);
+    return created;
+  };
+
   const project = projects.find((p) => p.id === projectId) ?? projects[0] ?? PLACEHOLDER;
 
   return (
-    <ProjectContext.Provider value={{ projects, project, setProjectId, updateProject }}>
+    <ProjectContext.Provider value={{ projects, project, setProjectId, updateProject, addProject }}>
       {children}
     </ProjectContext.Provider>
   );

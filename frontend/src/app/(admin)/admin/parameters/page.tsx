@@ -439,7 +439,11 @@ export default function ParametersPage() {
 function MigrationCard({ projectId, projectName }: { projectId: string; projectName: string }) {
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [cloneMode, setCloneMode] = useState(false);
+  // Where the imported content lands:
+  //  recreate — recreate the exported project itself (keep its id) → fresh instance (prod)
+  //  merge    — re-parent into the selected project, preserving ids
+  //  clone    — re-parent into the selected project with fresh ids (copy within an instance)
+  const [dest, setDest] = useState<"recreate" | "merge" | "clone">("recreate");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const doExport = async () => {
@@ -469,18 +473,25 @@ function MigrationCard({ projectId, projectName }: { projectId: string; projectN
     setMsg(null);
     try {
       const bundle = JSON.parse(await file.text()) as ProjectBundle;
-      // Re-parent the imported content INTO the project selected in the menu.
-      // Clone mode regenerates ids so the content lands as a fresh copy.
-      const counts = await importProject(bundle, projectId, cloneMode ? "clone" : "merge");
+      // "recreate" rebuilds the exported project as-is (no re-parenting); the
+      // other two land the content in the currently-selected project.
+      const counts =
+        dest === "recreate"
+          ? await importProject(bundle)
+          : await importProject(bundle, projectId, dest);
       const created = Object.entries(counts)
         .filter(([, n]) => n > 0)
         .map(([k, n]) => `${n} ${k}`)
         .join(", ");
+      const where =
+        dest === "recreate"
+          ? "as the exported project"
+          : `into “${projectName}”${dest === "clone" ? " as a new copy" : ""}`;
       setMsg({
         ok: true,
         text: created
-          ? `Imported into “${projectName}”${cloneMode ? " as a new copy" : ""}: ${created}.`
-          : "Nothing new — everything already existed in this project.",
+          ? `Imported ${where}: ${created}.`
+          : "Nothing new — everything already existed.",
       });
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : "Import failed" });
@@ -495,9 +506,9 @@ function MigrationCard({ projectId, projectName }: { projectId: string; projectN
         <CardTitle className="text-base">Migration</CardTitle>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Move content between instances or projects. Exports the blocks, catalog groups,
-          and tests/dashboards under this project. Import re-creates them into the project
-          selected in the menu (<strong>{projectName}</strong>). Users, organizations,
-          licenses, and attempt results are not included.
+          and tests/dashboards under <strong>{projectName}</strong>; choose below where an
+          imported file lands. Users, organizations, licenses, and attempt results are not
+          included.
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -524,20 +535,30 @@ function MigrationCard({ projectId, projectName }: { projectId: string; projectN
             />
           </label>
         </div>
-        <label className="flex items-start gap-2 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            className="mt-0.5"
-            checked={cloneMode}
-            onChange={(e) => setCloneMode(e.target.checked)}
-          />
-          <span>
-            <strong>Import as a new copy (regenerate IDs).</strong> Use when copying between
-            projects in the <em>same</em> instance — every item gets a fresh id and colliding
-            catalog group names are auto-suffixed, so the source is left untouched. Leave
-            unchecked to migrate to a fresh instance (e.g. prod) with ids preserved.
-          </span>
-        </label>
+        <div className="space-y-1.5 text-xs">
+          <span className="font-medium text-muted-foreground">On import, the file should…</span>
+          <label className="flex items-start gap-2">
+            <input type="radio" name="dest" className="mt-0.5" checked={dest === "recreate"} onChange={() => setDest("recreate")} />
+            <span className="text-muted-foreground">
+              <strong>Recreate the exported project</strong> (keep its id &amp; name). For a fresh
+              instance — e.g. migrating to <em>prod</em>. The target project is created if missing.
+            </span>
+          </label>
+          <label className="flex items-start gap-2">
+            <input type="radio" name="dest" className="mt-0.5" checked={dest === "merge"} onChange={() => setDest("merge")} />
+            <span className="text-muted-foreground">
+              <strong>Merge into “{projectName}”</strong> (preserve ids). Re-parent the content into
+              the selected project; skips anything already present.
+            </span>
+          </label>
+          <label className="flex items-start gap-2">
+            <input type="radio" name="dest" className="mt-0.5" checked={dest === "clone"} onChange={() => setDest("clone")} />
+            <span className="text-muted-foreground">
+              <strong>Copy into “{projectName}” as new (regenerate ids)</strong>. For duplicating
+              between projects in the <em>same</em> instance; colliding catalog-group names are auto-suffixed.
+            </span>
+          </label>
+        </div>
         {msg && (
           <p className={cn("text-sm", msg.ok ? "text-teal-600" : "text-red-500")}>{msg.text}</p>
         )}

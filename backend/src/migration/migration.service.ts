@@ -160,7 +160,17 @@ export class MigrationService {
 
     if (targetProjectId) {
       const target = await this.prisma.project.findUnique({ where: { id: targetProjectId } });
-      if (!target) throw new BadRequestException('Target project not found');
+      // Auto-create the destination if it doesn't exist yet, so "import into
+      // project X" is one step (named after the source; rename later as needed).
+      if (!target) {
+        const srcName = (bundle.project as { name?: unknown }).name;
+        await this.prisma.project.create({
+          data: {
+            id: targetProjectId,
+            name: typeof srcName === 'string' && srcName ? srcName : 'Imported project',
+          },
+        });
+      }
     }
 
     // Clone: regenerate every content id so the bundle becomes a fresh copy in

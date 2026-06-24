@@ -42,6 +42,19 @@ export async function fetchProjects(): Promise<Project[]> {
   return rows.map(adaptProject);
 }
 
+/** Create a new project. */
+export async function createProject(input: {
+  name: string;
+  description?: string;
+  licenseLimit?: number;
+}): Promise<Project> {
+  const row = await apiFetch<BeProject>("/projects", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return adaptProject(row);
+}
+
 // ── Project migration (export / import) — super-admin only ───────────────────
 
 /** A project content snapshot (blocks, catalogs, tests). Opaque to the client. */
